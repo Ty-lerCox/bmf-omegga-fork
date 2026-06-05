@@ -1,0 +1,1433 @@
+﻿{
+  "target": {
+    "exe": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+    "pdb_seed": "C:\\Users\\tycox\\OneDrive\\Documents\\Downloads\\older data from discord server\\BrickadiaSteam-Win64-Shipping.pdb"
+  },
+  "patternsleuth_success": {
+    "command": [
+      "C:\\Users\\tycox\\Tools\\reverse-engineering\\patternsleuth\\target\\release\\patternsleuth.exe",
+      "scan",
+      "--path",
+      "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+      "--resolver",
+      "FNameCtorWchar",
+      "--resolver",
+      "FNameToString",
+      "--resolver",
+      "StaticConstructObjectInternal",
+      "--resolver",
+      "ConsoleManagerSingleton",
+      "--resolver",
+      "UGameEngineTick",
+      "--resolver",
+      "GUObjectArray",
+      "--resolver",
+      "FUObjectArrayAllocateUObjectIndex",
+      "--resolver",
+      "FUObjectArrayFreeUObjectIndex",
+      "--summary"
+    ],
+    "exit_code": 0,
+    "stdout": "\"BrickadiaServer-Win64-Shipping.exe\" \"C:\\\\Users\\\\tycox\\\\AppData\\\\Roaming\\\\omegga\\\\steam_installs\\\\main\\\\Brickadia\\\\Binaries\\\\Win64\\\\BrickadiaServer-Win64-Shipping.exe\"\n+-----------------------------------+------------------------------------+\n| sig                               | offline scan                       |\n+===================================+====================================+\n| FNameCtorWchar                    | FNameCtorWchar(                    |\n|                                   |     0x140237e50,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| FNameToString                     | FNameToString(                     |\n|                                   |     0x1402d5d70,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| StaticConstructObjectInternal     | StaticConstructObjectInternal(     |\n|                                   |     0x140505310,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| ConsoleManagerSingleton           | ConsoleManagerSingleton(           |\n|                                   |     0x140064bb0,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| UGameEngineTick                   | UGameEngineTick(                   |\n|                                   |     0x1422c3bd0,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| GUObjectArray                     | GUObjectArray(                     |\n|                                   |     0x14768f038,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| FUObjectArrayAllocateUObjectIndex | FUObjectArrayAllocateUObjectIndex( |\n|                                   |     0x1404f7cb0,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| FUObjectArrayFreeUObjectIndex     | FUObjectArrayFreeUObjectIndex(     |\n|                                   |     0x1404f8020,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n\n+------------------------------------+------------------+---------------------------+--------------------------+------------------------------------------+------------------------------------+----------------------------+--------------------------+----------------------------------------------+------------------------------------------+\n|                                    | unqiue addresses | FNameCtorWchar            | FNameToString            | StaticConstructObjectInternal            | ConsoleManagerSingleton            | UGameEngineTick            | GUObjectArray            | FUObjectArrayAllocateUObjectIndex            | FUObjectArrayFreeUObjectIndex            |\n+====================================+==================+===========================+==========================+==========================================+====================================+============================+==========================+==============================================+==========================================+\n| BrickadiaServer-Win64-Shipping.exe | unique=0         | FNameCtorWchar(140237e50) | FNameToString(1402d5d70) | StaticConstructObjectInternal(140505310) | ConsoleManagerSingleton(140064bb0) | UGameEngineTick(1422c3bd0) | GUObjectArray(14768f038) | FUObjectArrayAllocateUObjectIndex(1404f7cb0) | FUObjectArrayFreeUObjectIndex(1404f8020) |\n+------------------------------------+------------------+---------------------------+--------------------------+------------------------------------------+------------------------------------+----------------------------+--------------------------+----------------------------------------------+------------------------------------------+\n| total=1                            | 0=1 1=0 >1=0     | Ok=1/1 (100.00%)          | Ok=1/1 (100.00%)         | Ok=1/1 (100.00%)                         | Ok=1/1 (100.00%)                   | Ok=1/1 (100.00%)           | Ok=1/1 (100.00%)         | Ok=1/1 (100.00%)                             | Ok=1/1 (100.00%)                         |\n+------------------------------------+------------------+---------------------------+--------------------------+------------------------------------------+------------------------------------+----------------------------+--------------------------+----------------------------------------------+------------------------------------------+\n\n",
+    "stderr": ""
+  },
+  "patternsleuth_blocked": {
+    "command": [
+      "C:\\Users\\tycox\\Tools\\reverse-engineering\\patternsleuth\\target\\release\\patternsleuth.exe",
+      "scan",
+      "--path",
+      "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+      "--resolver",
+      "FUObjectHashTablesGet",
+      "--resolver",
+      "StaticFindObjectFast",
+      "--resolver",
+      "GNatives",
+      "--resolver",
+      "UObjectSkipFunction",
+      "--resolver",
+      "GNativesViaSkipFunction",
+      "--resolver",
+      "GNativesPatterns",
+      "--resolver",
+      "FFrameStep",
+      "--resolver",
+      "FFrameStepExplicitProperty",
+      "--resolver",
+      "FFrameStepViaExec",
+      "--summary"
+    ],
+    "exit_code": 0,
+    "stdout": "\"BrickadiaServer-Win64-Shipping.exe\" \"C:\\\\Users\\\\tycox\\\\AppData\\\\Roaming\\\\omegga\\\\steam_installs\\\\main\\\\Brickadia\\\\Binaries\\\\Win64\\\\BrickadiaServer-Win64-Shipping.exe\"\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| sig                        | offline scan                                                                                                           |\n+============================+========================================================================================================================+\n| FUObjectHashTablesGet      | ResolveError { context: [\"FUObjectHashTablesGet\"], type: Msg(\"expected at least one value\") }                          |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| StaticFindObjectFast       | ResolveError { context: [\"StaticFindObjectFast\"], type: Msg(\"expected at least one value\") }                           |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| GNatives                   | ResolveError { context: [\"GNatives\"], type: Msg(\"expected at least one value\") }                                       |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| UObjectSkipFunction        | ResolveError { context: [\"UObjectSkipFunction\"], type: Msg(\"expected at least one value\") }                            |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| GNativesViaSkipFunction    | ResolveError { context: [\"UObjectSkipFunction\", \"GNativesViaSkipFunction\"], type: Msg(\"expected at least one value\") } |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| GNativesPatterns           | ResolveError { context: [\"GNativesPatterns\"], type: Msg(\"expected at least one value\") }                               |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| FFrameStep                 | ResolveError { context: [\"FFrameStep\"], type: Msg(\"expected at least one value\") }                                     |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| FFrameStepExplicitProperty | ResolveError { context: [\"FFrameStepExplicitProperty\"], type: Msg(\"expected at least one value\") }                     |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| FFrameStepViaExec          | ResolveError { context: [\"FFrameStepViaExec\"], type: Msg(\"expected at least one value\") }                              |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n\n+------------------------------------+------------------+-----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------+\n|                                    | unqiue addresses | FUObjectHashTablesGet                                                                         | StaticFindObjectFast                                                                         | GNatives                                                                         | UObjectSkipFunction                                                                         | GNativesViaSkipFunction                                                                                                | GNativesPatterns                                                                         | FFrameStep                                                                         | FFrameStepExplicitProperty                                                                         | FFrameStepViaExec                                                                         |\n+====================================+==================+===============================================================================================+==============================================================================================+==================================================================================+=============================================================================================+========================================================================================================================+==========================================================================================+====================================================================================+====================================================================================================+===========================================================================================+\n| BrickadiaServer-Win64-Shipping.exe | unique=0         | ResolveError { context: [\"FUObjectHashTablesGet\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"StaticFindObjectFast\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"GNatives\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"UObjectSkipFunction\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"UObjectSkipFunction\", \"GNativesViaSkipFunction\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"GNativesPatterns\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"FFrameStep\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"FFrameStepExplicitProperty\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"FFrameStepViaExec\"], type: Msg(\"expected at least one value\") } |\n+------------------------------------+------------------+-----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------+\n| total=1                            | 0=1 1=0 >1=0     | Ok=0/1 (0.00%)                                                                                | Ok=0/1 (0.00%)                                                                               | Ok=0/1 (0.00%)                                                                   | Ok=0/1 (0.00%)                                                                              | Ok=0/1 (0.00%)                                                                                                         | Ok=0/1 (0.00%)                                                                           | Ok=0/1 (0.00%)                                                                     | Ok=0/1 (0.00%)                                                                                     | Ok=0/1 (0.00%)                                                                            |\n+------------------------------------+------------------+-----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------+\n\n",
+    "stderr": ""
+  },
+  "utf16_anchors": [
+    {
+      "text": "StaticFindObjectFast",
+      "match": {
+        "section": ".rdata",
+        "file_offset": "0x5d364c0",
+        "rva": "0x5d372c0",
+        "va": "0x145d372c0"
+      }
+    },
+    {
+      "text": "FUObjectHashTables",
+      "match": {
+        "section": ".rdata",
+        "file_offset": "0x5d3e0ae",
+        "rva": "0x5d3eeae",
+        "va": "0x145d3eeae"
+      }
+    },
+    {
+      "text": "HashOuter",
+      "match": {
+        "section": ".rdata",
+        "file_offset": "0x5d3df64",
+        "rva": "0x5d3ed64",
+        "va": "0x145d3ed64"
+      }
+    }
+  ],
+  "old_pdb_publics": {
+    "command": [
+      "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\Llvm\\x64\\bin\\llvm-pdbutil.exe",
+      "dump",
+      "--publics",
+      "--public-extras",
+      "C:\\Users\\tycox\\OneDrive\\Documents\\Downloads\\older data from discord server\\BrickadiaSteam-Win64-Shipping.pdb"
+    ],
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "",
+    "records": [
+      "163220 | S_PUB32 [size = 44] `UObject::ProcessConsoleExec`",
+      "257208 | S_PUB32 [size = 40] `StaticFindObjectFastSafe`",
+      "257248 | S_PUB32 [size = 40] `StaticFindObjectChecked`",
+      "257288 | S_PUB32 [size = 36] `StaticFindObjectSafe`",
+      "261756 | S_PUB32 [size = 56] `FUObjectHashTables::~FUObjectHashTables`"
+    ]
+  },
+  "hook_foundation": {
+    "ue_baseline_suffix": "5_05",
+    "custom_vtable_layout": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\bundles\\CL12960\\VTableLayout.ini",
+    "seed_vtable_variance_note": {
+      "path": "C:\\Users\\tycox\\OneDrive\\Documents\\Downloads\\older data from discord server\\Resources Convos.txt",
+      "line": 291,
+      "text": "it turns out that Brickadia only has one extra vfunc in UObject and two in UEngine, and i have been trolled by a UE4SS oversight/bug where because i wasn't also including the default layout defs of UObjectBase & UObjectBaseUtility in the custom VTableLayout.ini file, UE4SS forgot about their virtual functions entirely",
+      "supports_stock_defaults_outside_uobject_uengine": true
+    },
+    "runtime_log": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\UE4SS.log",
+    "startup_fatal_line": null,
+    "callback_gc_invalid_line": "[2026-03-23 21:56:14.6063017] [FCallbackGarbageCollector] Freed invalid callbacks!",
+    "targets": {
+      "UObject::ProcessEvent": {
+        "class": "UObject",
+        "function": "ProcessEvent",
+        "custom_layout_section_present": true,
+        "custom_layout_explicit_override": true,
+        "custom_layout_ordinal": 72,
+        "generated_ue5_5_default": {
+          "generated_file": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\generated_include\\FunctionBodies\\5_05_VTableOffsets_UObject_FunctionBody.cpp",
+          "offset": "0x278"
+        },
+        "seed_note_supports_stock_default": false,
+        "runtime_log_address": "0x7ff6ffe33db0",
+        "runtime_log_line": "[2026-03-23 21:56:11.6037604] ProcessEvent address 0x7ff6ffe33db0",
+        "status": "runtime_confirmed"
+      },
+      "UEngine::LoadMap": {
+        "class": "UEngine",
+        "function": "LoadMap",
+        "custom_layout_section_present": true,
+        "custom_layout_explicit_override": true,
+        "custom_layout_ordinal": 70,
+        "generated_ue5_5_default": {
+          "generated_file": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\generated_include\\FunctionBodies\\5_05_VTableOffsets_UEngine_FunctionBody.cpp",
+          "offset": "0x4e0"
+        },
+        "seed_note_supports_stock_default": false,
+        "runtime_log_address": "0x7ff7027e04d0",
+        "runtime_log_line": "[2026-03-23 21:56:11.6032073] GameEngine::LoadMap address 0x7ff7027e04d0",
+        "status": "runtime_confirmed"
+      },
+      "AGameModeBase::InitGameState": {
+        "class": "AGameModeBase",
+        "function": "InitGameState",
+        "custom_layout_section_present": false,
+        "custom_layout_explicit_override": false,
+        "custom_layout_ordinal": null,
+        "generated_ue5_5_default": {
+          "generated_file": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\generated_include\\FunctionBodies\\5_05_VTableOffsets_AGameModeBase_FunctionBody.cpp",
+          "offset": "0x790"
+        },
+        "seed_note_supports_stock_default": true,
+        "runtime_log_address": "0x7ff70210bcd0",
+        "runtime_log_line": "[2026-03-23 21:56:11.6037132] GameModeBase::InitGameState address 0x7ff70210bcd0",
+        "status": "runtime_confirmed"
+      },
+      "AActor::BeginPlay": {
+        "class": "AActor",
+        "function": "BeginPlay",
+        "custom_layout_section_present": false,
+        "custom_layout_explicit_override": false,
+        "custom_layout_ordinal": null,
+        "generated_ue5_5_default": {
+          "generated_file": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\generated_include\\FunctionBodies\\5_05_VTableOffsets_AActor_FunctionBody.cpp",
+          "offset": "0x3a0"
+        },
+        "seed_note_supports_stock_default": true,
+        "runtime_log_address": "0x7ff701c641c0",
+        "runtime_log_line": "[2026-03-23 21:56:11.6037234] AActor::BeginPlay address 0x7ff701c641c0",
+        "status": "runtime_confirmed"
+      }
+    }
+  },
+  "lua_scan_addresses": {
+    "FNameToString": {
+      "address": "0x7ff7000f5d70",
+      "line": "[2026-03-23 21:56:11.4479459] FName::ToString address: 0x7ff7000f5d70 <- Lua Script",
+      "source": "Lua Script"
+    },
+    "GNatives": {
+      "address": "0x7ff7074ad760",
+      "line": "[2026-03-23 21:56:11.4662471] GNatives address: 0x7ff7074ad760 <- Lua Script",
+      "source": "Lua Script"
+    },
+    "GUObjectArray": {
+      "address": "0x7ff7074af038",
+      "line": "[2026-03-23 21:56:11.4686762] GUObjectArray address: 0x7ff7074af038 <- Lua Script",
+      "source": "Lua Script"
+    }
+  },
+  "runtime_mods": {
+    "mods_txt": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\Mods\\mods.txt",
+    "enabled": [
+      "OmeggaBridge"
+    ]
+  },
+  "baseline_object_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "lookup_probe_set": "none",
+        "success": true,
+        "lookup_delay_ms": 1500,
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof.jsonl",
+        "unwrap_params": "false",
+        "engine_tick_available": "true",
+        "process_event_available": "true",
+        "timestamp": "2026-03-23T16:05:30Z"
+      },
+      {
+        "kind": "hook_initgamestate_context",
+        "candidate_ue_type_ok": true,
+        "candidate_ue_type": "RemoteUnrealParam",
+        "source": "RegisterInitGameStatePostHook",
+        "candidate_lua_type": "userdata",
+        "success": true,
+        "object_resolution_blocked": true,
+        "unwrap_enabled": false,
+        "object_resolution_attempted": false,
+        "timestamp": "2026-03-23T16:05:30Z"
+      },
+      {
+        "kind": "lookup_probes_skipped",
+        "lookup_probe_set": "none",
+        "success": true,
+        "source": "initgamestate",
+        "timestamp": "2026-03-23T16:05:30Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "baseline_object_unwrap_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-unwrap.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "engine_tick_available": "true",
+        "lookup_probe_set": "none",
+        "process_event_available": "true",
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-unwrap.jsonl",
+        "success": true,
+        "unwrap_params": "true",
+        "lookup_delay_ms": 1500,
+        "timestamp": "2026-03-23T16:06:05Z"
+      },
+      {
+        "kind": "hook_initgamestate_context_unwrap_attempt",
+        "unwrap_enabled": true,
+        "candidate_ue_type_ok": true,
+        "candidate_ue_type": "RemoteUnrealParam",
+        "source": "RegisterInitGameStatePostHook",
+        "candidate_lua_type": "userdata",
+        "object_resolution_attempted": true,
+        "timestamp": "2026-03-23T16:06:05Z"
+      },
+      {
+        "kind": "hook_initgamestate_context",
+        "get_full_name_ok": false,
+        "object_ue_type_ok": true,
+        "candidate_ue_type_ok": true,
+        "object_lua_type": "userdata",
+        "success": true,
+        "full_name_error": "skipped to keep the unwrap canary focused on object validity",
+        "object_resolution_attempted": true,
+        "unwrap_enabled": true,
+        "resolver": "param_get",
+        "is_valid_call_ok": true,
+        "object_ue_type": "AActor",
+        "candidate_ue_type": "RemoteUnrealParam",
+        "source": "RegisterInitGameStatePostHook",
+        "is_valid": "true",
+        "candidate_lua_type": "userdata",
+        "timestamp": "2026-03-23T16:06:05Z"
+      },
+      {
+        "kind": "lookup_probes_skipped",
+        "source": "initgamestate",
+        "lookup_probe_set": "none",
+        "success": true,
+        "timestamp": "2026-03-23T16:06:05Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "baseline_findfirstof_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-findfirstof.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "process_event_available": "true",
+        "engine_tick_available": "true",
+        "unwrap_params": "false",
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-findfirstof.jsonl",
+        "lookup_delay_ms": 0,
+        "lookup_probe_set": "findfirstof",
+        "success": true,
+        "timestamp": "2026-03-23T16:06:40Z"
+      },
+      {
+        "kind": "hook_initgamestate_context",
+        "success": true,
+        "object_resolution_blocked": true,
+        "candidate_ue_type": "RemoteUnrealParam",
+        "candidate_ue_type_ok": true,
+        "source": "RegisterInitGameStatePostHook",
+        "unwrap_enabled": false,
+        "object_resolution_attempted": false,
+        "candidate_lua_type": "userdata",
+        "timestamp": "2026-03-23T16:06:40Z"
+      },
+      {
+        "kind": "lookup_findfirstof",
+        "success": true,
+        "object_resolution_blocked": true,
+        "candidate_ue_type": "UObject",
+        "candidate_ue_type_ok": true,
+        "source": "initgamestate",
+        "unwrap_enabled": false,
+        "object_resolution_attempted": false,
+        "candidate_lua_type": "userdata",
+        "timestamp": "2026-03-23T16:06:40Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "baseline_staticfindobject_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-staticfindobject.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "unwrap_params": "false",
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-staticfindobject.jsonl",
+        "process_event_available": "true",
+        "engine_tick_available": "true",
+        "lookup_delay_ms": 0,
+        "lookup_probe_set": "staticfindobject",
+        "success": true,
+        "timestamp": "2026-03-23T16:07:15Z"
+      },
+      {
+        "kind": "hook_initgamestate_context",
+        "success": true,
+        "object_resolution_blocked": true,
+        "object_resolution_attempted": false,
+        "unwrap_enabled": false,
+        "candidate_ue_type": "RemoteUnrealParam",
+        "candidate_lua_type": "userdata",
+        "source": "RegisterInitGameStatePostHook",
+        "candidate_ue_type_ok": true,
+        "timestamp": "2026-03-23T16:07:15Z"
+      },
+      {
+        "kind": "lookup_staticfindobject",
+        "success": true,
+        "object_resolution_blocked": true,
+        "object_resolution_attempted": false,
+        "unwrap_enabled": false,
+        "candidate_ue_type": "UObject",
+        "candidate_lua_type": "userdata",
+        "source": "initgamestate",
+        "candidate_ue_type_ok": true,
+        "timestamp": "2026-03-23T16:07:15Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "chat_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-chat-proof.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-chat-proof.jsonl",
+        "success": true,
+        "timestamp": "2026-03-23T16:08:01Z"
+      },
+      {
+        "kind": "scheduler_capabilities",
+        "execute_in_game_thread_after_frames": true,
+        "execute_in_game_thread_with_delay": true,
+        "execute_in_game_thread": true,
+        "execute_with_delay": true,
+        "timestamp": "2026-03-23T16:08:01Z"
+      },
+      {
+        "kind": "helper_capabilities",
+        "omegga_get_cached_command_context": true,
+        "omegga_has_cached_engine_exec_context": true,
+        "omegga_describe_cached_world": true,
+        "omegga_get_cached_world": true,
+        "omegga_has_cached_command_context": true,
+        "register_process_console_exec_post_hook": true,
+        "register_process_console_exec_pre_hook": true,
+        "omegga_execute_cached_engine_exec": true,
+        "omegga_describe_cached_command_context": true,
+        "omegga_execute_cached_console_exec": true,
+        "omegga_execute_kismet_console_command": true,
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "hook_registration",
+        "error": "nil",
+        "hook": "RegisterProcessConsoleExecPreHook",
+        "success": true,
+        "phase": "pre",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "hook_registration",
+        "error": "nil",
+        "hook": "RegisterProcessConsoleExecPostHook",
+        "success": true,
+        "phase": "post",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "hook_event",
+        "success": true,
+        "hook": "RegisterInitGameStatePostHook",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "scheduled_probe",
+        "frames": 5,
+        "delay_ms": 500,
+        "label": "initgamestate_context_snapshot",
+        "success": true,
+        "scheduler": "ExecuteInGameThreadAfterFrames",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "scheduled_probe",
+        "frames": 15,
+        "delay_ms": 1500,
+        "label": "initgamestate_nonchat_probe",
+        "success": true,
+        "scheduler": "ExecuteInGameThreadAfterFrames",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "scheduled_probe",
+        "frames": 30,
+        "delay_ms": 3000,
+        "label": "initgamestate_broadcast_round_1",
+        "success": true,
+        "scheduler": "ExecuteInGameThreadAfterFrames",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "scheduled_probe",
+        "frames": 60,
+        "delay_ms": 6000,
+        "label": "initgamestate_broadcast_round_2",
+        "success": true,
+        "scheduler": "ExecuteInGameThreadAfterFrames",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "context_snapshot",
+        "has_cached_command_context": true,
+        "has_cached_command_context_call_ok": true,
+        "has_cached_engine_exec_context_call_ok": true,
+        "trigger": "initgamestate_scheduled",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "context_snapshot",
+        "has_cached_command_context": true,
+        "has_cached_command_context_call_ok": true,
+        "has_cached_engine_exec_context_call_ok": true,
+        "trigger": "initgamestate_nonchat",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "command_attempt",
+        "call_ok": false,
+        "success": false,
+        "available": true,
+        "executor": "cached_engine_exec",
+        "command": "Server.Status",
+        "label": "server_status_engine_exec",
+        "error": "OmeggaExecuteCachedEngineExec: GameEngine::Exec is not available\nstack traceback:\n\t[C]: in function 'OmeggaExecuteCachedEngineExec'\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:214: in upvalue 'attempt_command'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:238: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:235>\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:66: in upvalue 'once'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:235: in upvalue 'attempt_nonchat_console_probe'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:407: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:406>\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:66: in upvalue 'once'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:326: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:325>",
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "command_attempt",
+        "call_ok": true,
+        "success": true,
+        "available": true,
+        "executor": "cached_console_exec",
+        "command": "Server.Status",
+        "label": "server_status_cached_console_exec",
+        "output": "",
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "command_attempt",
+        "call_ok": true,
+        "success": true,
+        "available": true,
+        "executor": "kismet_console_command",
+        "command": "Server.Status",
+        "label": "server_status_kismet_console_command",
+        "output": "",
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "context_snapshot",
+        "has_cached_command_context": true,
+        "has_cached_command_context_call_ok": true,
+        "has_cached_engine_exec_context_call_ok": true,
+        "trigger": "initgamestate_broadcast_1",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "call_ok": false,
+        "success": false,
+        "available": true,
+        "executor": "cached_engine_exec",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #1",
+        "label": "broadcast_engine_exec_1",
+        "error": "OmeggaExecuteCachedEngineExec: GameEngine::Exec is not available\nstack traceback:\n\t[C]: in function 'OmeggaExecuteCachedEngineExec'\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:214: in upvalue 'attempt_command'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:269: in upvalue 'attempt_broadcast_sequence'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:411: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:410>\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:66: in upvalue 'once'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:326: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:325>",
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "success": false,
+        "skipped": true,
+        "available": true,
+        "executor": "cached_console_exec",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #1",
+        "label": "broadcast_cached_console_exec_1",
+        "error": "skipped because ProcessConsoleExec crashes on Chat.* for this Brickadia build",
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "call_ok": true,
+        "success": true,
+        "available": true,
+        "executor": "kismet_console_command",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #1",
+        "label": "broadcast_kismet_console_command_1",
+        "output": "",
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "broadcast_round_complete",
+        "success": true,
+        "sequence": 1,
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:02Z"
+      },
+      {
+        "kind": "context_snapshot",
+        "has_cached_command_context": true,
+        "has_cached_command_context_call_ok": true,
+        "has_cached_engine_exec_context_call_ok": true,
+        "trigger": "initgamestate_broadcast_2",
+        "timestamp": "2026-03-23T16:08:03Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "call_ok": false,
+        "success": false,
+        "available": true,
+        "executor": "cached_engine_exec",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #2",
+        "label": "broadcast_engine_exec_2",
+        "error": "OmeggaExecuteCachedEngineExec: GameEngine::Exec is not available\nstack traceback:\n\t[C]: in function 'OmeggaExecuteCachedEngineExec'\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:214: in upvalue 'attempt_command'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:269: in upvalue 'attempt_broadcast_sequence'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:414: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:413>\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:66: in upvalue 'once'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:326: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:325>",
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:03Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "success": false,
+        "skipped": true,
+        "available": true,
+        "executor": "cached_console_exec",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #2",
+        "label": "broadcast_cached_console_exec_2",
+        "error": "skipped because ProcessConsoleExec crashes on Chat.* for this Brickadia build",
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:03Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "call_ok": true,
+        "success": true,
+        "available": true,
+        "executor": "kismet_console_command",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #2",
+        "label": "broadcast_kismet_console_command_2",
+        "output": "",
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:03Z"
+      },
+      {
+        "kind": "broadcast_round_complete",
+        "success": true,
+        "sequence": 2,
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T16:08:03Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "counter_broadcast_demo": {
+    "mod_log": {
+      "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\mod.log",
+      "exists": true,
+      "submitted_requests": [
+        {
+          "request_id": 2000,
+          "message": "[CounterBroadcastDemo] broadcast #4913",
+          "line": "2026-03-24T01:56:23Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2000 message=[CounterBroadcastDemo] broadcast #4913"
+        },
+        {
+          "request_id": 2001,
+          "message": "[CounterBroadcastDemo] broadcast #4914",
+          "line": "2026-03-24T01:56:26Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2001 message=[CounterBroadcastDemo] broadcast #4914"
+        },
+        {
+          "request_id": 2002,
+          "message": "[CounterBroadcastDemo] broadcast #4915",
+          "line": "2026-03-24T01:56:29Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2002 message=[CounterBroadcastDemo] broadcast #4915"
+        },
+        {
+          "request_id": 2003,
+          "message": "[CounterBroadcastDemo] broadcast #4916",
+          "line": "2026-03-24T01:56:33Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2003 message=[CounterBroadcastDemo] broadcast #4916"
+        },
+        {
+          "request_id": 2004,
+          "message": "[CounterBroadcastDemo] broadcast #4917",
+          "line": "2026-03-24T01:56:36Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2004 message=[CounterBroadcastDemo] broadcast #4917"
+        },
+        {
+          "request_id": 2005,
+          "message": "[CounterBroadcastDemo] broadcast #4918",
+          "line": "2026-03-24T01:56:39Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2005 message=[CounterBroadcastDemo] broadcast #4918"
+        },
+        {
+          "request_id": 2006,
+          "message": "[CounterBroadcastDemo] broadcast #4919",
+          "line": "2026-03-24T01:56:42Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2006 message=[CounterBroadcastDemo] broadcast #4919"
+        },
+        {
+          "request_id": 2007,
+          "message": "[CounterBroadcastDemo] broadcast #4920",
+          "line": "2026-03-24T01:56:45Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2007 message=[CounterBroadcastDemo] broadcast #4920"
+        },
+        {
+          "request_id": 2008,
+          "message": "[CounterBroadcastDemo] broadcast #4921",
+          "line": "2026-03-24T01:56:48Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2008 message=[CounterBroadcastDemo] broadcast #4921"
+        },
+        {
+          "request_id": 2009,
+          "message": "[CounterBroadcastDemo] broadcast #4922",
+          "line": "2026-03-24T01:56:51Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2009 message=[CounterBroadcastDemo] broadcast #4922"
+        },
+        {
+          "request_id": 2010,
+          "message": "[CounterBroadcastDemo] broadcast #4923",
+          "line": "2026-03-24T01:56:54Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2010 message=[CounterBroadcastDemo] broadcast #4923"
+        },
+        {
+          "request_id": 2011,
+          "message": "[CounterBroadcastDemo] broadcast #4924",
+          "line": "2026-03-24T01:56:57Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2011 message=[CounterBroadcastDemo] broadcast #4924"
+        },
+        {
+          "request_id": 2012,
+          "message": "[CounterBroadcastDemo] broadcast #4925",
+          "line": "2026-03-24T01:57:00Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2012 message=[CounterBroadcastDemo] broadcast #4925"
+        },
+        {
+          "request_id": 2013,
+          "message": "[CounterBroadcastDemo] broadcast #4926",
+          "line": "2026-03-24T01:57:03Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2013 message=[CounterBroadcastDemo] broadcast #4926"
+        },
+        {
+          "request_id": 2014,
+          "message": "[CounterBroadcastDemo] broadcast #4927",
+          "line": "2026-03-24T01:57:06Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2014 message=[CounterBroadcastDemo] broadcast #4927"
+        },
+        {
+          "request_id": 2015,
+          "message": "[CounterBroadcastDemo] broadcast #4928",
+          "line": "2026-03-24T01:57:09Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2015 message=[CounterBroadcastDemo] broadcast #4928"
+        },
+        {
+          "request_id": 2016,
+          "message": "[CounterBroadcastDemo] broadcast #4929",
+          "line": "2026-03-24T01:57:12Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2016 message=[CounterBroadcastDemo] broadcast #4929"
+        },
+        {
+          "request_id": 2017,
+          "message": "[CounterBroadcastDemo] broadcast #4930",
+          "line": "2026-03-24T01:57:15Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2017 message=[CounterBroadcastDemo] broadcast #4930"
+        },
+        {
+          "request_id": 2018,
+          "message": "[CounterBroadcastDemo] broadcast #4931",
+          "line": "2026-03-24T01:57:18Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2018 message=[CounterBroadcastDemo] broadcast #4931"
+        },
+        {
+          "request_id": 2019,
+          "message": "[CounterBroadcastDemo] broadcast #4932",
+          "line": "2026-03-24T01:57:22Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2019 message=[CounterBroadcastDemo] broadcast #4932"
+        },
+        {
+          "request_id": 2020,
+          "message": "[CounterBroadcastDemo] broadcast #4933",
+          "line": "2026-03-24T01:57:25Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2020 message=[CounterBroadcastDemo] broadcast #4933"
+        },
+        {
+          "request_id": 2021,
+          "message": "[CounterBroadcastDemo] broadcast #4934",
+          "line": "2026-03-24T01:57:28Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2021 message=[CounterBroadcastDemo] broadcast #4934"
+        },
+        {
+          "request_id": 2022,
+          "message": "[CounterBroadcastDemo] broadcast #4935",
+          "line": "2026-03-24T01:57:31Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2022 message=[CounterBroadcastDemo] broadcast #4935"
+        },
+        {
+          "request_id": 2023,
+          "message": "[CounterBroadcastDemo] broadcast #4936",
+          "line": "2026-03-24T01:57:34Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2023 message=[CounterBroadcastDemo] broadcast #4936"
+        },
+        {
+          "request_id": 2024,
+          "message": "[CounterBroadcastDemo] broadcast #4937",
+          "line": "2026-03-24T01:57:37Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2024 message=[CounterBroadcastDemo] broadcast #4937"
+        },
+        {
+          "request_id": 2025,
+          "message": "[CounterBroadcastDemo] broadcast #4938",
+          "line": "2026-03-24T01:57:40Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2025 message=[CounterBroadcastDemo] broadcast #4938"
+        },
+        {
+          "request_id": 2026,
+          "message": "[CounterBroadcastDemo] broadcast #4939",
+          "line": "2026-03-24T01:57:43Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2026 message=[CounterBroadcastDemo] broadcast #4939"
+        },
+        {
+          "request_id": 2027,
+          "message": "[CounterBroadcastDemo] broadcast #4940",
+          "line": "2026-03-24T01:57:46Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2027 message=[CounterBroadcastDemo] broadcast #4940"
+        },
+        {
+          "request_id": 2028,
+          "message": "[CounterBroadcastDemo] broadcast #4941",
+          "line": "2026-03-24T01:57:49Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2028 message=[CounterBroadcastDemo] broadcast #4941"
+        },
+        {
+          "request_id": 2029,
+          "message": "[CounterBroadcastDemo] broadcast #4942",
+          "line": "2026-03-24T01:57:52Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2029 message=[CounterBroadcastDemo] broadcast #4942"
+        },
+        {
+          "request_id": 2030,
+          "message": "[CounterBroadcastDemo] broadcast #4943",
+          "line": "2026-03-24T01:57:55Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2030 message=[CounterBroadcastDemo] broadcast #4943"
+        },
+        {
+          "request_id": 2031,
+          "message": "[CounterBroadcastDemo] broadcast #4944",
+          "line": "2026-03-24T01:57:58Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2031 message=[CounterBroadcastDemo] broadcast #4944"
+        },
+        {
+          "request_id": 2032,
+          "message": "[CounterBroadcastDemo] broadcast #4945",
+          "line": "2026-03-24T01:58:01Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2032 message=[CounterBroadcastDemo] broadcast #4945"
+        },
+        {
+          "request_id": 2033,
+          "message": "[CounterBroadcastDemo] broadcast #4946",
+          "line": "2026-03-24T01:58:04Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2033 message=[CounterBroadcastDemo] broadcast #4946"
+        },
+        {
+          "request_id": 2034,
+          "message": "[CounterBroadcastDemo] broadcast #4947",
+          "line": "2026-03-24T01:58:08Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2034 message=[CounterBroadcastDemo] broadcast #4947"
+        },
+        {
+          "request_id": 2035,
+          "message": "[CounterBroadcastDemo] broadcast #4948",
+          "line": "2026-03-24T01:58:11Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2035 message=[CounterBroadcastDemo] broadcast #4948"
+        },
+        {
+          "request_id": 2036,
+          "message": "[CounterBroadcastDemo] broadcast #4949",
+          "line": "2026-03-24T01:58:14Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2036 message=[CounterBroadcastDemo] broadcast #4949"
+        },
+        {
+          "request_id": 2037,
+          "message": "[CounterBroadcastDemo] broadcast #4950",
+          "line": "2026-03-24T01:58:17Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2037 message=[CounterBroadcastDemo] broadcast #4950"
+        },
+        {
+          "request_id": 2038,
+          "message": "[CounterBroadcastDemo] broadcast #4951",
+          "line": "2026-03-24T01:58:20Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2038 message=[CounterBroadcastDemo] broadcast #4951"
+        },
+        {
+          "request_id": 2039,
+          "message": "[CounterBroadcastDemo] broadcast #4952",
+          "line": "2026-03-24T01:58:23Z [CounterBroadcastDemo] submitted bridge chat.broadcast request id=2039 message=[CounterBroadcastDemo] broadcast #4952"
+        }
+      ],
+      "accepted_requests": [
+        {
+          "sequence": 4913,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:game_instance->PushChatMessage",
+          "line": "2026-03-24T01:56:24Z [CounterBroadcastDemo] broadcast #4913 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:game_instance->PushChatMessage"
+        },
+        {
+          "sequence": 4914,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:27Z [CounterBroadcastDemo] broadcast #4914 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4915,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:30Z [CounterBroadcastDemo] broadcast #4915 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4916,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:33Z [CounterBroadcastDemo] broadcast #4916 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4917,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:36Z [CounterBroadcastDemo] broadcast #4917 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4918,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:39Z [CounterBroadcastDemo] broadcast #4918 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4919,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:42Z [CounterBroadcastDemo] broadcast #4919 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4920,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:45Z [CounterBroadcastDemo] broadcast #4920 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4921,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:48Z [CounterBroadcastDemo] broadcast #4921 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4922,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:51Z [CounterBroadcastDemo] broadcast #4922 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4923,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:54Z [CounterBroadcastDemo] broadcast #4923 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4924,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:56:57Z [CounterBroadcastDemo] broadcast #4924 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4925,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:00Z [CounterBroadcastDemo] broadcast #4925 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4926,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:03Z [CounterBroadcastDemo] broadcast #4926 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4927,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:07Z [CounterBroadcastDemo] broadcast #4927 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4928,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:10Z [CounterBroadcastDemo] broadcast #4928 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4929,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:13Z [CounterBroadcastDemo] broadcast #4929 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4930,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:16Z [CounterBroadcastDemo] broadcast #4930 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4931,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:19Z [CounterBroadcastDemo] broadcast #4931 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4932,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:22Z [CounterBroadcastDemo] broadcast #4932 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4933,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:25Z [CounterBroadcastDemo] broadcast #4933 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4934,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:28Z [CounterBroadcastDemo] broadcast #4934 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4935,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:31Z [CounterBroadcastDemo] broadcast #4935 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4936,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:34Z [CounterBroadcastDemo] broadcast #4936 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4937,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:37Z [CounterBroadcastDemo] broadcast #4937 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4938,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:40Z [CounterBroadcastDemo] broadcast #4938 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4939,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:43Z [CounterBroadcastDemo] broadcast #4939 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4940,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:46Z [CounterBroadcastDemo] broadcast #4940 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4941,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:49Z [CounterBroadcastDemo] broadcast #4941 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4942,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:52Z [CounterBroadcastDemo] broadcast #4942 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4943,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:56Z [CounterBroadcastDemo] broadcast #4943 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4944,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:57:59Z [CounterBroadcastDemo] broadcast #4944 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4945,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:58:02Z [CounterBroadcastDemo] broadcast #4945 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4946,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:58:05Z [CounterBroadcastDemo] broadcast #4946 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4947,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:58:08Z [CounterBroadcastDemo] broadcast #4947 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4948,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:58:11Z [CounterBroadcastDemo] broadcast #4948 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4949,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:58:14Z [CounterBroadcastDemo] broadcast #4949 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4950,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:58:17Z [CounterBroadcastDemo] broadcast #4950 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4951,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:58:20Z [CounterBroadcastDemo] broadcast #4951 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        },
+        {
+          "sequence": 4952,
+          "method": "chat.broadcast",
+          "detail": "typed-chat-fast-call-by-name:cached_executor->PushChatMessage",
+          "line": "2026-03-24T01:58:23Z [CounterBroadcastDemo] broadcast #4952 accepted by bridge method=chat.broadcast detail=typed-chat-fast-call-by-name:cached_executor->PushChatMessage"
+        }
+      ]
+    },
+    "chat_trace": {
+      "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\chat-trace.log",
+      "exists": true,
+      "typed_successes": [
+        {
+          "source": "game_instance",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4913",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:23Z [0262] fast call-by-name succeeded game_instance -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4913\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4914",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:26Z [0264] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4914\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4915",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:30Z [0266] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4915\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4916",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:33Z [0268] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4916\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4917",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:36Z [0270] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4917\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4918",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:39Z [0272] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4918\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4919",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:42Z [0274] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4919\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4920",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:45Z [0276] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4920\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4921",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:48Z [0278] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4921\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4922",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:51Z [0280] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4922\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4923",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:54Z [0282] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4923\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4924",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:56:57Z [0284] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4924\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4925",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:00Z [0286] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4925\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4926",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:03Z [0288] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4926\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4927",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:06Z [0290] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4927\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4928",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:09Z [0292] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4928\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4929",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:12Z [0294] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4929\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4930",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:16Z [0296] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4930\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4931",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:19Z [0298] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4931\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4932",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:22Z [0300] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4932\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4933",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:25Z [0302] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4933\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4934",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:28Z [0304] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4934\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4935",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:31Z [0306] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4935\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4936",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:34Z [0308] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4936\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4937",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:37Z [0310] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4937\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4938",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:40Z [0312] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4938\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4939",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:43Z [0314] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4939\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4940",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:46Z [0316] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4940\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4941",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:49Z [0318] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4941\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4942",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:52Z [0320] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4942\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4943",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:55Z [0322] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4943\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4944",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:57:58Z [0324] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4944\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4945",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:58:01Z [0326] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4945\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4946",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:58:05Z [0328] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4946\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4947",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:58:08Z [0330] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4947\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4948",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:58:11Z [0332] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4948\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4949",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:58:14Z [0334] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4949\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4950",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:58:17Z [0336] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4950\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4951",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:58:20Z [0338] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4951\" executor= .:@0x25C026CB000"
+        },
+        {
+          "source": "cached_executor",
+          "function_name": "PushChatMessage",
+          "message": "[CounterBroadcastDemo] broadcast #4952",
+          "executor": ".:@0x25C026CB000",
+          "line": "2026-03-24T01:58:23Z [0340] fast call-by-name succeeded cached_executor -> PushChatMessage \"[CounterBroadcastDemo] broadcast #4952\" executor= .:@0x25C026CB000"
+        }
+      ]
+    },
+    "live_info": {
+      "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\counter-broadcast-demo-live.json",
+      "exists": true,
+      "payload": {
+        "mod_name": "CounterBroadcastDemo",
+        "started_at": "2026-03-23T21:56:12.3154495-04:00",
+        "pid": 43736,
+        "selected_port": 7777,
+        "map": "Plate",
+        "interval_ms": 3000,
+        "connect_host": "127.0.0.1",
+        "connect_address": "127.0.0.1:7777",
+        "verified": true,
+        "verify_reason": "observed bridge hello plus demo bridge/context readiness",
+        "state_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\count.txt",
+        "trace_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\mod.log",
+        "bridge_inbox_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\bridge-inbox.ndjson",
+        "bridge_outbox_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\bridge-outbox.ndjson",
+        "bridge_status_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\bridge-status.json",
+        "bridge_trace_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\bridge-trace.log",
+        "chat_trace_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\chat-trace.log",
+        "ue4ss_log": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\UE4SS.log",
+        "brickadia_log": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\Saved\\Logs\\Brickadia.log",
+        "runtime_mod": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\Mods\\CounterBroadcastDemo"
+      },
+      "parse_error": null
+    }
+  },
+  "manual_re_findings": {
+    "hash_tables_anchor_function": "FUN_14053a860 @ 14053a860 (GhidraScript)",
+    "hash_tables_singleton_ref_count": 66,
+    "hash_tables_direct_global_access": true,
+    "sources": {
+      "anchor_xrefs": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\ghidra-anchor-xrefs-latest.txt",
+      "address_xrefs": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\ghidra-address-xrefs-latest.txt",
+      "hashouter_decompile": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\ghidra-decompile-14053c060.txt"
+    }
+  },
+  "patched_runtime_findings": {
+    "fuobject_hash_tables_get_scan_config_present": true,
+    "fuobject_hash_tables_get_result_field_present": true,
+    "fuobject_hash_tables_get_runtime_assignment_present": false,
+    "fuobject_hash_tables_get_override_hook_present": true,
+    "gnatives_runtime_assignment_present": true,
+    "static_find_object_fast_runtime_reference_present": false,
+    "uobject_skip_function_runtime_reference_present": false,
+    "fframe_step_runtime_source_impl_present": true,
+    "fframe_step_runtime_binary_reference_present": true,
+    "sources": {
+      "unreal_initializer_cpp": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\src\\UnrealInitializer.cpp",
+      "signatures_cpp": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\src\\Signatures.cpp",
+      "unreal_source_root": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal",
+      "fframe_cpp": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\src\\FFrame.cpp"
+    }
+  },
+  "resolved_addresses": {
+    "FNameCtorWchar": "0x140237e50",
+    "FNameToString": "0x1402d5d70",
+    "StaticConstructObjectInternal": "0x140505310",
+    "ConsoleManagerSingleton": "0x140064bb0",
+    "UGameEngineTick": "0x1422c3bd0",
+    "GUObjectArray": "0x14768f038",
+    "FUObjectArrayAllocateUObjectIndex": "0x1404f7cb0",
+    "FUObjectArrayFreeUObjectIndex": "0x1404f8020"
+  }
+}

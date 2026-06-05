@@ -1,0 +1,80 @@
+{
+  "bundle_id": "CL13530",
+  "brickadia_cl": "13530",
+  "brickadia_version_string": "Brickadia EA2 (PC-Shipping-CL13530)",
+  "validated": false,
+  "updated_at": "2026-05-31T01:15:00-04:00",
+  "stages": {
+    "stage1_static": {
+      "status": "passed",
+      "notes": [
+        "Bundle staged after the public dedicated server updated to Steam build 23487010 / Brickadia CL13530.",
+        "The bundle structure and manifest hashes pass scripts/validate-bundle.mjs for CL13530.",
+        "The initial files are seeded from the prior CL12960 compatibility bundle and must be revalidated against CL13530 before object-dependent Windows control can be enabled."
+      ]
+    },
+    "stage2_ue4ss_startup": {
+      "status": "passed",
+      "notes": [
+        "The patched Brickadia UE4SS runtime downgrades the unresolved GUObjectHashTables stage-2 scan to a degraded startup signal instead of a fatal error.",
+        "The live UE4SS log resolves GNatives, GUObjectArray, FName::ToString, and CallFunctionByNameWithArguments through Lua scripts on CL13530.",
+        "UE4SS reaches ScanGame, installs post-init hooks, and starts OmeggaBridge on CL13530."
+      ]
+    },
+    "stage3_object_resolution": {
+      "status": "passed",
+      "notes": [
+        "The CL13530 baseline proof ladder reaches InitGameState from Lua.",
+        "RemoteUnrealParam unwrap succeeds without crashing.",
+        "FindFirstOf and StaticFindObject proof sessions return UObject wrappers in clean CL13530 sessions."
+      ]
+    },
+    "stage4_dumper": {
+      "status": "blocked",
+      "notes": [
+        "Object-resolution correctness is now proven by the CL13530 baseline proof ladder, but the dumper itself has not been rerun and validated yet."
+      ]
+    },
+    "stage5_omegga_reentry": {
+      "status": "blocked",
+      "notes": [
+        "Omegga remains degraded until the CL13530 chat and world-export canaries are rerun and the dumper gate is intentionally resolved or deferred."
+      ]
+    }
+  },
+  "resolved_symbols": {
+    "GNatives": {
+      "address": "0x7ff66fddd760",
+      "method": "seeded Lua script during CL13530 validation",
+      "confirmed": true
+    },
+    "GUObjectArray": {
+      "address": "0x7ff66fddf038",
+      "method": "seeded Lua script during CL13530 validation",
+      "confirmed": true
+    },
+    "CallFunctionByNameWithArguments": {
+      "address": "0x7ff668c1bad0",
+      "method": "seeded Lua script during CL13530 validation",
+      "confirmed": true
+    }
+  },
+  "blocked_symbols": [
+  ],
+  "deferred_symbols": [
+    "GUObjectHashTables",
+    "FUObjectHashTablesGet",
+    "StaticFindObjectFast",
+    "UObjectSkipFunction",
+    "FFrameStep"
+  ],
+  "evidence": {
+    "current_live_binary": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+    "brickadia_log": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\Saved\\Logs\\Brickadia.log",
+    "ue4ss_log": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\UE4SS.log",
+    "latest_product_validation": "npm start -- ue4ss validate"
+  },
+  "seeded_from": "CL12960",
+  "remote_steam_build_id": "23487010",
+  "remote_timeupdated_utc": "2026-05-30T16:42:56Z"
+}

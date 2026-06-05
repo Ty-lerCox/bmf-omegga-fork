@@ -1,0 +1,560 @@
+{
+  "generatedAt": "2026-05-31T21:25:31.477Z",
+  "hashInference": {
+    "brPrefabHashCandidate": "blake3(raw .brz archive bytes)",
+    "evidence": "The CL12960 logged cache hash 07C8E4AD16AC2B85B7FBE8637C9929AD9326ECA7384219F05937BD0F464BB7AD matches raw BLAKE3 of local gallery prefab 8c04e0ee-87b3-4eef-b5de-659c60f1e9ac.brz.",
+    "status": "strong-local-evidence"
+  },
+  "prefabs": [
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\Temp\\Clipboard.brz",
+      "file": "Clipboard.brz",
+      "name": "Clipboard",
+      "bytes": 19248,
+      "brPrefabHashCandidate": "8E122AB3F3331919CD69451CACE64ADA82B0EA579A4EC147922B59A1FDEE5B61",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "B386B4529515D782465A8408F65D9246BAEF8539AEF5C961899D18AA71C1034B",
+        "payloadCompressedBlake3": "C5A8D6CC1F150F00677F4813A69C0F50A2568110412BBC8BAF6E64D617BD38D9",
+        "decompressedBlobsBlake3": "2E85999D17B4C33EE38C9F79F5B870EC0047379049890DD14338035C5F7F3A82",
+        "indexBlake3FromHeader": "FA7DCE0953D00455FF2F9229762C820681012D7248DC778EAF65A23D55BF1101"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 44,
+        "folders": 38,
+        "blobs": 41,
+        "indexCompressedLength": 1822,
+        "indexDecompressedLength": 3169
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\Temp\\Clipboard.brz",
+        "file": "Clipboard.brz",
+        "name": "Clipboard",
+        "bIsPhysicsGrid": false,
+        "brickCount": 1831,
+        "componentCount": 158,
+        "entityCount": 11,
+        "wireCount": 147,
+        "entityTypes": [
+          "BP_Entity_Wheel_Deep1_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 11,
+        "warnings": [
+          "Prefab contains dynamic entity/joint data, but Meta/Prefab.json has bIsPhysicsGrid=false."
+        ]
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\044a0003-4d2b-4484-b9e6-1b93cbc06b68.brz",
+      "file": "044a0003-4d2b-4484-b9e6-1b93cbc06b68.brz",
+      "name": "Expedition Truck",
+      "bytes": 256565,
+      "brPrefabHashCandidate": "27D46E8288751FDA6794E734276438A6DED430CD8D3FBE4E122B79A34E3D9B0D",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "209359D20F1493A918D5768AC829CFFDD2F1454CF011595DA7A63BB7ECC0948D",
+        "payloadCompressedBlake3": "C8F3EC3EE2984D6CB19C299A560E4B116BDE73801009E75C5B42C53B3C79BCB8",
+        "decompressedBlobsBlake3": "B2D0E189EA4EB22F42BA934B1837E42FB44F89335B836BA34C31C55AC542E799",
+        "indexBlake3FromHeader": "DA8C55FFBBE0B93AB8088CF096CE63B4BC4D0ED63610995BD91F9E7D153215E0"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 31,
+        "folders": 23,
+        "blobs": 31,
+        "indexCompressedLength": 1480,
+        "indexDecompressedLength": 2287
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\044a0003-4d2b-4484-b9e6-1b93cbc06b68.brz",
+        "file": "044a0003-4d2b-4484-b9e6-1b93cbc06b68.brz",
+        "name": "Expedition Truck",
+        "bIsPhysicsGrid": true,
+        "brickCount": 419,
+        "componentCount": 41,
+        "entityCount": 10,
+        "wireCount": 29,
+        "entityTypes": [
+          "BP_Entity_Wheel_Muscle2_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 10,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\1a06cb9e-64fe-4a45-bfe5-4abd1f2e1e62.brz",
+      "file": "1a06cb9e-64fe-4a45-bfe5-4abd1f2e1e62.brz",
+      "name": "Strandbeest",
+      "bytes": 293968,
+      "brPrefabHashCandidate": "2C7A25B89BAFE0C7C9FE50921D19BF346BA7CBA9624A95CBFE3DE4E63F69C426",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "3A4425A99412CC227F158C3382D2D07E6039FB484961595FA2609539162BD198",
+        "payloadCompressedBlake3": "914714769A10F7B2727B6DAE99C7CA822E5F117572542F228EE1AC310AEAA446",
+        "decompressedBlobsBlake3": "76504139A211AC98BE1DE1C6D290FBD7FDD994355642BFF76260B46F376D4F01",
+        "indexBlake3FromHeader": "3793F1871D4BB7688142B4134DB6BF264196DBD7E6F5BC0E54F62EA29C53F783"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 273,
+        "folders": 265,
+        "blobs": 161,
+        "indexCompressedLength": 6748,
+        "indexDecompressedLength": 16063
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\1a06cb9e-64fe-4a45-bfe5-4abd1f2e1e62.brz",
+        "file": "1a06cb9e-64fe-4a45-bfe5-4abd1f2e1e62.brz",
+        "name": "Strandbeest",
+        "bIsPhysicsGrid": true,
+        "brickCount": 397,
+        "componentCount": 138,
+        "entityCount": 25,
+        "wireCount": 0,
+        "entityTypes": [
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 138,
+        "warnings": [
+          "Entity generic velocity/color tail blob lengths do not match the entity count."
+        ]
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\1cc987e4-e678-466a-a2bd-c1ca75c56a1b.brz",
+      "file": "1cc987e4-e678-466a-a2bd-c1ca75c56a1b.brz",
+      "name": "Ectomobile",
+      "bytes": 257237,
+      "brPrefabHashCandidate": "AEEEDCAD8F08AF44ACBBF8CFAE07F26119934A767AB59119D66A307B6CA460A5",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "15594AC0B989358A7D557A2935B0E7A8A8F7EEEB24FBA651D0DC38B2820EAF2A",
+        "payloadCompressedBlake3": "727C3090B42AD5BBEF734908E2CFE3145AB30DF0A772F0EFFA99D13E5B105884",
+        "decompressedBlobsBlake3": "7A93FB8C13EC03ED9B653AA7F43FBCE13CC829528FCFFB9414C530D5E82E420C",
+        "indexBlake3FromHeader": "D2C45B9A2C7421952E2AA02D652978A268BFC2BBBBFD1AEE60D1D8E675F16D8A"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 47,
+        "folders": 39,
+        "blobs": 40,
+        "indexCompressedLength": 1857,
+        "indexDecompressedLength": 3244
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\1cc987e4-e678-466a-a2bd-c1ca75c56a1b.brz",
+        "file": "1cc987e4-e678-466a-a2bd-c1ca75c56a1b.brz",
+        "name": "Ectomobile",
+        "bIsPhysicsGrid": true,
+        "brickCount": 1782,
+        "componentCount": 63,
+        "entityCount": 15,
+        "wireCount": 58,
+        "entityTypes": [
+          "BP_Entity_Wheel_Whitewall1_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 15,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\2d01561f-0e48-4a49-8729-fb43deab81cd.brz",
+      "file": "2d01561f-0e48-4a49-8729-fb43deab81cd.brz",
+      "name": "1990 Ford Crown Victoria Station Wagon",
+      "bytes": 224863,
+      "brPrefabHashCandidate": "8F728DDD08C73F7954BD3BCC9833F780AD382F94B55C464F4DE94D3B9475690A",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "34E3493E0F697BD2941BC5C951C9551ACCA85BB3A912F22D4CC6B6F10746196B",
+        "payloadCompressedBlake3": "FDC5BBF7E9A1BA6333006372ED7436878ED0B91294D9562CD53C0A5D15D1DCC5",
+        "decompressedBlobsBlake3": "647A20F54B2476CF46F49E16B3505E07ED68BF8E218A44A6C5DF685EC3C50BE7",
+        "indexBlake3FromHeader": "51987577F61075466C5D9F7EB7D615B0249DA7675382A1510902DF31D60CD6D5"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 35,
+        "folders": 27,
+        "blobs": 31,
+        "indexCompressedLength": 1490,
+        "indexDecompressedLength": 2440
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\2d01561f-0e48-4a49-8729-fb43deab81cd.brz",
+        "file": "2d01561f-0e48-4a49-8729-fb43deab81cd.brz",
+        "name": "1990 Ford Crown Victoria Station Wagon",
+        "bIsPhysicsGrid": true,
+        "brickCount": 995,
+        "componentCount": 66,
+        "entityCount": 9,
+        "wireCount": 60,
+        "entityTypes": [
+          "BP_Entity_Wheel_Muscle2_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 9,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\3fb1376e-4aeb-4ae5-852e-86b5eae2c10d.brz",
+      "file": "3fb1376e-4aeb-4ae5-852e-86b5eae2c10d.brz",
+      "name": "1990 Subaru Legacy RS",
+      "bytes": 280586,
+      "brPrefabHashCandidate": "E5AB3D8D44BFCB2CF4C7908337EA8344683AC6F085990F1429D5A65891A9D1CC",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "8D7FC85250BD7A5745B77979475E1234186284D72CF9D44AA702E64D686D2A24",
+        "payloadCompressedBlake3": "EC07C914801959E4BC1F08CA8376B0BB7F1DA52BBCE933E8C42C6B338D449A3D",
+        "decompressedBlobsBlake3": "3E38466EE7126E704C0CA28386966D695CBBAB33940A40B9506EE12E79A5DAD9",
+        "indexBlake3FromHeader": "D2CFB6C76BC507F45E07BED795FC1B59220B2232BE5EA7BC851CEB1BF8CA52F5"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 23,
+        "folders": 15,
+        "blobs": 23,
+        "indexCompressedLength": 1162,
+        "indexDecompressedLength": 1687
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\3fb1376e-4aeb-4ae5-852e-86b5eae2c10d.brz",
+        "file": "3fb1376e-4aeb-4ae5-852e-86b5eae2c10d.brz",
+        "name": "1990 Subaru Legacy RS",
+        "bIsPhysicsGrid": true,
+        "brickCount": 2053,
+        "componentCount": 19,
+        "entityCount": 5,
+        "wireCount": 12,
+        "entityTypes": [
+          "BP_Entity_Wheel_Tuner1_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 5,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\795d395f-3c4c-44f8-b9ec-6a7ea57b26d9.brz",
+      "file": "795d395f-3c4c-44f8-b9ec-6a7ea57b26d9.brz",
+      "name": "VW Beetle 1969",
+      "bytes": 188565,
+      "brPrefabHashCandidate": "D19AD220237ABF01C42966CF490A59CD0B9081C24D6731FF3A6D111F81C2725F",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "5D41D5C782B8F22ED4108ECBE38A38305EF5CFF39DAFD35C1AFF4C5AC7DE0044",
+        "payloadCompressedBlake3": "D01862EB98230D0E8F35D651A5CB03744750C74EB5EF8C3267172255106CAC2E",
+        "decompressedBlobsBlake3": "DF3D3D6064A40F3A4F443ECCECC79BD2F3A8A627A27BC010D0BF7EA6E6F2C567",
+        "indexBlake3FromHeader": "5D0CD5A88ADBB31C1AB6A0E93DAF12938AE2B8CCAEA7F8DA9667AE88AB3EC95E"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 19,
+        "folders": 11,
+        "blobs": 19,
+        "indexCompressedLength": 1001,
+        "indexDecompressedLength": 1385
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\795d395f-3c4c-44f8-b9ec-6a7ea57b26d9.brz",
+        "file": "795d395f-3c4c-44f8-b9ec-6a7ea57b26d9.brz",
+        "name": "VW Beetle 1969",
+        "bIsPhysicsGrid": true,
+        "brickCount": 110,
+        "componentCount": 14,
+        "entityCount": 4,
+        "wireCount": 11,
+        "entityTypes": [
+          "BP_Entity_Wheel_Steelie1_C"
+        ],
+        "jointEntityReferences": 4,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\86e67da3-58dd-4af6-8193-f17076cf8227.brz",
+      "file": "86e67da3-58dd-4af6-8193-f17076cf8227.brz",
+      "name": "HL2 Jeep",
+      "bytes": 233836,
+      "brPrefabHashCandidate": "1C96FA75467A5859582B94CB6B3378B4251D364DA5F7A08B70D1F07BF396447D",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "EF2D1FB6B4C2D6044905EEA0617683E833E6761C5D838968209C3B3606A41342",
+        "payloadCompressedBlake3": "E23FC4AB1316C7380AEC656888D62699990E1902168D1371CE26E27C8431E621",
+        "decompressedBlobsBlake3": "AD9C551942A16674AA8E08BECFEA0B3364624679FC024EDC9EC6B93145A55053",
+        "indexBlake3FromHeader": "C16D6A943AA3321C84617148D82F9790F39C388C01C1CEF06E017F7A60D04598"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 19,
+        "folders": 11,
+        "blobs": 19,
+        "indexCompressedLength": 1004,
+        "indexDecompressedLength": 1385
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\86e67da3-58dd-4af6-8193-f17076cf8227.brz",
+        "file": "86e67da3-58dd-4af6-8193-f17076cf8227.brz",
+        "name": "HL2 Jeep",
+        "bIsPhysicsGrid": false,
+        "brickCount": 566,
+        "componentCount": 13,
+        "entityCount": 4,
+        "wireCount": 8,
+        "entityTypes": [
+          "BP_Entity_Wheel_Offroad2_C",
+          "BP_Entity_Wheel_Whitewall2_C"
+        ],
+        "jointEntityReferences": 4,
+        "warnings": [
+          "Prefab contains dynamic entity/joint data, but Meta/Prefab.json has bIsPhysicsGrid=false."
+        ]
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\8c04e0ee-87b3-4eef-b5de-659c60f1e9ac.brz",
+      "file": "8c04e0ee-87b3-4eef-b5de-659c60f1e9ac.brz",
+      "name": "1986 Toyota Sprinter Trueno AE86",
+      "bytes": 215204,
+      "brPrefabHashCandidate": "07C8E4AD16AC2B85B7FBE8637C9929AD9326ECA7384219F05937BD0F464BB7AD",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "B2A8058DB3ADDD96750F04CA38D19DC3E6A4218853F043CD0AFBBA9700F0D4BA",
+        "payloadCompressedBlake3": "80D35C1F7915B487E82136A6071CFD76C2F98FC16D290C95C2CF6ED6D8B6DD05",
+        "decompressedBlobsBlake3": "75A73E82655CDE7DC4841E6708F1E5F02A00132E44A3F5CD60D2C020EE493113",
+        "indexBlake3FromHeader": "4FD5D9AD7BF3151455AC01B1C2A6EA0A79C2B17CDF8DF634118B8D8D05888640"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 46,
+        "folders": 38,
+        "blobs": 43,
+        "indexCompressedLength": 1929,
+        "indexDecompressedLength": 3309
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\8c04e0ee-87b3-4eef-b5de-659c60f1e9ac.brz",
+        "file": "8c04e0ee-87b3-4eef-b5de-659c60f1e9ac.brz",
+        "name": "1986 Toyota Sprinter Trueno AE86",
+        "bIsPhysicsGrid": true,
+        "brickCount": 1959,
+        "componentCount": 158,
+        "entityCount": 11,
+        "wireCount": 147,
+        "entityTypes": [
+          "BP_Entity_Wheel_Deep1_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 11,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\982e471d-1e4b-4636-9803-4b633c66a0b8.brz",
+      "file": "982e471d-1e4b-4636-9803-4b633c66a0b8.brz",
+      "name": "LBM-C Daschund Double Decker Bus",
+      "bytes": 235453,
+      "brPrefabHashCandidate": "F7D70159496FBFA4C74945B86DA842616ECEBEDF6AC2B9052395512B4B155802",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "E5E4A24ED4BD95453A4EBE8D3CA03E13BFC9D52A48D80AC37C29C83244588AA7",
+        "payloadCompressedBlake3": "E52298E9EA6706D7CA12845C59861EE37866ED732168010E2325F5D114506193",
+        "decompressedBlobsBlake3": "9ECE2743257BD874090CBB6A876DEE65B8E1B7B3A9C52109399D36D53A99B6A4",
+        "indexBlake3FromHeader": "E3FDED2C14695D5A0624762ADAAF3D5E46590807A4EEB596EA5EEB33C7A1E12C"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 38,
+        "folders": 30,
+        "blobs": 34,
+        "indexCompressedLength": 1615,
+        "indexDecompressedLength": 2638
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\982e471d-1e4b-4636-9803-4b633c66a0b8.brz",
+        "file": "982e471d-1e4b-4636-9803-4b633c66a0b8.brz",
+        "name": "LBM-C Daschund Double Decker Bus",
+        "bIsPhysicsGrid": true,
+        "brickCount": 1832,
+        "componentCount": 219,
+        "entityCount": 14,
+        "wireCount": 136,
+        "entityTypes": [
+          "BP_Entity_Wheel_Truck3_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 14,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\9e060d40-0fad-4133-b75c-b3b56a798cc8.brz",
+      "file": "9e060d40-0fad-4133-b75c-b3b56a798cc8.brz",
+      "name": "Speedkart - Classic Kart",
+      "bytes": 217102,
+      "brPrefabHashCandidate": "C7CED9479311611DA3B75D2B40275BB6299F0506929DA41BFAE48FD2C083AAF1",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "C299A8158A26440F15771490CE2BC7B2E39549036D2E18B73B85E1B0BD4057F9",
+        "payloadCompressedBlake3": "8723F27E4B6809CB32CEEC8EBC8C8E4ADDE269F0B9042003F6A998EE2DBBC631",
+        "decompressedBlobsBlake3": "B8203EC93E8866AF730A8F869CF34128AC1E3FC2E75EA3133F140325B9BA8603",
+        "indexBlake3FromHeader": "386935FAE4A81504A576ADD8DEFF075D8D6E677D63565D4BB55EC88EE96956E4"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 19,
+        "folders": 11,
+        "blobs": 19,
+        "indexCompressedLength": 1005,
+        "indexDecompressedLength": 1385
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\9e060d40-0fad-4133-b75c-b3b56a798cc8.brz",
+        "file": "9e060d40-0fad-4133-b75c-b3b56a798cc8.brz",
+        "name": "Speedkart - Classic Kart",
+        "bIsPhysicsGrid": true,
+        "brickCount": 143,
+        "componentCount": 23,
+        "entityCount": 4,
+        "wireCount": 19,
+        "entityTypes": [
+          "BP_Entity_Wheel_Offroad2_C"
+        ],
+        "jointEntityReferences": 4,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\a7223e46-9f70-47d7-93e0-5bba8eafced5.brz",
+      "file": "a7223e46-9f70-47d7-93e0-5bba8eafced5.brz",
+      "name": "Oldsmobile Super 88 Fordor",
+      "bytes": 292366,
+      "brPrefabHashCandidate": "40D4A83D112A1E43F451A520764410C0900E6670699FA9F3FF18B4C6F313324E",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "F020BD3A426EE13BC0C54B4D3D48809547E0F57F2D03C6E91871940319A67EF1",
+        "payloadCompressedBlake3": "AE19DFCC47B850057BA4C8D0A182CCD95C244E0EDA94569CD8667C45EDA5126E",
+        "decompressedBlobsBlake3": "45C196FA9D04B55F9A1B72FC684A7F0AC0675CE19EA4266794B5DDD744DB6224",
+        "indexBlake3FromHeader": "B3D4DD911B3BFF222F2E684F01945A46AB9B6776C0BBEB341919236B283E375E"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 38,
+        "folders": 30,
+        "blobs": 37,
+        "indexCompressedLength": 1712,
+        "indexDecompressedLength": 2796
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\a7223e46-9f70-47d7-93e0-5bba8eafced5.brz",
+        "file": "a7223e46-9f70-47d7-93e0-5bba8eafced5.brz",
+        "name": "Oldsmobile Super 88 Fordor",
+        "bIsPhysicsGrid": true,
+        "brickCount": 1888,
+        "componentCount": 62,
+        "entityCount": 11,
+        "wireCount": 36,
+        "entityTypes": [
+          "BP_Entity_Wheel_Steelie1_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 11,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\d27f9309-3e2d-43fa-8157-4eff29852619.brz",
+      "file": "d27f9309-3e2d-43fa-8157-4eff29852619.brz",
+      "name": "Subaru Legacy I",
+      "bytes": 157351,
+      "brPrefabHashCandidate": "2EF34320E82704CAD4602484C506FC55CBF66A92129332A34A785669BE2E4D53",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "5CBF8944D1726E0E5B607639EA283F17E5C9CDBBB25CECECB049077B06494465",
+        "payloadCompressedBlake3": "98390D29267BC6BA8967DBBEAE3CB303F2EF9C81A64EF42AAB5984DAF2A68ED9",
+        "decompressedBlobsBlake3": "DF38743CB6862E1DF08D84B13C55D4D3AC6A4EC706CA4452BD84D0691393EE47",
+        "indexBlake3FromHeader": "2063F6D90C8AEAC542F007F30BAF9BBD8E87A4A70D9F20470C6A316AC16DA3DC"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 61,
+        "folders": 53,
+        "blobs": 55,
+        "indexCompressedLength": 2413,
+        "indexDecompressedLength": 4317
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\d27f9309-3e2d-43fa-8157-4eff29852619.brz",
+        "file": "d27f9309-3e2d-43fa-8157-4eff29852619.brz",
+        "name": "Subaru Legacy I",
+        "bIsPhysicsGrid": true,
+        "brickCount": 1528,
+        "componentCount": 59,
+        "entityCount": 19,
+        "wireCount": 39,
+        "entityTypes": [
+          "BP_Entity_Wheel_SaladSpinner_C",
+          "BP_Entity_Wheel_SaladSpinnerFlipped_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 19,
+        "warnings": []
+      },
+      "diagnoseError": null
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\fee069d9-f807-4acd-a622-34a712c89668.brz",
+      "file": "fee069d9-f807-4acd-a622-34a712c89668.brz",
+      "name": "1962 Tuxedo Black Chevrolet Corvette",
+      "bytes": 255174,
+      "brPrefabHashCandidate": "047F7BB17B6464F0393E38ACB8DBDD2B72DC153CCD359C3C6BBD743E8D34187A",
+      "hashBasis": "blake3(raw .brz archive bytes)",
+      "supportingHashes": {
+        "rawSha256": "E647EEA2E2CB26629CA6B8AB51664D81D53BFE220C7235D31C725D792373C8FB",
+        "payloadCompressedBlake3": "5C8830ED5507295B8AAD7B488036595197C4725D29C8603F6D0C006D566103D7",
+        "decompressedBlobsBlake3": "173D137F7360E10CB0D6BD28EE3C3C8C2EF513AD0589F5DEB10B75D56406A5A5",
+        "indexBlake3FromHeader": "BCA1B318648DA5077E24FECCDC38C69629196DBE3550A98E8D0D5219F6C8AA0F"
+      },
+      "archive": {
+        "formatVersion": 0,
+        "files": 23,
+        "folders": 15,
+        "blobs": 23,
+        "indexCompressedLength": 1159,
+        "indexDecompressedLength": 1687
+      },
+      "summary": {
+        "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\fee069d9-f807-4acd-a622-34a712c89668.brz",
+        "file": "fee069d9-f807-4acd-a622-34a712c89668.brz",
+        "name": "1962 Tuxedo Black Chevrolet Corvette",
+        "bIsPhysicsGrid": true,
+        "brickCount": 1107,
+        "componentCount": 21,
+        "entityCount": 5,
+        "wireCount": 17,
+        "entityTypes": [
+          "BP_Entity_Wheel_SaladSpinnerFlipped_C",
+          "BrickGridDynamicActor"
+        ],
+        "jointEntityReferences": 5,
+        "warnings": []
+      },
+      "diagnoseError": null
+    }
+  ]
+}

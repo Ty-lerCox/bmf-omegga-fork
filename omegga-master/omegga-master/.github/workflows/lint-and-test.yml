@@ -1,0 +1,27 @@
+name: Lint and Test
+
+on: push
+
+jobs:
+  run-linters-and-tests:
+    name: Run linters and tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Run linters
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test:backend

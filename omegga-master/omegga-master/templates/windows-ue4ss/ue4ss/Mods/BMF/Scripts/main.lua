@@ -1,0 +1,8994 @@
+local MOD_NAME = "BMF"
+local VERSION = "0.1.0-dev"
+local ROOT = "ue4ss/main/Mods/" .. MOD_NAME
+local RUNTIME_DIR = ROOT .. "/runtime"
+local PLUGINS_DIR = ROOT .. "/plugins"
+local CONFIG_PATH = ROOT .. "/config.json"
+local STATUS_PATH = RUNTIME_DIR .. "/status.json"
+local LOG_PATH = RUNTIME_DIR .. "/bmf.log"
+local EVENT_LOG_PATH = RUNTIME_DIR .. "/events.jsonl"
+local AUDIT_LOG_PATH = RUNTIME_DIR .. "/audit.jsonl"
+local PLUGIN_LOG_DIR = RUNTIME_DIR .. "/logs/plugins"
+local COMMAND_DIR = RUNTIME_DIR .. "/commands"
+local PLAYER_CACHE_PATH = RUNTIME_DIR .. "/players.json"
+local TARGET_BRICKADIA_BUILD = "PC-Shipping-CL13530"
+local TARGET_BRICKADIA_NAME = "Brickadia EA2"
+local TARGET_SERVER_EXECUTABLE = "BrickadiaServer-Win64-Shipping.exe"
+local TARGET_PLATFORM = "windows-dedicated-server"
+local BUILD_DETECTION_MODE = "declared-target-only"
+local UNSUPPORTED_BUILD_POLICY = "report-only"
+
+local state = {
+  started_at = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+  started_epoch = os.time(),
+  plugins = {},
+  plugin_errors = {},
+  plugin_watchdog = {},
+  plugin_unsafe_global_denials = {},
+  timers = {},
+  next_timer_id = 1,
+  event_handlers = {},
+  next_event_handler_id = 1,
+  audit_records = {},
+  audit_max_records = 200,
+  rate_limits = {},
+  game_thread_callbacks = {},
+  game_thread_callback_order = {},
+  game_thread_callback_retention_limit = 8192,
+  next_game_thread_callback_id = 1,
+  commands = {},
+  console_command_callbacks = {},
+  command_worker_started = false,
+  player_cache = nil,
+  player_cache_error = "",
+  server_ready = false,
+  server_ready_data = nil,
+  plugin_tick_timer_id = nil,
+  plugin_tick_count = 0,
+  plugin_tick_interval_ms = 1000,
+  tools = {
+    applicator = {
+      enabled = false,
+      registered = false,
+      registering = false,
+      hook_path = "",
+      pre_id = nil,
+      post_id = nil,
+      callback = nil,
+      handlers = {},
+      next_handler_id = 1,
+      events = {},
+      max_events = 50,
+      total_events = 0,
+      denied_events = 0,
+      param_null_events = 0,
+      allowed_events = 0,
+      component_cache = {},
+      component_cache_notes = {},
+      last_error = "",
+      last_event = nil,
+    },
+  },
+  config = {
+    allowPluginServerExec = false,
+    allowPluginServerShutdown = false,
+    jsonlLogs = true,
+    pluginWatchdogEnabled = true,
+    pluginWatchdogMaxErrors = 3,
+    allowPluginUnsafeGlobals = false,
+    allowUnsafeApplicatorLuaHook = false,
+    brickadiaSavedDir = "",
+  },
+}
+
+local write_status
+local API_REGISTRY
+
+local UNSAFE_PLUGIN_GLOBAL_NAMES = {
+  "EGameThreadMethod",
+  "ExecuteInGameThread",
+  "ExecuteInGameThreadWithDelay",
+  "ExecuteWithDelay",
+  "FindAllOf",
+  "FindFirstOf",
+  "LoadAsset",
+  "NotifyOnNewObject",
+  "OmeggaExecuteCachedConsoleExec",
+  "OmeggaExecuteConsoleManagerInput",
+  "OmeggaExecuteKismetConsoleCommand",
+  "RegisterConsoleCommandGlobalHandler",
+  "RegisterHook",
+  "StaticConstructObject",
+  "StaticFindObject",
+  "UnregisterHook",
+}
+local UNSAFE_PLUGIN_GLOBALS = {}
+for _, name in ipairs(UNSAFE_PLUGIN_GLOBAL_NAMES) do
+  UNSAFE_PLUGIN_GLOBALS[name] = true
+end
+
+local function normalize_parent(path)
+  local normalized = tostring(path or ""):gsub("/", "\\")
+  return normalized:match("^(.*)\\[^\\]+$")
+end
+
+local function ensure_parent(path)
+  local parent = normalize_parent(path)
+  if parent and parent ~= "" then
+    os.execute('if not exist "' .. parent .. '" mkdir "' .. parent .. '"')
+  end
+end
+
+local function append_file(path, value)
+  ensure_parent(path)
+  local handle = io.open(path, "a")
+  if not handle then
+    return false
+  end
+  handle:write(value)
+  handle:close()
+  return true
+end
+
+local function read_file(path)
+  local handle = io.open(path, "r")
+  if not handle then
+    return nil
+  end
+  local data = handle:read("*a")
+  handle:close()
+  return data
+end
+
+local function write_file(path, value)
+  ensure_parent(path)
+  local handle = io.open(path, "w")
+  if not handle then
+    return false
+  end
+  handle:write(value)
+  handle:close()
+  return true
+end
+
+local function safe_name(value, label)
+  local text = tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if text == "" then
+    return nil, label .. " is required"
+  end
+  if text:match("[%c]") or text:match("[/\\]") or text:match("%.%.") then
+    return nil, label .. " must not contain control characters or path separators"
+  end
+  return text
+end
+
+local function safe_relative_path(value, label)
+  local text = tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if text == "" then
+    return nil, label .. " is required"
+  end
+  if text:match("[%c]") or text:match("^/") or text:match("^\\") or text:match("%.%.") then
+    return nil, label .. " must be a relative path without traversal"
+  end
+  return text:gsub("\\", "/")
+end
+
+local function json_escape(value)
+  return tostring(value or "")
+    :gsub("\\", "\\\\")
+    :gsub("\"", "\\\"")
+    :gsub("\r", "\\r")
+    :gsub("\n", "\\n")
+    :gsub("\t", "\\t")
+end
+
+local function json_string(value)
+  return "\"" .. json_escape(value) .. "\""
+end
+
+local function json_encode(value, depth)
+  depth = depth or 0
+  if depth > 6 then
+    return json_string("<max-depth>")
+  end
+
+  local value_type = type(value)
+  if value_type == "nil" then
+    return "null"
+  end
+  if value_type == "boolean" then
+    return value and "true" or "false"
+  end
+  if value_type == "number" then
+    if value ~= value or value == math.huge or value == -math.huge then
+      return "null"
+    end
+    return tostring(value)
+  end
+  if value_type == "string" then
+    return json_string(value)
+  end
+  if value_type ~= "table" then
+    return json_string(tostring(value))
+  end
+
+  local is_array = true
+  local max_index = 0
+  local count = 0
+  for key in pairs(value) do
+    count = count + 1
+    if type(key) ~= "number" or key < 1 or key % 1 ~= 0 then
+      is_array = false
+      break
+    end
+    if key > max_index then
+      max_index = key
+    end
+  end
+  if is_array and max_index == count then
+    local items = {}
+    for index = 1, max_index do
+      items[#items + 1] = json_encode(value[index], depth + 1)
+    end
+    return "[" .. table.concat(items, ",") .. "]"
+  end
+
+  local keys = {}
+  for key in pairs(value) do
+    if type(key) == "string" or type(key) == "number" then
+      keys[#keys + 1] = key
+    end
+  end
+  table.sort(keys, function(a, b)
+    return tostring(a) < tostring(b)
+  end)
+
+  local parts = {}
+  for _, key in ipairs(keys) do
+    parts[#parts + 1] = json_string(key) .. ":" .. json_encode(value[key], depth + 1)
+  end
+  return "{" .. table.concat(parts, ",") .. "}"
+end
+
+local function json_decode(raw)
+  local text = tostring(raw or ""):gsub("^\239\187\191", "")
+  local length = #text
+  local pos = 1
+
+  local function skip_ws()
+    while pos <= length do
+      local c = text:sub(pos, pos)
+      if c ~= " " and c ~= "\t" and c ~= "\r" and c ~= "\n" then
+        break
+      end
+      pos = pos + 1
+    end
+  end
+
+  local parse_value
+
+  local function parse_string()
+    if text:sub(pos, pos) ~= "\"" then
+      return nil, "expected string"
+    end
+    pos = pos + 1
+    local parts = {}
+    while pos <= length do
+      local c = text:sub(pos, pos)
+      if c == "\"" then
+        pos = pos + 1
+        return table.concat(parts), nil
+      end
+      if c == "\\" then
+        local escaped = text:sub(pos + 1, pos + 1)
+        if escaped == "\"" or escaped == "\\" or escaped == "/" then
+          parts[#parts + 1] = escaped
+          pos = pos + 2
+        elseif escaped == "b" then
+          parts[#parts + 1] = "\b"
+          pos = pos + 2
+        elseif escaped == "f" then
+          parts[#parts + 1] = "\f"
+          pos = pos + 2
+        elseif escaped == "n" then
+          parts[#parts + 1] = "\n"
+          pos = pos + 2
+        elseif escaped == "r" then
+          parts[#parts + 1] = "\r"
+          pos = pos + 2
+        elseif escaped == "t" then
+          parts[#parts + 1] = "\t"
+          pos = pos + 2
+        elseif escaped == "u" then
+          local hex = text:sub(pos + 2, pos + 5)
+          if not hex:match("^[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]$") then
+            return nil, "invalid unicode escape"
+          end
+          local code = tonumber(hex, 16) or 63
+          if code >= 32 and code <= 126 then
+            parts[#parts + 1] = string.char(code)
+          else
+            parts[#parts + 1] = "?"
+          end
+          pos = pos + 6
+        else
+          return nil, "invalid escape"
+        end
+      else
+        if c < " " then
+          return nil, "control character in string"
+        end
+        parts[#parts + 1] = c
+        pos = pos + 1
+      end
+    end
+    return nil, "unterminated string"
+  end
+
+  local function parse_number()
+    local start_pos = pos
+    if text:sub(pos, pos) == "-" then
+      pos = pos + 1
+    end
+    if text:sub(pos, pos) == "0" then
+      pos = pos + 1
+    else
+      if not text:sub(pos, pos):match("%d") then
+        return nil, "invalid number"
+      end
+      while pos <= length and text:sub(pos, pos):match("%d") do
+        pos = pos + 1
+      end
+    end
+    if text:sub(pos, pos) == "." then
+      pos = pos + 1
+      if not text:sub(pos, pos):match("%d") then
+        return nil, "invalid number fraction"
+      end
+      while pos <= length and text:sub(pos, pos):match("%d") do
+        pos = pos + 1
+      end
+    end
+    local exponent = text:sub(pos, pos)
+    if exponent == "e" or exponent == "E" then
+      pos = pos + 1
+      local sign = text:sub(pos, pos)
+      if sign == "+" or sign == "-" then
+        pos = pos + 1
+      end
+      if not text:sub(pos, pos):match("%d") then
+        return nil, "invalid number exponent"
+      end
+      while pos <= length and text:sub(pos, pos):match("%d") do
+        pos = pos + 1
+      end
+    end
+    local number = tonumber(text:sub(start_pos, pos - 1))
+    if number == nil then
+      return nil, "invalid number"
+    end
+    return number, nil
+  end
+
+  local function parse_array()
+    pos = pos + 1
+    local array = {}
+    skip_ws()
+    if text:sub(pos, pos) == "]" then
+      pos = pos + 1
+      return array, nil
+    end
+    while pos <= length do
+      local value, err = parse_value()
+      if err then
+        return nil, err
+      end
+      array[#array + 1] = value
+      skip_ws()
+      local c = text:sub(pos, pos)
+      if c == "]" then
+        pos = pos + 1
+        return array, nil
+      end
+      if c ~= "," then
+        return nil, "expected array separator"
+      end
+      pos = pos + 1
+    end
+    return nil, "unterminated array"
+  end
+
+  local function parse_object()
+    pos = pos + 1
+    local object = {}
+    skip_ws()
+    if text:sub(pos, pos) == "}" then
+      pos = pos + 1
+      return object, nil
+    end
+    while pos <= length do
+      skip_ws()
+      local key, key_err = parse_string()
+      if key_err then
+        return nil, key_err
+      end
+      skip_ws()
+      if text:sub(pos, pos) ~= ":" then
+        return nil, "expected object colon"
+      end
+      pos = pos + 1
+      local value, value_err = parse_value()
+      if value_err then
+        return nil, value_err
+      end
+      object[key] = value
+      skip_ws()
+      local c = text:sub(pos, pos)
+      if c == "}" then
+        pos = pos + 1
+        return object, nil
+      end
+      if c ~= "," then
+        return nil, "expected object separator"
+      end
+      pos = pos + 1
+    end
+    return nil, "unterminated object"
+  end
+
+  parse_value = function()
+    skip_ws()
+    local c = text:sub(pos, pos)
+    if c == "\"" then
+      return parse_string()
+    end
+    if c == "{" then
+      return parse_object()
+    end
+    if c == "[" then
+      return parse_array()
+    end
+    if c == "-" or c:match("%d") then
+      return parse_number()
+    end
+    if text:sub(pos, pos + 3) == "true" then
+      pos = pos + 4
+      return true, nil
+    end
+    if text:sub(pos, pos + 4) == "false" then
+      pos = pos + 5
+      return false, nil
+    end
+    if text:sub(pos, pos + 3) == "null" then
+      pos = pos + 4
+      return nil, nil
+    end
+    return nil, "unexpected token"
+  end
+
+  local value, err = parse_value()
+  if err then
+    return nil, err
+  end
+  skip_ws()
+  if pos <= length then
+    return nil, "trailing data"
+  end
+  return value, nil
+end
+
+local function result(ok, code, message, data)
+  return {
+    ok = ok and true or false,
+    code = tostring(code or (ok and "OK" or "ERROR")),
+    message = tostring(message or ""),
+    data = data or {},
+  }
+end
+
+local function write_text_log(path, timestamp, level, message)
+  local line = string.format(
+    "%s [%s] %s\n",
+    timestamp,
+    tostring(level or "info"),
+    tostring(message or "")
+  )
+  return append_file(path, line)
+end
+
+local function write_log_event(timestamp, level, message, context)
+  if state.config.jsonlLogs == false then
+    return true
+  end
+  context = context or {}
+  local event = {
+    ts = timestamp,
+    level = tostring(level or "info"),
+    source = tostring(context.source or "framework"),
+    message = tostring(message or ""),
+  }
+  if context.plugin then
+    event.plugin = tostring(context.plugin)
+  end
+  if type(context.data) == "table" then
+    event.data = context.data
+  end
+  return append_file(EVENT_LOG_PATH, json_encode(event) .. "\n")
+end
+
+local function log(level, message, data)
+  local timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  write_text_log(LOG_PATH, timestamp, level, message)
+  write_log_event(timestamp, level, message, {
+    source = "framework",
+    data = data,
+  })
+  print("[" .. MOD_NAME .. "] " .. tostring(message or ""))
+end
+
+local function plugin_log_path(plugin_name)
+  local name, err = safe_name(plugin_name, "plugin name")
+  if not name then
+    return nil, err
+  end
+  return PLUGIN_LOG_DIR .. "/" .. name .. ".log", nil
+end
+
+local function log_plugin(plugin_name, level, message, data)
+  local timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  local name = tostring(plugin_name or "")
+  local plugin_path = plugin_log_path(name)
+  if plugin_path then
+    write_text_log(plugin_path, timestamp, level, message)
+  end
+  write_text_log(LOG_PATH, timestamp, level, "[" .. name .. "] " .. tostring(message or ""))
+  write_log_event(timestamp, level, message, {
+    source = "plugin",
+    plugin = name,
+    data = data,
+  })
+  print("[" .. MOD_NAME .. "/" .. name .. "] " .. tostring(message or ""))
+end
+
+local function audit_record(action, data, context)
+  context = context or {}
+  local record = {
+    ts = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    action = tostring(action or "unknown"),
+    source = tostring(context.source or "framework"),
+    severity = tostring(context.severity or "info"),
+  }
+  if context.plugin then
+    record.plugin = tostring(context.plugin)
+  end
+  if context.actor then
+    record.actor = tostring(context.actor)
+  end
+  if context.ok ~= nil then
+    record.ok = context.ok and true or false
+  end
+  if context.code then
+    record.code = tostring(context.code)
+  end
+  if type(data) == "table" then
+    record.data = data
+  elseif data ~= nil then
+    record.data = { value = tostring(data) }
+  end
+
+  local written = append_file(AUDIT_LOG_PATH, json_encode(record) .. "\n")
+  state.audit_records[#state.audit_records + 1] = record
+  while #state.audit_records > state.audit_max_records do
+    table.remove(state.audit_records, 1)
+  end
+  write_status()
+
+  return result(written, written and "OK" or "AUDIT_WRITE_FAILED", written and "Audit record written" or "Audit record could not be written", {
+    path = AUDIT_LOG_PATH,
+    record = record,
+  })
+end
+
+local function normalize_log_args(default_level, a, b, c)
+  if b == nil then
+    return default_level, tostring(a or ""), nil
+  end
+  local first = tostring(a or ""):lower()
+  if first == "debug" or first == "info" or first == "warn" or first == "error" then
+    return first, tostring(b or ""), c
+  end
+  return default_level, tostring(a or ""), b
+end
+
+local function plugin_count()
+  local count = 0
+  for _ in pairs(state.plugins) do
+    count = count + 1
+  end
+  return count
+end
+
+local function command_names()
+  local names = {}
+  for name in pairs(state.commands) do
+    names[#names + 1] = name
+  end
+  table.sort(names)
+  return names
+end
+
+local function rate_limit_bucket_count()
+  local count = 0
+  for _ in pairs(state.rate_limits) do
+    count = count + 1
+  end
+  return count
+end
+
+local function plugin_watchdog_isolated_count()
+  local count = 0
+  for _, item in pairs(state.plugin_watchdog) do
+    if type(item) == "table" and item.isolated == true then
+      count = count + 1
+    end
+  end
+  return count
+end
+
+local function plugin_unsafe_global_denial_count()
+  local count = 0
+  for _ in pairs(state.plugin_unsafe_global_denials) do
+    count = count + 1
+  end
+  return count
+end
+
+local function unsafe_plugin_global_names()
+  local names = {}
+  for _, name in ipairs(UNSAFE_PLUGIN_GLOBAL_NAMES) do
+    names[#names + 1] = name
+  end
+  table.sort(names)
+  return names
+end
+
+local RUNTIME_HELPER_GROUPS = {
+  {
+    id = "consoleExecutor",
+    required = true,
+    anyOf = {
+      "OmeggaExecuteConsoleManagerInput",
+      "OmeggaExecuteKismetConsoleCommand",
+      "OmeggaExecuteCachedConsoleExec",
+    },
+    summary = "Executes Brickadia console commands used by typed BMF wrappers.",
+  },
+  {
+    id = "timerScheduler",
+    required = true,
+    anyOf = {
+      "ExecuteWithDelay",
+      "ExecuteInGameThreadWithDelay",
+    },
+    summary = "Schedules BMF timers and the file command worker.",
+  },
+  {
+    id = "consoleCommandRegistration",
+    required = false,
+    anyOf = {
+      "RegisterConsoleCommandGlobalHandler",
+    },
+    summary = "Registers direct bmf.* console commands when available.",
+  },
+  {
+    id = "gameThread",
+    required = false,
+    anyOf = {
+      "ExecuteInGameThread",
+      "ExecuteInGameThreadWithDelay",
+    },
+    summary = "Runs callbacks on the game thread when native access needs it.",
+  },
+  {
+    id = "objectLookup",
+    required = false,
+    anyOf = {
+      "StaticFindObject",
+      "FindFirstOf",
+      "FindAllOf",
+    },
+    summary = "Supports future live-object discovery; plugins cannot use it directly by default.",
+  },
+}
+
+local function runtime_helper_type(name)
+  return type(_G and _G[name])
+end
+
+local function runtime_helper_available(name)
+  return runtime_helper_type(name) == "function"
+end
+
+local function collect_runtime_helper_groups()
+  local groups = {}
+  local required_count = 0
+  local required_available = 0
+  local missing_required = {}
+
+  for _, group in ipairs(RUNTIME_HELPER_GROUPS) do
+    local helpers = {}
+    local available_helpers = {}
+    local group_available = false
+    for _, helper_name in ipairs(group.anyOf or {}) do
+      local helper = {
+        name = helper_name,
+        type = runtime_helper_type(helper_name),
+        available = runtime_helper_available(helper_name),
+      }
+      helpers[#helpers + 1] = helper
+      if helper.available then
+        group_available = true
+        available_helpers[#available_helpers + 1] = helper_name
+      end
+    end
+
+    local item = {
+      id = group.id,
+      required = group.required == true,
+      available = group_available,
+      helpers = helpers,
+      availableHelpers = available_helpers,
+      summary = group.summary,
+    }
+    groups[#groups + 1] = item
+
+    if group.required == true then
+      required_count = required_count + 1
+      if group_available then
+        required_available = required_available + 1
+      else
+        missing_required[#missing_required + 1] = group.id
+      end
+    end
+  end
+
+  return groups, required_count, required_available, missing_required
+end
+
+local function compatibility_snapshot()
+  local groups, required_count, required_available, missing_required = collect_runtime_helper_groups()
+  local status = "ok"
+  local ok = true
+  if #missing_required > 0 then
+    status = "missing-required-runtime-helpers"
+    ok = false
+  end
+
+  return {
+    ok = ok,
+    status = status,
+    version = VERSION,
+    targetName = TARGET_BRICKADIA_NAME,
+    targetBuild = TARGET_BRICKADIA_BUILD,
+    supportedBuilds = { TARGET_BRICKADIA_BUILD },
+    platform = TARGET_PLATFORM,
+    serverExecutable = TARGET_SERVER_EXECUTABLE,
+    buildDetection = BUILD_DETECTION_MODE,
+    buildDetected = false,
+    detectedBuild = "",
+    unsupportedBuildPolicy = UNSUPPORTED_BUILD_POLICY,
+    validationLevel = "L2 Headless",
+    ue4ss = {
+      required = true,
+      status = "patched-runtime-required",
+      helperGroups = groups,
+      requiredGroupCount = required_count,
+      requiredGroupsAvailable = required_available,
+      missingRequiredGroups = missing_required,
+    },
+  }
+end
+
+write_status = function()
+  local compatibility = compatibility_snapshot()
+  local parts = {
+    "\"state\":\"running\"",
+    "\"mod\":\"BMF\"",
+    "\"version\":" .. json_string(VERSION),
+    "\"target_build\":" .. json_string(TARGET_BRICKADIA_BUILD),
+    "\"build_detection\":" .. json_string(BUILD_DETECTION_MODE),
+    "\"compatibility_status\":" .. json_string(compatibility.status),
+    "\"runtime_required_helper_groups\":" .. tostring(compatibility.ue4ss.requiredGroupCount or 0),
+    "\"runtime_required_helper_groups_available\":" .. tostring(compatibility.ue4ss.requiredGroupsAvailable or 0),
+    "\"runtime_missing_required_helper_groups\":" .. tostring(#(compatibility.ue4ss.missingRequiredGroups or {})),
+    "\"started_at\":" .. json_string(state.started_at),
+    "\"updated_at\":" .. json_string(os.date("!%Y-%m-%dT%H:%M:%SZ")),
+    "\"plugins_loaded\":" .. tostring(plugin_count()),
+    "\"plugin_errors\":" .. tostring(#state.plugin_errors),
+    "\"server_ready\":" .. tostring(state.server_ready and true or false),
+    "\"plugin_tick_count\":" .. tostring(state.plugin_tick_count),
+    "\"plugin_tick_active\":" .. tostring(state.plugin_tick_timer_id ~= nil),
+    "\"audit_records\":" .. tostring(#state.audit_records),
+    "\"rate_limit_buckets\":" .. tostring(rate_limit_bucket_count()),
+    "\"plugin_watchdog_isolated\":" .. tostring(plugin_watchdog_isolated_count()),
+    "\"api_labels\":" .. tostring(API_REGISTRY and #API_REGISTRY or 0),
+    "\"plugin_unsafe_global_denials\":" .. tostring(plugin_unsafe_global_denial_count()),
+    "\"plugin_unsafe_globals_allowed\":" .. tostring(state.config.allowPluginUnsafeGlobals == true)
+  }
+  write_file(STATUS_PATH, "{" .. table.concat(parts, ",") .. "}\n")
+end
+
+local function quote_console_string(value)
+  return "\"" .. tostring(value or ""):gsub("\\", "\\\\"):gsub("\"", "\\\"") .. "\""
+end
+
+local function quote_console_token(value)
+  local text = tostring(value or "")
+  if text:match("^[A-Za-z0-9_%-]+$") then
+    return text
+  end
+  return quote_console_string(text)
+end
+
+local function normalize_world_name(value)
+  local name = tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  name = name:gsub("%.brdb$", "")
+  if name == "" then
+    return nil, "world name is required"
+  end
+  if name:match("[/\\]") or name:match("%.%.") then
+    return nil, "world name must not contain path separators"
+  end
+  return name
+end
+
+local function finite_number(value, default)
+  local number = tonumber(value)
+  if number == nil or number ~= number or number == math.huge or number == -math.huge then
+    return default
+  end
+  return number
+end
+
+local function format_number(value)
+  local number = finite_number(value, 0)
+  if math.floor(number) == number then
+    return tostring(math.floor(number))
+  end
+  return string.format("%.6f", number)
+end
+
+local function normalize_integer(value, label)
+  local number = tonumber(value)
+  if number == nil or number ~= number or number == math.huge or number == -math.huge then
+    return nil, label .. " must be a number"
+  end
+  number = math.floor(number)
+  if number < 0 then
+    return nil, label .. " must be zero or greater"
+  end
+  return number
+end
+
+local function trim_string(value)
+  local text = tostring(value or ""):gsub("^\239\187\191", "")
+  return (text:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function join_path(base, child)
+  local left = tostring(base or ""):gsub("\\", "/"):gsub("/+$", "")
+  local right = tostring(child or ""):gsub("\\", "/"):gsub("^/+", "")
+  if left == "" then
+    return right
+  end
+  if right == "" then
+    return left
+  end
+  return left .. "/" .. right
+end
+
+local function first_string(...)
+  for index = 1, select("#", ...) do
+    local value = select(index, ...)
+    if type(value) == "string" and trim_string(value) ~= "" then
+      return value
+    end
+  end
+  return nil
+end
+
+local function is_uuid(value)
+  if type(value) ~= "string" then
+    return false
+  end
+  return value:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
+end
+
+local function copy_table(value)
+  if type(value) ~= "table" then
+    return value
+  end
+  local out = {}
+  for key, child in pairs(value) do
+    out[key] = copy_table(child)
+  end
+  return out
+end
+
+local function permission_state_to_bool(value)
+  if type(value) == "boolean" then
+    return value
+  end
+  if type(value) == "string" then
+    local lower = value:lower()
+    if lower == "allowed" or lower == "allow" or lower == "true" then
+      return true
+    end
+    if lower == "forbidden" or lower == "deny" or lower == "denied" or lower == "false" then
+      return false
+    end
+  end
+  return nil
+end
+
+local function exec_console(command)
+  if type(OmeggaExecuteKismetConsoleCommand) == "function" then
+    local ok, success, output = pcall(OmeggaExecuteKismetConsoleCommand, command)
+    if ok and success then
+      return result(true, "OK", "Command executed", { executor = "kismet", output = output or "" })
+    end
+    return result(false, "CONSOLE_EXEC_FAILED", tostring(output or success), { executor = "kismet" })
+  end
+
+  if type(OmeggaExecuteCachedConsoleExec) == "function" then
+    local ok, success, output = pcall(OmeggaExecuteCachedConsoleExec, command)
+    if ok and success then
+      return result(true, "OK", "Command executed", { executor = "cached_console", output = output or "" })
+    end
+    return result(false, "CONSOLE_EXEC_FAILED", tostring(output or success), { executor = "cached_console" })
+  end
+
+  return result(false, "CONSOLE_EXEC_UNAVAILABLE", "No supported console executor is available.")
+end
+
+local function exec_console_manager(command)
+  if type(OmeggaExecuteConsoleManagerInput) == "function" then
+    local ok, success, output = pcall(OmeggaExecuteConsoleManagerInput, command)
+    if ok and success then
+      return result(true, "OK", "Command executed", { executor = "console_manager", output = output or "" })
+    end
+    return result(false, "CONSOLE_EXEC_FAILED", tostring(output or success), { executor = "console_manager" })
+  end
+
+  return exec_console(command)
+end
+
+local function run_on_game_thread(callback)
+  if type(ExecuteInGameThread) == "function" and type(EGameThreadMethod) == "table" and EGameThreadMethod.EngineTick ~= nil then
+    local id = state.next_game_thread_callback_id
+    state.next_game_thread_callback_id = state.next_game_thread_callback_id + 1
+    state.game_thread_callback_order[#state.game_thread_callback_order + 1] = id
+    while #state.game_thread_callback_order > state.game_thread_callback_retention_limit do
+      local old_id = table.remove(state.game_thread_callback_order, 1)
+      state.game_thread_callbacks[old_id] = nil
+    end
+    state.game_thread_callbacks[id] = function()
+      local retained = state.game_thread_callbacks[id]
+      if retained then
+        callback()
+      end
+    end
+    ExecuteInGameThread(state.game_thread_callbacks[id], EGameThreadMethod.EngineTick)
+    return
+  end
+
+  if type(ExecuteInGameThreadWithDelay) == "function" then
+    ExecuteInGameThreadWithDelay(0, callback)
+    return
+  end
+
+  callback()
+end
+
+local BMF = {
+  version = VERSION,
+  started_at = state.started_at,
+}
+
+BMF.result = result
+BMF.log = function(a, b, c)
+  local level, message, data = normalize_log_args("info", a, b, c)
+  log(level, message, data)
+end
+BMF.logInfo = function(message, data)
+  log("info", message, data)
+end
+BMF.logWarn = function(message, data)
+  log("warn", message, data)
+end
+BMF.logError = function(message, data)
+  log("error", message, data)
+end
+
+BMF.logging = {
+  eventLogPath = EVENT_LOG_PATH,
+  auditLogPath = AUDIT_LOG_PATH,
+  frameworkLogPath = LOG_PATH,
+  pluginLogDir = PLUGIN_LOG_DIR,
+}
+
+API_REGISTRY = {
+  { name = "BMF.version", namespace = "framework", kind = "string", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Current BMF package/runtime version." },
+  { name = "BMF.health", namespace = "framework", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Runtime health and loaded-plugin counts." },
+  { name = "BMF.result", namespace = "framework", kind = "function", stability = "stable", risk = "low", validation = "L0 Static", requiresPlayer = false, capability = "", summary = "Structured result constructor." },
+  { name = "BMF.compatibility.check", namespace = "compatibility", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Report target Brickadia build and UE4SS helper availability." },
+  { name = "BMF.compatibility.helpers", namespace = "compatibility", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "List required and optional UE4SS/BMF runtime helper groups." },
+  { name = "BMF.log", namespace = "logging", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Framework/plugin text logging." },
+  { name = "BMF.logging", namespace = "logging", kind = "table", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Runtime log paths." },
+  { name = "BMF.audit.record", namespace = "audit", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Write structured audit records." },
+  { name = "BMF.audit.recent", namespace = "audit", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Read recent in-memory audit records." },
+  { name = "BMF.rateLimits.check", namespace = "rateLimits", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "", summary = "Check framework or plugin action limits." },
+  { name = "BMF.rateLimits.recent", namespace = "rateLimits", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "", summary = "Inspect active rate-limit buckets." },
+  { name = "BMF.events.on", namespace = "events", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Register framework event handler." },
+  { name = "BMF.events.off", namespace = "events", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Remove framework event handler." },
+  { name = "BMF.events.emit", namespace = "events", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Emit framework event." },
+  { name = "BMF.events.listenerCount", namespace = "events", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Count event listeners." },
+  { name = "BMF.timers.after", namespace = "timers", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "One-shot timer helper." },
+  { name = "BMF.timers.every", namespace = "timers", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Recurring timer helper." },
+  { name = "BMF.timers.cancel", namespace = "timers", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Cancel a timer." },
+  { name = "BMF.commands.register", namespace = "commands", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "plugins.lifecycle", summary = "Register BMF console command." },
+  { name = "BMF.commands.dispatch", namespace = "commands", kind = "function", stability = "restricted", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Dispatch registered BMF command." },
+  { name = "BMF.commands.dispatchWithAccess", namespace = "commands", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless + L5 Negative; L3 Live Player for authenticated player command routing", requiresPlayer = false, capability = "", summary = "Opt-in command dispatch wrapper gated by BMF.permissions.evaluateCommandAccess." },
+  { name = "BMF.plugins.list", namespace = "plugins", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "List loaded plugins and metadata." },
+  { name = "BMF.plugins.watchdog", namespace = "plugins", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "", summary = "Inspect plugin error and isolation state." },
+  { name = "BMF.plugins.hasCapability", namespace = "plugins", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "", summary = "Check declared plugin capability." },
+  { name = "BMF.loadPlugins", namespace = "plugins", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Load plugins from disk and dispatch server-ready hooks." },
+  { name = "BMF.unloadPlugins", namespace = "plugins", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Unload all loaded plugins and remove plugin-owned commands/events." },
+  { name = "BMF.sandbox.policy", namespace = "sandbox", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "", summary = "Inspect plugin unsafe-global policy." },
+  { name = "BMF.sandbox.denials", namespace = "sandbox", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "", summary = "Inspect plugin unsafe-global denial records." },
+  { name = "BMF.storage.readText", namespace = "storage", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "plugins.storage", summary = "Read plugin-scoped text file." },
+  { name = "BMF.storage.writeText", namespace = "storage", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "plugins.storage", summary = "Write plugin-scoped text file." },
+  { name = "BMF.storage.readJson", namespace = "storage", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "plugins.storage", summary = "Read and decode plugin-scoped JSON data file." },
+  { name = "BMF.storage.writeJson", namespace = "storage", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "plugins.storage", summary = "Encode and write plugin-scoped JSON data file." },
+  { name = "BMF.storage.readConfig", namespace = "storage", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "plugins.storage", summary = "Read and decode plugin config.json." },
+  { name = "BMF.storage.writeConfig", namespace = "storage", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "plugins.storage", summary = "Encode and write plugin config.json." },
+  { name = "BMF.server.status", namespace = "server", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Structured BMF/server status with unknown live fields marked." },
+  { name = "BMF.server.save", namespace = "server", kind = "function", stability = "experimental", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "server.save", summary = "Save current world through BMF.world.saveAs." },
+  { name = "BMF.server.shutdown", namespace = "server", kind = "function", stability = "restricted", risk = "high", validation = "L2 Headless + L5 Negative safe-failure on CL13530", requiresPlayer = false, capability = "server.shutdown", summary = "Attempt a confirmed server exit command and report unsupported executors explicitly." },
+  { name = "BMF.server.exec", namespace = "server", kind = "function", stability = "restricted", risk = "unsafe-native", validation = "L2 Headless + L5 Negative", requiresPlayer = false, capability = "server.exec", summary = "Raw console execution; prefer typed wrappers." },
+  { name = "BMF.server.planSettingsPatch", namespace = "server", kind = "function", stability = "file-backed", risk = "medium", validation = "L0 Static", requiresPlayer = false, capability = "", summary = "Plan copied GameUserSettings.ini changes." },
+  { name = "BMF.chat.broadcast", namespace = "chat", kind = "function", stability = "experimental", risk = "medium", validation = "L3 Live Player UI confirmed", requiresPlayer = false, capability = "chat.broadcast", summary = "Broadcasts by fanning out ClientPushChatMessage once per live player controller." },
+  { name = "BMF.chat.whisper", namespace = "chat", kind = "function", stability = "experimental", risk = "live-player", validation = "L3 Live Player UI confirmed with one local player; two-player targeting pending", requiresPlayer = true, capability = "chat.whisper", summary = "Sends ClientPushChatMessage to one matched live player controller." },
+  { name = "BMF.chat.statusMessage", namespace = "chat", kind = "function", stability = "scaffold", risk = "live-player", validation = "L2 Headless + L0 Fixture; L3 Live Player for delivery", requiresPlayer = true, capability = "chat.statusMessage", summary = "Private status-message scaffold; visible delivery unproven." },
+  { name = "BMF.players.sync", namespace = "players", kind = "function", stability = "experimental", risk = "low", validation = "L0 Static + L2 Headless; optional adapter cache path", requiresPlayer = false, capability = "", summary = "Sync optional external player identity records into the BMF cache." },
+  { name = "BMF.players.list", namespace = "players", kind = "function", stability = "experimental", risk = "low", validation = "L2 Headless empty adapter; L3 Live Player for native Brickadia log identity", requiresPlayer = false, capability = "", summary = "List safe player identity records and live controller count." },
+  { name = "BMF.players.normalize", namespace = "players", kind = "function", stability = "stable", risk = "low", validation = "L0 Fixture", requiresPlayer = false, capability = "", summary = "Normalize synthetic/player record shape." },
+  { name = "BMF.players.find", namespace = "players", kind = "function", stability = "scaffold", risk = "live-player", validation = "L0 Fixture + L2 Headless negative; L3 Live Player for real records", requiresPlayer = true, capability = "", summary = "Fixture-proven lookup plus empty live adapter safety." },
+  { name = "BMF.players.resolve", namespace = "players", kind = "function", stability = "scaffold", risk = "live-player", validation = "L0 Fixture + L2 Headless negative; L3 Live Player for real records", requiresPlayer = true, capability = "", summary = "Resolve direct or current-list player query." },
+  { name = "BMF.players.getName", namespace = "players", kind = "function", stability = "scaffold", risk = "live-player", validation = "L0 Fixture + L2 Headless negative; L3 Live Player for real records", requiresPlayer = true, capability = "", summary = "Return normalized identity fields." },
+  { name = "BMF.players.summary", namespace = "players", kind = "function", stability = "experimental", risk = "low", validation = "L0 Static + L2 Headless; L3 Live Player for whispered delivery", requiresPlayer = false, capability = "", summary = "Resolve one player and include known-player/live-controller counts." },
+  { name = "BMF.players.whisperSummary", namespace = "players", kind = "function", stability = "experimental", risk = "live-player", validation = "L0 Static + L3 Live Player for visible delivery", requiresPlayer = true, capability = "chat.whisper", summary = "Whisper a cached identity summary back to the selected player." },
+  { name = "BMF.permissions.describeRole", namespace = "permissions", kind = "function", stability = "stable", risk = "low", validation = "L0 Fixture + L2 Headless", requiresPlayer = false, capability = "", summary = "Normalize a RoleSetup2-style role permission map." },
+  { name = "BMF.permissions.evaluateNoSpawnItemApplicator", namespace = "permissions", kind = "function", stability = "stable", risk = "medium", validation = "L0 Fixture + L2 Headless; L3 Live Player + L5 Negative for runtime exploit denial", requiresPlayer = false, capability = "", summary = "Evaluate the default-role policy that keeps applicator access but forbids spawn items." },
+  { name = "BMF.permissions.evaluateApplicatorComponentAccess", namespace = "permissions", kind = "function", stability = "stable", risk = "low", validation = "L2 Headless + L5 Negative; L3 Live Player when wired into a live applicator hook", requiresPlayer = false, capability = "", summary = "Evaluate global allow/deny policy for an applicator component name." },
+  { name = "BMF.permissions.evaluateInteractConsolePrefixAccess", namespace = "permissions", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless + L5 Negative; L3 Live Player + native ServerModifyComponent hook for save-time Interactable prefix blocking", requiresPlayer = false, capability = "", summary = "Evaluate Interactable Print-to-Console prefix policy with Owner/Admin bypass and a whitelist for everyone else." },
+  { name = "BMF.permissions.enforceNoSpawnItemApplicator", namespace = "permissions", kind = "function", stability = "file-backed", risk = "high", validation = "L2 Headless copied RoleSetup2 patching; L3 Live Player + L5 Negative for live tool denial", requiresPlayer = false, capability = "", summary = "Patch RoleSetup2 so applicator access stays allowed while SpawnItems is denied by default and named roles cannot override it." },
+  { name = "BMF.tools.onApplicatorComponentApply", namespace = "tools", kind = "function", stability = "experimental", risk = "unsafe-native", validation = "L2 Headless registration shape; L3 Live Player + L5 Negative for denied component mutation", requiresPlayer = true, capability = "tools.applicator", summary = "Register a Lua handler for live applicator ServerAddComponent attempts." },
+  { name = "BMF.tools.applicator.status", namespace = "tools", kind = "function", stability = "experimental", risk = "unsafe-native", validation = "L2 Headless command; L3 Live Player for native hook evidence", requiresPlayer = false, capability = "", summary = "Inspect the live applicator hook, handlers, recent events, and denied component cache." },
+  { name = "BMF.tools.applicator.nativeTargets", namespace = "tools", kind = "function", stability = "experimental", risk = "unsafe-native", validation = "L3 Live Server pre-injection target discovery", requiresPlayer = false, capability = "", summary = "Resolve native addresses used by the ServerAddComponent function-slot blocker." },
+  { name = "BMF.tools.applicator.scanObjects", namespace = "tools", kind = "function", stability = "experimental", risk = "low", validation = "L3 Live Server read-only reflection scan", requiresPlayer = false, capability = "", summary = "Scan live UE objects for applicator/component function discovery." },
+  { name = "BMF.tools.applicator.refreshComponentCache", namespace = "tools", kind = "function", stability = "experimental", risk = "unsafe-native", validation = "L2 Headless safe failure; L3 Live Player for reflected component type addresses", requiresPlayer = false, capability = "", summary = "Resolve denied Brickadia component type objects such as ItemSpawn for live applicator enforcement." },
+  { name = "BMF.interact.handleConsoleMessage", namespace = "interact", kind = "function", stability = "experimental", risk = "medium", validation = "L2 Headless command; L3 Live Player through Omegga interact forwarder", requiresPlayer = false, capability = "", summary = "Forward an Interactable Print-to-Console message into BMF's interactConsole event." },
+  { name = "BMF.permissions.describeRoleAssignments", namespace = "permissions", kind = "function", stability = "stable", risk = "low", validation = "L0 Fixture + L2 Headless", requiresPlayer = false, capability = "", summary = "Normalize RoleAssignments.json-style player role records." },
+  { name = "BMF.permissions.loadRoleAssignments", namespace = "permissions", kind = "function", stability = "file-backed", risk = "low", validation = "L2 Headless + L3 Live Player policy lookup", requiresPlayer = false, capability = "", summary = "Read and normalize the configured Brickadia RoleAssignments.json file." },
+  { name = "BMF.permissions.getPlayerRoles", namespace = "permissions", kind = "function", stability = "stable", risk = "low", validation = "L0 Fixture + L2 Headless", requiresPlayer = false, capability = "", summary = "Read assigned role names for a player UUID from RoleAssignments-style data." },
+  { name = "BMF.permissions.playerHasRole", namespace = "permissions", kind = "function", stability = "stable", risk = "low", validation = "L0 Fixture + L2 Headless", requiresPlayer = false, capability = "", summary = "Case-insensitive role membership check over RoleAssignments-style data." },
+  { name = "BMF.permissions.evaluateCommandAccess", namespace = "permissions", kind = "function", stability = "stable", risk = "medium", validation = "L2 Headless + L5 Negative; L3 Live Player for authenticated player command routing", requiresPlayer = false, capability = "", summary = "Evaluate role-based command access from file-shaped assignments or actor roles." },
+  { name = "BMF.permissions.planRolePatch", namespace = "permissions", kind = "function", stability = "file-backed", risk = "medium", validation = "L2 Headless copied file patching", requiresPlayer = false, capability = "", summary = "Plan role permission changes without live mutation." },
+  { name = "BMF.permissions.planPlayerRoleAssignment", namespace = "permissions", kind = "function", stability = "file-backed", risk = "medium", validation = "L2 Headless copied file patching", requiresPlayer = false, capability = "", summary = "Plan player role assignment file changes." },
+  { name = "BMF.minigames.list", namespace = "minigames", kind = "function", stability = "experimental", risk = "medium", validation = "L2 Headless command transport; L3 Live Player for gameplay effects", requiresPlayer = false, capability = "", summary = "Server.Minigames.List command wrapper." },
+  { name = "BMF.minigames.loadPreset", namespace = "minigames", kind = "function", stability = "experimental", risk = "high", validation = "L2 Headless command transport + L5 Negative argument validation; L3 Live Player for effects", requiresPlayer = false, capability = "", summary = "Minigame preset load command wrapper." },
+  { name = "BMF.minigames.savePreset", namespace = "minigames", kind = "function", stability = "experimental", risk = "high", validation = "L2 Headless command transport + L5 Negative argument validation; L3 Live Player for effects", requiresPlayer = false, capability = "", summary = "Minigame preset save command wrapper." },
+  { name = "BMF.minigames.reset", namespace = "minigames", kind = "function", stability = "experimental", risk = "high", validation = "L2 Headless command transport + L5 Negative argument validation; L3 Live Player for effects", requiresPlayer = false, capability = "", summary = "Minigame reset command wrapper." },
+  { name = "BMF.minigames.nextRound", namespace = "minigames", kind = "function", stability = "experimental", risk = "high", validation = "L2 Headless command transport + L5 Negative argument validation; L3 Live Player for effects", requiresPlayer = false, capability = "", summary = "Minigame next-round command wrapper." },
+  { name = "BMF.minigames.delete", namespace = "minigames", kind = "function", stability = "experimental", risk = "high", validation = "L2 Headless command transport + L5 Negative argument validation; L3 Live Player for effects", requiresPlayer = false, capability = "", summary = "Minigame delete command wrapper." },
+  { name = "BMF.world.loadAdditive", namespace = "world", kind = "function", stability = "experimental", risk = "high", validation = "L2 Headless; L3 Live Player for visual behavior", requiresPlayer = false, capability = "world.loadAdditive", summary = "Load staged world additively through proven console path." },
+  { name = "BMF.world.saveAs", namespace = "world", kind = "function", stability = "experimental", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "world.saveAs", summary = "Save current world for offline BRDB parsing." },
+  { name = "BMF.prefabs.planLoadBrz", namespace = "prefabs", kind = "function", stability = "experimental", risk = "medium", validation = "L2 Headless after staging", requiresPlayer = false, capability = "", summary = "Plan staged BRZ-derived world load." },
+  { name = "BMF.prefabs.loadBrdb", namespace = "prefabs", kind = "function", stability = "experimental", risk = "high", validation = "L2 Headless; L3 Live Player for visual behavior", requiresPlayer = false, capability = "prefabs.loadBrdb", summary = "Load staged BRDB world bundle." },
+  { name = "BMF.prefabs.loadBrz", namespace = "prefabs", kind = "function", stability = "experimental", risk = "high", validation = "L2 Headless after staging; L3 Live Player for drivable behavior", requiresPlayer = false, capability = "prefabs.loadBrz", summary = "Load BRZ-derived staged world bundle; raw BRZ conversion stays outside Lua." },
+  { name = "BMF.vehicles.planSpawnSet", namespace = "vehicles", kind = "function", stability = "experimental", risk = "medium", validation = "L2 Headless", requiresPlayer = false, capability = "", summary = "Plan staged vehicle-copy load set." },
+  { name = "BMF.vehicles.spawnSet", namespace = "vehicles", kind = "function", stability = "experimental", risk = "high", validation = "L2 Headless; L3 Live Player for drivable behavior", requiresPlayer = false, capability = "vehicles.spawnSet", summary = "Load staged remapped vehicle copies and prove saved graph counts." },
+}
+
+local function normalize_api_filter_value(value)
+  local text = trim_string(value or "")
+  if text == "" then
+    return ""
+  end
+  return text:lower()
+end
+
+local function api_filter_bool(value)
+  if type(value) == "boolean" then
+    return value
+  end
+  local text = normalize_api_filter_value(value)
+  if text == "true" or text == "1" or text == "yes" then
+    return true
+  end
+  if text == "false" or text == "0" or text == "no" then
+    return false
+  end
+  return nil
+end
+
+local function api_item_matches(item, filters)
+  if type(filters) ~= "table" then
+    return true
+  end
+  local name = normalize_api_filter_value(filters.name or filters.api)
+  if name ~= "" and normalize_api_filter_value(item.name) ~= name then
+    return false
+  end
+  local namespace = normalize_api_filter_value(filters.namespace or filters.ns)
+  if namespace ~= "" and normalize_api_filter_value(item.namespace) ~= namespace then
+    return false
+  end
+  local stability = normalize_api_filter_value(filters.stability or filters.status)
+  if stability ~= "" and normalize_api_filter_value(item.stability) ~= stability then
+    return false
+  end
+  local risk = normalize_api_filter_value(filters.risk)
+  if risk ~= "" and normalize_api_filter_value(item.risk) ~= risk then
+    return false
+  end
+  local capability = normalize_api_filter_value(filters.capability)
+  if capability ~= "" and normalize_api_filter_value(item.capability) ~= capability then
+    return false
+  end
+  local requires_player = api_filter_bool(filters.requiresPlayer or filters.requiresplayer or filters.player)
+  if requires_player ~= nil and (item.requiresPlayer == true) ~= requires_player then
+    return false
+  end
+  return true
+end
+
+local function api_registry_summary(items)
+  local summary = {
+    total = #items,
+    stability = {},
+    risk = {},
+    requiresPlayer = 0,
+  }
+  for _, item in ipairs(items) do
+    local stability = tostring(item.stability or "unknown")
+    local risk = tostring(item.risk or "unknown")
+    summary.stability[stability] = (summary.stability[stability] or 0) + 1
+    summary.risk[risk] = (summary.risk[risk] or 0) + 1
+    if item.requiresPlayer == true then
+      summary.requiresPlayer = summary.requiresPlayer + 1
+    end
+  end
+  return summary
+end
+
+BMF.apis = {}
+BMF.apis.list = function(filters)
+  local items = {}
+  for _, item in ipairs(API_REGISTRY) do
+    if api_item_matches(item, filters) then
+      items[#items + 1] = copy_table(item)
+    end
+  end
+  return result(true, "OK", "API labels listed", {
+    apis = items,
+    count = #items,
+    summary = api_registry_summary(items),
+  })
+end
+BMF.apis.get = function(name)
+  local requested = normalize_api_filter_value(name)
+  if requested == "" then
+    return result(false, "INVALID_API_NAME", "API name is required")
+  end
+  for _, item in ipairs(API_REGISTRY) do
+    if normalize_api_filter_value(item.name) == requested then
+      return result(true, "OK", "API label found", { api = copy_table(item) })
+    end
+  end
+  return result(false, "API_NOT_FOUND", "API label was not found", { name = tostring(name or "") })
+end
+BMF.apis.summary = function()
+  return result(true, "OK", "API label summary collected", api_registry_summary(API_REGISTRY))
+end
+
+BMF.compatibility = {}
+BMF.compatibility.check = function()
+  local data = compatibility_snapshot()
+  return result(
+    data.ok,
+    data.ok and "OK" or "RUNTIME_HELPERS_MISSING",
+    data.ok and "Compatibility diagnostics passed" or "Required runtime helpers are missing",
+    data
+  )
+end
+BMF.compatibility.helpers = function()
+  local data = compatibility_snapshot()
+  return result(data.ok, data.ok and "OK" or "RUNTIME_HELPERS_MISSING", "Runtime helper diagnostics collected", {
+    helperGroups = data.ue4ss.helperGroups,
+    requiredGroupCount = data.ue4ss.requiredGroupCount,
+    requiredGroupsAvailable = data.ue4ss.requiredGroupsAvailable,
+    missingRequiredGroups = data.ue4ss.missingRequiredGroups,
+  })
+end
+
+BMF.sandbox = {}
+BMF.sandbox.policy = function()
+  return result(true, "OK", "Plugin sandbox policy collected", {
+    allowPluginUnsafeGlobals = state.config.allowPluginUnsafeGlobals == true,
+    requiredCapability = "unsafe.globals",
+    blockedGlobals = unsafe_plugin_global_names(),
+    deniedLookups = plugin_unsafe_global_denial_count(),
+  })
+end
+BMF.sandbox.denials = function()
+  local items = {}
+  for _, item in pairs(state.plugin_unsafe_global_denials) do
+    items[#items + 1] = copy_table(item)
+  end
+  table.sort(items, function(a, b)
+    local left = tostring(a.plugin or "") .. tostring(a.global or "")
+    local right = tostring(b.plugin or "") .. tostring(b.global or "")
+    return left < right
+  end)
+  return result(true, "OK", "Plugin unsafe-global denials listed", {
+    denials = items,
+    count = #items,
+  })
+end
+
+BMF.audit = {
+  path = AUDIT_LOG_PATH,
+}
+BMF.audit.record = function(action, data)
+  return audit_record(action, data, { source = "framework" })
+end
+BMF.audit.recent = function(limit)
+  local count = tonumber(limit) or 20
+  if count < 1 then
+    count = 1
+  end
+  if count > 100 then
+    count = 100
+  end
+
+  local records = {}
+  local first = #state.audit_records - count + 1
+  if first < 1 then
+    first = 1
+  end
+  for index = first, #state.audit_records do
+    records[#records + 1] = copy_table(state.audit_records[index])
+  end
+  return result(true, "OK", "Audit records listed", {
+    path = AUDIT_LOG_PATH,
+    records = records,
+    count = #records,
+  })
+end
+
+local RATE_LIMIT_POLICIES = {
+  ["server.exec"] = { limit = 3, windowSeconds = 10 },
+  ["server.save"] = { limit = 3, windowSeconds = 30 },
+  ["server.shutdown"] = { limit = 1, windowSeconds = 60 },
+  ["world.loadAdditive"] = { limit = 30, windowSeconds = 30 },
+  ["world.saveAs"] = { limit = 10, windowSeconds = 30 },
+  ["chat.broadcast"] = { limit = 10, windowSeconds = 10 },
+  ["chat.whisper"] = { limit = 20, windowSeconds = 10 },
+  ["chat.statusMessage"] = { limit = 20, windowSeconds = 10 },
+}
+
+local rate_limit_context_stack = {}
+
+local function current_rate_limit_context()
+  local context = rate_limit_context_stack[#rate_limit_context_stack]
+  if type(context) == "table" then
+    return context
+  end
+  return {
+    source = "framework",
+    subject = "framework",
+  }
+end
+
+local function with_rate_limit_context(context, callback)
+  rate_limit_context_stack[#rate_limit_context_stack + 1] = context or {}
+  local ok, value = pcall(callback)
+  rate_limit_context_stack[#rate_limit_context_stack] = nil
+  if not ok then
+    error(value, 0)
+  end
+  return value
+end
+
+local function normalize_rate_limit_policy(action, options)
+  local policy = RATE_LIMIT_POLICIES[action] or { limit = 60, windowSeconds = 60 }
+  if type(options) == "table" then
+    policy = {
+      limit = options.limit or options.max or policy.limit,
+      windowSeconds = options.windowSeconds or policy.windowSeconds,
+    }
+    if options.windowMs ~= nil then
+      policy.windowSeconds = math.ceil((tonumber(options.windowMs) or 0) / 1000)
+    end
+  else
+    policy = {
+      limit = policy.limit,
+      windowSeconds = policy.windowSeconds,
+    }
+  end
+
+  policy.limit = tonumber(policy.limit) or 1
+  policy.windowSeconds = tonumber(policy.windowSeconds) or 60
+  if policy.limit < 1 then
+    policy.limit = 1
+  end
+  if policy.windowSeconds < 1 then
+    policy.windowSeconds = 1
+  end
+  return policy
+end
+
+local function rate_limit_check(action, options, context)
+  local name = trim_string(action)
+  if name == "" then
+    return result(false, "INVALID_RATE_LIMIT", "rate limit action is required")
+  end
+
+  local policy = normalize_rate_limit_policy(name, options)
+  local now = os.time()
+  local active_context = context or current_rate_limit_context()
+  local subject = tostring(active_context.subject or active_context.plugin or active_context.source or "framework")
+  local key = subject .. "|" .. name
+  local bucket = state.rate_limits[key]
+  if type(bucket) ~= "table" or tonumber(bucket.resetAt or 0) <= now then
+    bucket = {
+      action = name,
+      subject = subject,
+      count = 0,
+      resetAt = now + policy.windowSeconds,
+    }
+    state.rate_limits[key] = bucket
+  end
+
+  local remaining = policy.limit - bucket.count
+  if remaining <= 0 then
+    local retry_after = bucket.resetAt - now
+    if retry_after < 0 then
+      retry_after = 0
+    end
+    audit_record("rate_limit.denied", {
+      action = name,
+      subject = subject,
+      limit = policy.limit,
+      windowSeconds = policy.windowSeconds,
+      retryAfterSeconds = retry_after,
+    }, {
+      source = tostring(active_context.source or "framework"),
+      plugin = active_context.plugin,
+      severity = "warn",
+      ok = false,
+      code = "RATE_LIMITED",
+    })
+    return result(false, "RATE_LIMITED", "Rate limit exceeded for " .. name, {
+      action = name,
+      subject = subject,
+      limit = policy.limit,
+      remaining = 0,
+      resetAt = bucket.resetAt,
+      retryAfterSeconds = retry_after,
+    })
+  end
+
+  bucket.count = bucket.count + 1
+  return result(true, "OK", "Rate limit accepted", {
+    action = name,
+    subject = subject,
+    limit = policy.limit,
+    remaining = policy.limit - bucket.count,
+    resetAt = bucket.resetAt,
+  })
+end
+
+BMF.rateLimits = {}
+BMF.rateLimits.check = function(action, options)
+  return rate_limit_check(action, options)
+end
+BMF.rateLimits.recent = function()
+  local buckets = {}
+  local now = os.time()
+  for key, bucket in pairs(state.rate_limits) do
+    buckets[#buckets + 1] = {
+      key = key,
+      action = bucket.action,
+      subject = bucket.subject,
+      count = bucket.count,
+      resetAt = bucket.resetAt,
+      retryAfterSeconds = math.max(0, (bucket.resetAt or now) - now),
+    }
+  end
+  table.sort(buckets, function(a, b)
+    return tostring(a.key) < tostring(b.key)
+  end)
+  return result(true, "OK", "Rate limit buckets listed", { buckets = buckets })
+end
+
+BMF.events = {}
+
+local function normalize_event_name(value)
+  local name = trim_string(value)
+  if name == "" then
+    return nil, "event name is required"
+  end
+  if name:match("[%c]") or not name:match("^[A-Za-z0-9_.:%-]+$") then
+    return nil, "event name must use simple tokens"
+  end
+  return name
+end
+
+local function register_event_handler(name, handler, owner)
+  local event_name = normalize_event_name(name)
+  if not event_name or type(handler) ~= "function" then
+    return nil
+  end
+  local id = state.next_event_handler_id
+  state.next_event_handler_id = state.next_event_handler_id + 1
+  if type(state.event_handlers[event_name]) ~= "table" then
+    state.event_handlers[event_name] = {}
+  end
+  state.event_handlers[event_name][id] = {
+    handler = handler,
+    owner = owner,
+  }
+  return id
+end
+
+BMF.events.on = function(name, handler)
+  return register_event_handler(name, handler, nil)
+end
+
+BMF.events.off = function(id)
+  for _, handlers in pairs(state.event_handlers) do
+    if handlers[id] then
+      handlers[id] = nil
+      return true
+    end
+  end
+  return false
+end
+
+BMF.events.emit = function(name, data)
+  local event_name, event_error = normalize_event_name(name)
+  if not event_name then
+    return result(false, "INVALID_EVENT", event_error)
+  end
+  local handlers = state.event_handlers[event_name] or {}
+  local calls = {}
+  for id, entry in pairs(handlers) do
+    if type(entry) == "function" then
+      calls[#calls + 1] = { id = id, handler = entry, owner = nil }
+    elseif type(entry) == "table" and type(entry.handler) == "function" then
+      calls[#calls + 1] = { id = id, handler = entry.handler, owner = entry.owner }
+    end
+  end
+  table.sort(calls, function(a, b)
+    return a.id < b.id
+  end)
+
+  local errors = {}
+  for _, item in ipairs(calls) do
+    local ok, err = pcall(item.handler, copy_table(data or {}), event_name)
+    if not ok then
+      errors[#errors + 1] = {
+        id = item.id,
+        error = tostring(err),
+      }
+      log("error", "event handler failed event=" .. event_name .. " id=" .. tostring(item.id) .. ": " .. tostring(err))
+    end
+  end
+
+  return result(#errors == 0, #errors == 0 and "OK" or "EVENT_HANDLER_ERROR", "Event emitted", {
+    event = event_name,
+    handlers = #calls,
+    errors = errors,
+  })
+end
+
+BMF.events.listenerCount = function(name)
+  local event_name = normalize_event_name(name)
+  if not event_name then
+    return 0
+  end
+  local count = 0
+  for _ in pairs(state.event_handlers[event_name] or {}) do
+    count = count + 1
+  end
+  return count
+end
+
+local function remove_event_handlers_for_owner(owner)
+  if owner == nil then
+    return 0
+  end
+  local removed = 0
+  for _, handlers in pairs(state.event_handlers) do
+    for id, entry in pairs(handlers) do
+      if type(entry) == "table" and entry.owner == owner then
+        handlers[id] = nil
+        removed = removed + 1
+      end
+    end
+  end
+  return removed
+end
+
+local function plugin_watchdog_enabled()
+  return state.config.pluginWatchdogEnabled ~= false
+end
+
+local function plugin_watchdog_max_errors()
+  local value = tonumber(state.config.pluginWatchdogMaxErrors or 3) or 3
+  if value < 1 then
+    value = 1
+  end
+  return math.floor(value)
+end
+
+local function plugin_watchdog_state(name)
+  local plugin_name = tostring(name or "")
+  if plugin_name == "" then
+    plugin_name = "unknown"
+  end
+  local item = state.plugin_watchdog[plugin_name]
+  if type(item) ~= "table" then
+    item = {
+      name = plugin_name,
+      errorCount = 0,
+      isolated = false,
+      isolatedAt = "",
+      isolatedReason = "",
+      lastError = nil,
+    }
+    state.plugin_watchdog[plugin_name] = item
+  end
+  return item
+end
+
+local function plugin_watchdog_isolated(name)
+  local item = state.plugin_watchdog[tostring(name or "")]
+  return type(item) == "table" and item.isolated == true
+end
+
+local function plugin_watchdog_note_error(name, hook, err)
+  local item = plugin_watchdog_state(name)
+  local hook_name = tostring(hook or "unknown")
+  item.errorCount = (tonumber(item.errorCount) or 0) + 1
+  item.lastError = {
+    at = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    hook = hook_name,
+    error = tostring(err),
+  }
+
+  local isolated_now = false
+  if plugin_watchdog_enabled() and item.isolated ~= true and item.errorCount >= plugin_watchdog_max_errors() then
+    item.isolated = true
+    item.isolatedAt = item.lastError.at
+    item.isolatedReason = "max-errors"
+    isolated_now = true
+    audit_record("plugin.isolated", {
+      plugin = item.name,
+      errorCount = item.errorCount,
+      threshold = plugin_watchdog_max_errors(),
+      hook = hook_name,
+      error = tostring(err),
+    }, {
+      source = "plugin",
+      plugin = item.name,
+      severity = "error",
+      ok = false,
+      code = "PLUGIN_ISOLATED",
+    })
+    log(
+      "error",
+      "plugin " .. item.name .. " isolated by watchdog errors=" ..
+        tostring(item.errorCount) .. " threshold=" .. tostring(plugin_watchdog_max_errors())
+    )
+  end
+
+  return item, isolated_now
+end
+
+local function plugin_watchdog_snapshot(name)
+  local item = plugin_watchdog_state(name)
+  local last = item.lastError
+  return {
+    name = item.name,
+    errorCount = tonumber(item.errorCount) or 0,
+    isolated = item.isolated == true,
+    isolatedAt = tostring(item.isolatedAt or ""),
+    isolatedReason = tostring(item.isolatedReason or ""),
+    lastError = type(last) == "table" and copy_table(last) or nil,
+    threshold = plugin_watchdog_max_errors(),
+    enabled = plugin_watchdog_enabled(),
+  }
+end
+
+local function plugin_watchdog_list()
+  local names = {}
+  for name in pairs(state.plugins) do
+    names[#names + 1] = name
+  end
+  for name in pairs(state.plugin_watchdog) do
+    local seen = false
+    for _, existing in ipairs(names) do
+      if existing == name then
+        seen = true
+        break
+      end
+    end
+    if not seen then
+      names[#names + 1] = name
+    end
+  end
+  table.sort(names)
+
+  local items = {}
+  for _, name in ipairs(names) do
+    items[#items + 1] = plugin_watchdog_snapshot(name)
+  end
+  return items
+end
+
+local function record_plugin_error(name, hook, err, data, plugin)
+  local plugin_name = tostring(name or "")
+  local hook_name = tostring(hook or "unknown")
+  local entry = {
+    name = plugin_name,
+    hook = hook_name,
+    error = tostring(err),
+  }
+  if type(data) == "table" then
+    entry.data = copy_table(data)
+  end
+  state.plugin_errors[#state.plugin_errors + 1] = entry
+  log("error", "plugin " .. plugin_name .. " " .. hook_name .. " failed: " .. tostring(err))
+  audit_record("plugin.error", {
+    plugin = plugin_name,
+    hook = hook_name,
+    error = tostring(err),
+    data = type(data) == "table" and data or {},
+  }, {
+    source = "plugin",
+    plugin = plugin_name,
+    severity = "error",
+    ok = false,
+    code = "PLUGIN_ERROR",
+  })
+
+  local target = plugin or state.plugins[plugin_name]
+  if hook_name ~= "onError" and type(target) == "table" and type(target.onError) == "function" then
+    local context = {
+      plugin = plugin_name,
+      hook = hook_name,
+      error = tostring(err),
+      data = type(data) == "table" and copy_table(data) or {},
+    }
+    local ok, on_error_err = pcall(target.onError, target.bmf_api or BMF, context)
+    if not ok then
+      local on_error_watchdog = plugin_watchdog_note_error(plugin_name, "onError", on_error_err)
+      state.plugin_errors[#state.plugin_errors + 1] = {
+        name = plugin_name,
+        hook = "onError",
+        error = tostring(on_error_err),
+        watchdog = {
+          errorCount = on_error_watchdog.errorCount,
+          isolated = on_error_watchdog.isolated == true,
+        },
+      }
+      log("error", "plugin " .. plugin_name .. " onError failed: " .. tostring(on_error_err))
+    end
+  end
+
+  local watchdog = plugin_watchdog_note_error(plugin_name, hook_name, err)
+  entry.watchdog = {
+    errorCount = watchdog.errorCount,
+    isolated = watchdog.isolated == true,
+  }
+
+  write_status()
+  return entry
+end
+
+local function run_plugin_hook(name, plugin, hook, data)
+  if type(plugin) ~= "table" or type(plugin[hook]) ~= "function" then
+    return true, nil
+  end
+  if plugin_watchdog_isolated(name) then
+    return false, "PLUGIN_ISOLATED"
+  end
+  local ok, err = pcall(plugin[hook], plugin.bmf_api or BMF, copy_table(data or {}))
+  if not ok then
+    record_plugin_error(name, hook, err, data, plugin)
+    return false, err
+  end
+  return true, nil
+end
+
+BMF.health = function()
+  local compatibility = compatibility_snapshot()
+  return result(true, "OK", "BMF runtime is loaded", {
+    version = VERSION,
+    target_build = TARGET_BRICKADIA_BUILD,
+    compatibility_status = compatibility.status,
+    build_detection = BUILD_DETECTION_MODE,
+    plugins_loaded = plugin_count(),
+    plugin_errors = #state.plugin_errors,
+    plugin_watchdog_isolated = plugin_watchdog_isolated_count(),
+    runtime_required_helper_groups = compatibility.ue4ss.requiredGroupCount,
+    runtime_required_helper_groups_available = compatibility.ue4ss.requiredGroupsAvailable,
+    runtime_missing_required_helper_groups = #(compatibility.ue4ss.missingRequiredGroups or {}),
+    status_path = STATUS_PATH,
+    log_path = LOG_PATH,
+    audit_path = AUDIT_LOG_PATH,
+    audit_records = #state.audit_records,
+  })
+end
+
+BMF.server = {}
+BMF.server.exec = function(command)
+  local limited = rate_limit_check("server.exec")
+  if not limited.ok then
+    return limited
+  end
+  local response = exec_console(command)
+  audit_record("server.exec", {
+    command = tostring(command or ""),
+  }, {
+    source = "framework",
+    severity = response.ok and "info" or "warn",
+    ok = response.ok,
+    code = response.code,
+  })
+  return response
+end
+
+BMF.server.save = function(options)
+  local limited = rate_limit_check("server.save")
+  if not limited.ok then
+    return limited
+  end
+  local save_name = nil
+  local generated = false
+  if type(options) == "table" then
+    save_name = options.name or options.saveName or options.world or options.worldName
+  elseif type(options) == "string" then
+    save_name = options
+  end
+  if save_name == nil or tostring(save_name) == "" then
+    save_name = "BMF_ServerSave_" .. os.date("!%Y%m%d%H%M%S")
+    generated = true
+  end
+
+  local response = BMF.world.saveAs(save_name)
+  response.data.api = "BMF.server.save"
+  response.data.generatedName = generated
+  response.data.saveName = response.data.world
+  audit_record("server.save", {
+    world = response.data.world,
+    generatedName = generated,
+    command = response.data.command,
+  }, {
+    source = "framework",
+    severity = response.ok and "info" or "warn",
+    ok = response.ok,
+    code = response.code,
+  })
+  return response
+end
+
+BMF.server.shutdown = function(options)
+  local confirm = nil
+  local reason = ""
+  local delay_ms = 1000
+  if type(options) == "table" then
+    confirm = options.confirm or options.confirmation
+    reason = trim_string(options.reason or "")
+    delay_ms = tonumber(options.delayMs or options.delay_ms or options.delay) or delay_ms
+  elseif type(options) == "string" then
+    confirm = options
+  end
+
+  if tostring(confirm or "") ~= "BMF_SHUTDOWN" then
+    return result(false, "CONFIRMATION_REQUIRED", "Server shutdown requires confirm=BMF_SHUTDOWN", {
+      requiredConfirmation = "BMF_SHUTDOWN",
+    })
+  end
+
+  local limited = rate_limit_check("server.shutdown")
+  if not limited.ok then
+    return limited
+  end
+
+  if delay_ms < 250 then
+    delay_ms = 250
+  end
+  if delay_ms > 30000 then
+    delay_ms = 30000
+  end
+  delay_ms = math.floor(delay_ms)
+
+  local command = "exit"
+  audit_record("server.shutdown", {
+    command = command,
+    reason = reason,
+    delayMs = delay_ms,
+  }, {
+    source = "framework",
+    severity = "warn",
+    ok = true,
+    code = "OK",
+  })
+  log("warn", "executing guarded server shutdown command=" .. command)
+  local executed = exec_console_manager(command)
+  audit_record("server.shutdown.executed", {
+    command = command,
+    executor = executed.data and executed.data.executor or "",
+  }, {
+    source = "framework",
+    severity = executed.ok and "warn" or "error",
+    ok = executed.ok,
+    code = executed.code,
+  })
+  if not executed.ok then
+    return result(false, "SHUTDOWN_UNAVAILABLE", "Console shutdown command is not available through the current executor", {
+      command = command,
+      reason = reason,
+      delayMs = delay_ms,
+      api = "BMF.server.shutdown",
+      shutdownScheduled = false,
+      executor = executed.data and executed.data.executor or "",
+      executorCode = executed.code,
+      executorMessage = executed.message,
+    })
+  end
+
+  BMF.events.emit("shutdownRequested", {
+    reason = reason,
+    delayMs = delay_ms,
+    command = command,
+  })
+
+  return result(true, "OK", "Server shutdown scheduled", {
+    command = command,
+    reason = reason,
+    delayMs = delay_ms,
+    api = "BMF.server.shutdown",
+    shutdownScheduled = true,
+  })
+end
+
+BMF.server.status = function()
+  local names = command_names()
+  local compatibility = compatibility_snapshot()
+  local player_response = nil
+  if BMF.players and type(BMF.players.list) == "function" then
+    player_response = BMF.players.list()
+  else
+    player_response = result(false, "PLAYER_ADAPTER_UNAVAILABLE", "Player adapter is not initialized", { players = {} })
+  end
+
+  local players = {}
+  if player_response.ok and player_response.data and type(player_response.data.players) == "table" then
+    players = player_response.data.players
+  end
+
+  local uptime = os.time() - state.started_epoch
+  if uptime < 0 then
+    uptime = 0
+  end
+
+  local data = {
+    version = VERSION,
+    startedAt = state.started_at,
+    uptimeSeconds = uptime,
+    buildId = TARGET_BRICKADIA_BUILD,
+    executable = TARGET_SERVER_EXECUTABLE,
+    serverName = "",
+    serverNameStatus = "unknown",
+    description = "",
+    descriptionStatus = "unknown",
+    worldName = "",
+    worldNameStatus = "unknown",
+    brickCount = nil,
+    brickCountStatus = "unknown",
+    componentCount = nil,
+    componentCountStatus = "unknown",
+    playerCount = #players,
+    playerAdapter = player_response.data and player_response.data.adapter or "headless-empty",
+    bmfStatus = "running",
+    paths = {
+      status = STATUS_PATH,
+      log = LOG_PATH,
+      events = EVENT_LOG_PATH,
+      audit = AUDIT_LOG_PATH,
+      pluginLogs = PLUGIN_LOG_DIR,
+      commands = COMMAND_DIR,
+    },
+    runtime = {
+      version = VERSION,
+      startedAt = state.started_at,
+      uptimeSeconds = uptime,
+      pluginsLoaded = plugin_count(),
+      pluginErrors = #state.plugin_errors,
+      commandsRegistered = #names,
+      timersActive = BMF.timers and BMF.timers.activeCount() or 0,
+      serverReady = state.server_ready and true or false,
+      pluginTickActive = state.plugin_tick_timer_id ~= nil,
+      pluginTickCount = state.plugin_tick_count,
+      pluginTickIntervalMs = state.plugin_tick_interval_ms,
+      auditRecords = #state.audit_records,
+      rateLimitBuckets = rate_limit_bucket_count(),
+      pluginWatchdogIsolated = plugin_watchdog_isolated_count(),
+      apiLabels = #API_REGISTRY,
+      unsafeGlobalDenials = plugin_unsafe_global_denial_count(),
+      compatibilityStatus = compatibility.status,
+      targetBuild = compatibility.targetBuild,
+      buildDetection = compatibility.buildDetection,
+      requiredHelperGroups = compatibility.ue4ss.requiredGroupCount,
+      requiredHelperGroupsAvailable = compatibility.ue4ss.requiredGroupsAvailable,
+      missingRequiredHelperGroups = #(compatibility.ue4ss.missingRequiredGroups or {}),
+    },
+    players = {
+      count = #players,
+      adapter = player_response.data and player_response.data.adapter or "headless-empty",
+      code = player_response.code,
+      ok = player_response.ok,
+    },
+    plugins = {
+      loaded = plugin_count(),
+      errors = #state.plugin_errors,
+      watchdog = {
+        enabled = plugin_watchdog_enabled(),
+        threshold = plugin_watchdog_max_errors(),
+        isolated = plugin_watchdog_isolated_count(),
+      },
+    },
+    commands = {
+      registered = #names,
+      names = names,
+    },
+    config = {
+      allowPluginServerExec = state.config.allowPluginServerExec and true or false,
+      allowPluginServerShutdown = state.config.allowPluginServerShutdown and true or false,
+      jsonlLogs = state.config.jsonlLogs ~= false,
+      pluginWatchdogEnabled = plugin_watchdog_enabled(),
+      pluginWatchdogMaxErrors = plugin_watchdog_max_errors(),
+      allowPluginUnsafeGlobals = state.config.allowPluginUnsafeGlobals == true,
+    },
+    server = {
+      name = "",
+      nameStatus = "unknown",
+      description = "",
+      descriptionStatus = "unknown",
+      buildId = TARGET_BRICKADIA_BUILD,
+      executable = TARGET_SERVER_EXECUTABLE,
+    },
+    world = {
+      name = "",
+      nameStatus = "unknown",
+      brickCount = nil,
+      brickCountStatus = "unknown",
+      componentCount = nil,
+      componentCountStatus = "unknown",
+    },
+    limitations = {
+      "serverName requires live server object or config adapter",
+      "worldName, brickCount, and componentCount require world-state discovery",
+      "Brickadia build detection is report-only until a reliable runtime build source is proven",
+    },
+    compatibility = compatibility,
+  }
+
+  return result(true, "OK", "Server status collected", data)
+end
+
+BMF.plugins = {}
+
+BMF.plugins.list = function()
+  local items = {}
+  local names = {}
+  for name in pairs(state.plugins) do
+    names[#names + 1] = name
+  end
+  table.sort(names)
+  for _, name in ipairs(names) do
+    local plugin = state.plugins[name]
+    local manifest = plugin.manifest or {}
+    local watchdog = plugin_watchdog_snapshot(name)
+    items[#items + 1] = {
+      name = name,
+      displayName = manifest.name or plugin.name or name,
+      version = manifest.version or plugin.version or "",
+      description = manifest.description or plugin.description or "",
+      capabilities = copy_table(manifest.capabilities or plugin.capabilities or {}),
+      errorCount = watchdog.errorCount,
+      isolated = watchdog.isolated,
+      isolatedAt = watchdog.isolatedAt,
+      isolatedReason = watchdog.isolatedReason,
+      lastError = watchdog.lastError,
+    }
+  end
+  return result(true, "OK", "Plugins listed", { plugins = items })
+end
+
+BMF.plugins.watchdog = function()
+  local items = plugin_watchdog_list()
+  return result(true, "OK", "Plugin watchdog status listed", {
+    enabled = plugin_watchdog_enabled(),
+    threshold = plugin_watchdog_max_errors(),
+    isolated = plugin_watchdog_isolated_count(),
+    plugins = items,
+  })
+end
+
+BMF.plugins.hasCapability = function(plugin_name, capability)
+  local plugin = state.plugins[tostring(plugin_name or "")]
+  if not plugin then
+    return false
+  end
+  local manifest = plugin.manifest or {}
+  local capabilities = manifest.capabilities or plugin.capabilities or {}
+  for _, item in ipairs(capabilities) do
+    if item == capability or item == "*" then
+      return true
+    end
+    if capability == "server.exec" and item == "server.exec.restricted" then
+      return true
+    end
+  end
+  return false
+end
+
+BMF.storage = {}
+
+local function plugin_root_path(plugin_name)
+  local name, err = safe_name(plugin_name, "plugin name")
+  if not name then
+    return nil, err
+  end
+  return PLUGINS_DIR .. "/" .. name, nil
+end
+
+local function plugin_data_path(plugin_name, relative_path)
+  local root, root_err = plugin_root_path(plugin_name)
+  if not root then
+    return nil, root_err
+  end
+  local relative, relative_err = safe_relative_path(relative_path, "data path")
+  if not relative then
+    return nil, relative_err
+  end
+  return root .. "/data/" .. relative, nil
+end
+
+BMF.storage.readText = function(plugin_name, relative_path)
+  local path, path_error = plugin_data_path(plugin_name, relative_path)
+  if not path then
+    return result(false, "INVALID_STORAGE_PATH", path_error)
+  end
+  local data = read_file(path)
+  if data == nil then
+    return result(false, "STORAGE_NOT_FOUND", "storage file was not found", { path = path })
+  end
+  return result(true, "OK", "Storage file read", { path = path, text = data })
+end
+
+BMF.storage.writeText = function(plugin_name, relative_path, text)
+  local path, path_error = plugin_data_path(plugin_name, relative_path)
+  if not path then
+    return result(false, "INVALID_STORAGE_PATH", path_error)
+  end
+  if not write_file(path, tostring(text or "")) then
+    return result(false, "STORAGE_WRITE_FAILED", "storage file could not be written", { path = path })
+  end
+  return result(true, "OK", "Storage file written", { path = path, bytes = #tostring(text or "") })
+end
+
+BMF.storage.readJson = function(plugin_name, relative_path)
+  local read = BMF.storage.readText(plugin_name, relative_path)
+  if not read.ok then
+    return read
+  end
+  local value, err = json_decode(read.data.text or "")
+  if err then
+    return result(false, "JSON_PARSE_FAILED", "storage JSON could not be parsed", {
+      path = read.data.path,
+      error = err,
+    })
+  end
+  return result(true, "OK", "Storage JSON read", {
+    path = read.data.path,
+    value = value,
+  })
+end
+
+BMF.storage.writeJson = function(plugin_name, relative_path, value)
+  local encoded = json_encode(value or {})
+  local written = BMF.storage.writeText(plugin_name, relative_path, encoded)
+  if not written.ok then
+    return written
+  end
+  written.message = "Storage JSON written"
+  written.data.json = encoded
+  return written
+end
+
+BMF.storage.appendText = function(plugin_name, relative_path, text)
+  local path, path_error = plugin_data_path(plugin_name, relative_path)
+  if not path then
+    return result(false, "INVALID_STORAGE_PATH", path_error)
+  end
+  if not append_file(path, tostring(text or "")) then
+    return result(false, "STORAGE_WRITE_FAILED", "storage file could not be appended", { path = path })
+  end
+  return result(true, "OK", "Storage file appended", { path = path, bytes = #tostring(text or "") })
+end
+
+BMF.storage.readConfigText = function(plugin_name)
+  local root, root_error = plugin_root_path(plugin_name)
+  if not root then
+    return result(false, "INVALID_STORAGE_PATH", root_error)
+  end
+  local path = root .. "/config.json"
+  local data = read_file(path)
+  if data == nil then
+    return result(false, "CONFIG_NOT_FOUND", "config.json was not found", { path = path })
+  end
+  return result(true, "OK", "Plugin config read", { path = path, text = data })
+end
+
+BMF.storage.writeConfigText = function(plugin_name, text)
+  local root, root_error = plugin_root_path(plugin_name)
+  if not root then
+    return result(false, "INVALID_STORAGE_PATH", root_error)
+  end
+  local path = root .. "/config.json"
+  if not write_file(path, tostring(text or "")) then
+    return result(false, "CONFIG_WRITE_FAILED", "config.json could not be written", { path = path })
+  end
+  return result(true, "OK", "Plugin config written", { path = path, bytes = #tostring(text or "") })
+end
+
+BMF.storage.readConfig = function(plugin_name)
+  local read = BMF.storage.readConfigText(plugin_name)
+  if not read.ok then
+    return read
+  end
+  local value, err = json_decode(read.data.text or "")
+  if err then
+    return result(false, "JSON_PARSE_FAILED", "plugin config JSON could not be parsed", {
+      path = read.data.path,
+      error = err,
+    })
+  end
+  return result(true, "OK", "Plugin config JSON read", {
+    path = read.data.path,
+    value = value,
+  })
+end
+
+BMF.storage.writeConfig = function(plugin_name, value)
+  local encoded = json_encode(value or {})
+  local written = BMF.storage.writeConfigText(plugin_name, encoded)
+  if not written.ok then
+    return written
+  end
+  written.message = "Plugin config JSON written"
+  written.data.json = encoded
+  return written
+end
+
+BMF.commands = {}
+
+local function command_output(ar, line)
+  local text = tostring(line or "")
+  if ar and ar.Log then
+    ar:Log(text)
+  end
+  log("command", text)
+end
+
+local function command_args_to_text(params)
+  if type(params) == "string" then
+    return trim_string(params)
+  end
+  if type(params) == "table" then
+    local parts = {}
+    for index, value in ipairs(params) do
+      parts[index] = tostring(value)
+    end
+    return table.concat(parts, " ")
+  end
+  return ""
+end
+
+local function sorted_command_names()
+  local names = {}
+  for name in pairs(state.commands) do
+    names[#names + 1] = name
+  end
+  table.sort(names)
+  return names
+end
+
+local function parse_command_options(args)
+  local text = trim_string(args or "")
+  local options = {}
+  local positional = {}
+
+  for token in text:gmatch("%S+") do
+    local key, value = token:match("^([A-Za-z0-9_.%-]+)=(.*)$")
+    if key then
+      options[key:lower()] = value
+    else
+      positional[#positional + 1] = token
+    end
+  end
+
+  options._positional = positional
+  return options
+end
+
+local function percent_decode(value)
+  local text = tostring(value or "")
+  text = text:gsub("+", " ")
+  return (text:gsub("%%(%x%x)", function(hex)
+    return string.char(tonumber(hex, 16))
+  end))
+end
+
+local function option_number(options, key, default)
+  local value = options[key]
+  if value == nil or value == "" then
+    return default
+  end
+  return finite_number(value, default)
+end
+
+local function register_console_handler_for_command(name)
+  if state.console_command_callbacks[name] then
+    return true
+  end
+  if type(RegisterConsoleCommandGlobalHandler) ~= "function" then
+    return false
+  end
+
+  state.console_command_callbacks[name] = function(command, params, ar)
+    return BMF.commands.dispatch(name, command_args_to_text(params), ar)
+  end
+
+  local ok, err = pcall(RegisterConsoleCommandGlobalHandler, name, state.console_command_callbacks[name])
+  if not ok then
+    state.console_command_callbacks[name] = nil
+    log("warn", "failed to register console command " .. name .. ": " .. tostring(err))
+    return false
+  end
+
+  log("info", "registered console command " .. name)
+  return true
+end
+
+local function register_command(name, description, handler, owner)
+  local command_name = trim_string(name):lower()
+  if command_name == "" then
+    return result(false, "INVALID_COMMAND", "command name is required")
+  end
+  if not command_name:match("^bmf%.[a-z0-9_.%-]+$") then
+    return result(false, "INVALID_COMMAND", "command name must start with bmf. and use simple tokens")
+  end
+  if type(handler) ~= "function" then
+    return result(false, "INVALID_HANDLER", "command handler function is required")
+  end
+
+  state.commands[command_name] = {
+    name = command_name,
+    description = tostring(description or ""),
+    handler = handler,
+    owner = owner,
+    console_registered = register_console_handler_for_command(command_name),
+  }
+
+  return result(true, "OK", "Command registered", {
+    name = command_name,
+    owner = owner,
+    console_registered = state.commands[command_name].console_registered,
+  })
+end
+
+BMF.commands.register = function(name, description, handler)
+  return register_command(name, description, handler, nil)
+end
+
+local function remove_commands_for_owner(owner)
+  if owner == nil then
+    return 0
+  end
+  local removed = 0
+  for name, command in pairs(state.commands) do
+    if type(command) == "table" and command.owner == owner then
+      state.commands[name] = nil
+      removed = removed + 1
+    end
+  end
+  return removed
+end
+
+BMF.commands.list = function()
+  local items = {}
+  for _, name in ipairs(sorted_command_names()) do
+    local command = state.commands[name]
+    items[#items + 1] = {
+      name = name,
+      description = command.description,
+      owner = command.owner,
+      console_registered = command.console_registered and true or false,
+    }
+  end
+  return result(true, "OK", "Commands listed", { commands = items })
+end
+
+BMF.commands.dispatch = function(name, args, ar)
+  local command_name = trim_string(name):lower()
+  local command = state.commands[command_name]
+  if not command then
+    command_output(ar, "BMF ERROR UNKNOWN_COMMAND " .. command_name)
+    audit_record("command.unknown", {
+      command = command_name,
+      args = args or "",
+    }, {
+      source = "command",
+      severity = "warn",
+      ok = false,
+      code = "UNKNOWN_COMMAND",
+    })
+    return false
+  end
+
+  if command.owner and plugin_watchdog_isolated(command.owner) then
+    local watchdog = plugin_watchdog_snapshot(command.owner)
+    command_output(ar, "BMF " .. command_name .. " PLUGIN_ISOLATED Plugin is isolated by watchdog")
+    command_output(ar, "plugin=" .. tostring(command.owner))
+    command_output(ar, "error_count=" .. tostring(watchdog.errorCount or 0))
+    command_output(ar, "isolated=true")
+    command_output(ar, "isolated_reason=" .. tostring(watchdog.isolatedReason or ""))
+    audit_record("command.blocked", {
+      command = command_name,
+      args = args or "",
+      owner = command.owner,
+      reason = "plugin-isolated",
+      errorCount = watchdog.errorCount or 0,
+    }, {
+      source = "command",
+      plugin = command.owner,
+      severity = "warn",
+      ok = false,
+      code = "PLUGIN_ISOLATED",
+    })
+    return true
+  end
+
+  command_output(ar, "BMF " .. command_name .. " begin")
+  local ok, response_or_error = pcall(command.handler, args or "", ar)
+  if not ok then
+    if command.owner then
+      record_plugin_error(command.owner, "command:" .. command_name, response_or_error, {
+        command = command_name,
+        args = args or "",
+      })
+    end
+    command_output(ar, "BMF " .. command_name .. " ERROR " .. tostring(response_or_error))
+    audit_record("command.error", {
+      command = command_name,
+      args = args or "",
+      owner = command.owner,
+      error = tostring(response_or_error),
+    }, {
+      source = "command",
+      plugin = command.owner,
+      severity = "error",
+      ok = false,
+      code = "COMMAND_ERROR",
+    })
+    return true
+  end
+
+  local response = response_or_error
+  if type(response) ~= "table" then
+    response = result(true, "OK", tostring(response or "Command completed"))
+  end
+
+  command_output(
+    ar,
+    "BMF " .. command_name .. " " .. tostring(response.code or (response.ok and "OK" or "ERROR")) ..
+      " " .. tostring(response.message or "")
+  )
+
+  local lines = response.data and response.data.lines
+  if type(lines) == "table" then
+    for _, line in ipairs(lines) do
+      command_output(ar, tostring(line))
+    end
+  end
+
+  audit_record("command.dispatch", {
+    command = command_name,
+    args = args or "",
+    owner = command.owner,
+    responseCode = tostring(response.code or ""),
+    responseOk = response.ok and true or false,
+  }, {
+    source = "command",
+    plugin = command.owner,
+    severity = response.ok and "info" or "warn",
+    ok = response.ok,
+    code = response.code,
+  })
+
+  return true
+end
+
+BMF.commands.dispatchWithAccess = function(policy, actor, name, args, ar)
+  local command_name = trim_string(name):lower()
+  local evaluator = BMF.permissions and BMF.permissions.evaluateCommandAccess
+  if type(evaluator) ~= "function" then
+    command_output(ar, "BMF " .. command_name .. " ACCESS_ERROR COMMAND_ACCESS_UNAVAILABLE")
+    audit_record("command.denied", {
+      command = command_name,
+      args = args or "",
+      reason = "command-access-unavailable",
+    }, {
+      source = "command",
+      severity = "error",
+      ok = false,
+      code = "COMMAND_ACCESS_UNAVAILABLE",
+    })
+    return false
+  end
+
+  local access = evaluator(policy, actor, command_name)
+  if not access.ok then
+    command_output(ar, "BMF " .. command_name .. " ACCESS_ERROR " .. tostring(access.code or "ACCESS_ERROR"))
+    command_output(ar, "reason=" .. tostring(access.message or ""))
+    audit_record("command.denied", {
+      command = command_name,
+      args = args or "",
+      reason = tostring(access.code or "ACCESS_ERROR"),
+      message = tostring(access.message or ""),
+    }, {
+      source = "command",
+      severity = "warn",
+      ok = false,
+      code = tostring(access.code or "ACCESS_ERROR"),
+    })
+    return false
+  end
+
+  local data = access.data or {}
+  if data.allowed ~= true then
+    local decision = tostring(data.decision or data.reason or "access-denied")
+    command_output(ar, "BMF " .. command_name .. " ACCESS_DENIED " .. decision)
+    command_output(ar, "actor_source=" .. tostring(data.actorSource or ""))
+    command_output(ar, "actor_uuid=" .. tostring(data.uuid or ""))
+    command_output(ar, "matched_roles=" .. table.concat(data.matchedRoles or {}, ","))
+    audit_record("command.denied", {
+      command = command_name,
+      args = args or "",
+      reason = decision,
+      actorSource = data.actorSource or "",
+      uuid = data.uuid or "",
+      actorRoles = data.actorRoles or {},
+      requiredRoles = data.requiredRoles or {},
+      matchedRoles = data.matchedRoles or {},
+      ruleFound = data.ruleFound == true,
+    }, {
+      source = "command",
+      severity = "warn",
+      ok = false,
+      code = "ACCESS_DENIED",
+    })
+    return true
+  end
+
+  audit_record("command.access_granted", {
+    command = command_name,
+    args = args or "",
+    reason = tostring(data.decision or ""),
+    actorSource = data.actorSource or "",
+    uuid = data.uuid or "",
+    actorRoles = data.actorRoles or {},
+    matchedRoles = data.matchedRoles or {},
+    ruleFound = data.ruleFound == true,
+  }, {
+    source = "command",
+    severity = "info",
+    ok = true,
+    code = "ACCESS_GRANTED",
+  })
+
+  return BMF.commands.dispatch(command_name, args, ar)
+end
+
+local function register_builtin_commands()
+  local function health_command_response()
+    local health = BMF.health()
+    return result(true, "OK", "BMF runtime is loaded", {
+      lines = {
+        "version=" .. tostring(health.data.version),
+        "target_build=" .. tostring(health.data.target_build),
+        "compatibility_status=" .. tostring(health.data.compatibility_status),
+        "build_detection=" .. tostring(health.data.build_detection),
+        "runtime_required_helper_groups=" .. tostring(health.data.runtime_required_helper_groups),
+        "runtime_required_helper_groups_available=" .. tostring(health.data.runtime_required_helper_groups_available),
+        "plugins_loaded=" .. tostring(health.data.plugins_loaded),
+        "plugin_errors=" .. tostring(health.data.plugin_errors),
+        "status_path=" .. tostring(health.data.status_path),
+        "log_path=" .. tostring(health.data.log_path),
+      },
+    })
+  end
+
+  local function version_command_response()
+    local compatibility = compatibility_snapshot()
+    return result(true, "OK", "BMF version", {
+      version = VERSION,
+      targetBuild = TARGET_BRICKADIA_BUILD,
+      targetName = TARGET_BRICKADIA_NAME,
+      platform = TARGET_PLATFORM,
+      serverExecutable = TARGET_SERVER_EXECUTABLE,
+      compatibilityStatus = compatibility.status,
+      buildDetection = BUILD_DETECTION_MODE,
+      lines = {
+        "version=" .. tostring(VERSION),
+        "target_name=" .. tostring(TARGET_BRICKADIA_NAME),
+        "target_build=" .. tostring(TARGET_BRICKADIA_BUILD),
+        "platform=" .. tostring(TARGET_PLATFORM),
+        "server_executable=" .. tostring(TARGET_SERVER_EXECUTABLE),
+        "compatibility_status=" .. tostring(compatibility.status),
+        "build_detection=" .. tostring(BUILD_DETECTION_MODE),
+      },
+    })
+  end
+
+  BMF.commands.register("bmf.status", "Show BMF runtime health.", function()
+    return health_command_response()
+  end)
+
+  BMF.commands.register("bmf.health", "Show BMF runtime health.", function()
+    return health_command_response()
+  end)
+
+  BMF.commands.register("bmf.version", "Show BMF version and target build.", function()
+    return version_command_response()
+  end)
+
+  BMF.commands.register("bmf.compatibility", "Show Brickadia and UE4SS compatibility diagnostics.", function()
+    local checked = BMF.compatibility.check()
+    local data = checked.data or {}
+    local ue4ss = data.ue4ss or {}
+    local missing = ue4ss.missingRequiredGroups or {}
+    local lines = {
+      "compatibility_status=" .. tostring(data.status or ""),
+      "target_name=" .. tostring(data.targetName or ""),
+      "target_build=" .. tostring(data.targetBuild or ""),
+      "platform=" .. tostring(data.platform or ""),
+      "server_executable=" .. tostring(data.serverExecutable or ""),
+      "build_detection=" .. tostring(data.buildDetection or ""),
+      "build_detected=" .. tostring(data.buildDetected == true),
+      "detected_build=" .. tostring(data.detectedBuild or ""),
+      "unsupported_build_policy=" .. tostring(data.unsupportedBuildPolicy or ""),
+      "ue4ss_required=" .. tostring(ue4ss.required == true),
+      "ue4ss_status=" .. tostring(ue4ss.status or ""),
+      "required_helper_groups=" .. tostring(ue4ss.requiredGroupCount or 0),
+      "required_helper_groups_available=" .. tostring(ue4ss.requiredGroupsAvailable or 0),
+      "missing_required_helper_groups=" .. table.concat(missing, "|"),
+    }
+
+    for _, group in ipairs(ue4ss.helperGroups or {}) do
+      lines[#lines + 1] = "helper_" .. tostring(group.id or "") .. "_available=" .. tostring(group.available == true)
+      lines[#lines + 1] = "helper_" .. tostring(group.id or "") .. "_required=" .. tostring(group.required == true)
+      lines[#lines + 1] = "helper_" .. tostring(group.id or "") .. "_available_helpers=" .. table.concat(group.availableHelpers or {}, ",")
+      for _, helper in ipairs(group.helpers or {}) do
+        local safe_name = tostring(helper.name or ""):gsub("[^A-Za-z0-9_]", "_")
+        lines[#lines + 1] = "helper_" .. safe_name .. "_type=" .. tostring(helper.type or "nil")
+      end
+    end
+
+    checked.data.lines = lines
+    return checked
+  end)
+
+  BMF.commands.register("bmf.server.status", "Show structured BMF server status.", function()
+    local status = BMF.server.status()
+    local data = status.data or {}
+    local lines = {
+      "version=" .. tostring(data.version or ""),
+      "bmf_status=" .. tostring(data.bmfStatus or ""),
+      "uptime_seconds=" .. tostring(data.uptimeSeconds or 0),
+      "build_id=" .. tostring(data.buildId or ""),
+      "executable=" .. tostring(data.executable or ""),
+      "server_name_status=" .. tostring(data.serverNameStatus or ""),
+      "description_status=" .. tostring(data.descriptionStatus or ""),
+      "world_name_status=" .. tostring(data.worldNameStatus or ""),
+      "brick_count_status=" .. tostring(data.brickCountStatus or ""),
+      "component_count_status=" .. tostring(data.componentCountStatus or ""),
+      "player_count=" .. tostring(data.playerCount or 0),
+      "player_adapter=" .. tostring(data.playerAdapter or ""),
+      "plugins_loaded=" .. tostring((data.plugins and data.plugins.loaded) or 0),
+      "plugin_errors=" .. tostring((data.plugins and data.plugins.errors) or 0),
+      "commands_registered=" .. tostring((data.commands and data.commands.registered) or 0),
+      "timers_active=" .. tostring((data.runtime and data.runtime.timersActive) or 0),
+      "server_ready=" .. tostring((data.runtime and data.runtime.serverReady) or false),
+      "plugin_tick_active=" .. tostring((data.runtime and data.runtime.pluginTickActive) or false),
+      "plugin_tick_count=" .. tostring((data.runtime and data.runtime.pluginTickCount) or 0),
+      "plugin_tick_interval_ms=" .. tostring((data.runtime and data.runtime.pluginTickIntervalMs) or 0),
+      "audit_records=" .. tostring((data.runtime and data.runtime.auditRecords) or 0),
+      "rate_limit_buckets=" .. tostring((data.runtime and data.runtime.rateLimitBuckets) or 0),
+      "api_labels=" .. tostring((data.runtime and data.runtime.apiLabels) or 0),
+      "compatibility_status=" .. tostring((data.runtime and data.runtime.compatibilityStatus) or ""),
+      "target_build=" .. tostring((data.runtime and data.runtime.targetBuild) or ""),
+      "build_detection=" .. tostring((data.runtime and data.runtime.buildDetection) or ""),
+      "required_helper_groups=" .. tostring((data.runtime and data.runtime.requiredHelperGroups) or 0),
+      "required_helper_groups_available=" .. tostring((data.runtime and data.runtime.requiredHelperGroupsAvailable) or 0),
+      "missing_required_helper_groups=" .. tostring((data.runtime and data.runtime.missingRequiredHelperGroups) or 0),
+      "unsafe_global_denials=" .. tostring((data.runtime and data.runtime.unsafeGlobalDenials) or 0),
+      "unsafe_globals_allowed=" .. tostring((data.config and data.config.allowPluginUnsafeGlobals) == true),
+      "status_path=" .. tostring((data.paths and data.paths.status) or ""),
+      "event_log_path=" .. tostring((data.paths and data.paths.events) or ""),
+      "audit_log_path=" .. tostring((data.paths and data.paths.audit) or ""),
+    }
+    return result(true, "OK", "Server status collected", {
+      lines = lines,
+      status = data,
+    })
+  end)
+
+  BMF.commands.register("bmf.server.save", "Save the running world through BMF.server.save.", function(args)
+    local options = parse_command_options(args)
+    local name = options.name or options.savename or options.world
+    local saved = BMF.server.save({ name = name })
+    local lines = {
+      "world=" .. tostring((saved.data and saved.data.world) or ""),
+      "save_name=" .. tostring((saved.data and saved.data.saveName) or ""),
+      "generated_name=" .. tostring((saved.data and saved.data.generatedName) or false),
+    }
+    if saved.data then
+      lines[#lines + 1] = "command=" .. tostring(saved.data.command or "")
+      lines[#lines + 1] = "api=" .. tostring(saved.data.api or "")
+    end
+    saved.data.lines = lines
+    return saved
+  end)
+
+  BMF.commands.register("bmf.server.shutdown", "Gracefully stop the Brickadia server after explicit confirmation.", function(args)
+    local options = parse_command_options(args)
+    local shutdown = BMF.server.shutdown({
+      confirm = options.confirm or options.confirmation,
+      reason = options.reason or "",
+      delayMs = option_number(options, "delayms", option_number(options, "delay", 1000)),
+    })
+    local data = shutdown.data or {}
+    local lines = {
+      "shutdown_scheduled=" .. tostring(data.shutdownScheduled == true),
+      "required_confirmation=" .. tostring(data.requiredConfirmation or ""),
+      "command=" .. tostring(data.command or ""),
+      "delay_ms=" .. tostring(data.delayMs or ""),
+      "reason=" .. tostring(data.reason or ""),
+      "api=" .. tostring(data.api or ""),
+      "executor=" .. tostring(data.executor or ""),
+      "executor_code=" .. tostring(data.executorCode or ""),
+    }
+    shutdown.data = shutdown.data or {}
+    shutdown.data.lines = lines
+    return shutdown
+  end)
+
+  BMF.commands.register("bmf.plugins", "List loaded BMF plugins.", function()
+    local lines = {}
+    local listed = BMF.plugins.list()
+    local plugins = listed.data.plugins or {}
+    if #plugins == 0 then
+      lines[#lines + 1] = "plugins_loaded=0"
+    else
+      lines[#lines + 1] = "plugins_loaded=" .. tostring(#plugins)
+      for _, plugin in ipairs(plugins) do
+        lines[#lines + 1] = "plugin=" .. tostring(plugin.name) ..
+          " version=" .. tostring(plugin.version or "") ..
+          " capabilities=" .. tostring(#(plugin.capabilities or {})) ..
+          " errors=" .. tostring(plugin.errorCount or 0) ..
+          " isolated=" .. tostring(plugin.isolated == true)
+      end
+    end
+    if #state.plugin_errors > 0 then
+      lines[#lines + 1] = "plugin_errors=" .. tostring(#state.plugin_errors)
+    end
+    return result(true, "OK", "Plugins listed", { lines = lines })
+  end)
+
+  BMF.commands.register("bmf.plugins.watchdog", "Show plugin watchdog state.", function()
+    local watched = BMF.plugins.watchdog()
+    local lines = {
+      "watchdog_enabled=" .. tostring((watched.data and watched.data.enabled) == true),
+      "watchdog_threshold=" .. tostring((watched.data and watched.data.threshold) or 0),
+      "watchdog_isolated=" .. tostring((watched.data and watched.data.isolated) or 0),
+    }
+    for index, plugin in ipairs((watched.data and watched.data.plugins) or {}) do
+      local last = plugin.lastError or {}
+      lines[#lines + 1] =
+        "plugin_" .. tostring(index) ..
+        "=" .. tostring(plugin.name or "") ..
+        "|errors=" .. tostring(plugin.errorCount or 0) ..
+        "|isolated=" .. tostring(plugin.isolated == true) ..
+        "|last_hook=" .. tostring(last.hook or "") ..
+        "|last_error=" .. tostring(last.error or "")
+    end
+    watched.data.lines = lines
+    return watched
+  end)
+
+  BMF.commands.register("bmf.apis", "List BMF API stability and crash-risk labels.", function(args)
+    local options = parse_command_options(args)
+    if (options.name == nil or options.name == "") and options._positional and options._positional[1] then
+      options.name = options._positional[1]
+    end
+
+    local listed = nil
+    if options.name and tostring(options.name) ~= "" then
+      listed = BMF.apis.get(options.name)
+      if listed.ok and listed.data and listed.data.api then
+        listed.data.apis = { listed.data.api }
+        listed.data.count = 1
+        listed.data.summary = api_registry_summary(listed.data.apis)
+      end
+    else
+      listed = BMF.apis.list(options)
+    end
+
+    local apis = (listed.data and listed.data.apis) or {}
+    local summary = (listed.data and listed.data.summary) or api_registry_summary(apis)
+    local limit = option_number(options, "limit", 50)
+    if limit < 1 then
+      limit = 1
+    end
+    if limit > 100 then
+      limit = 100
+    end
+
+    local lines = {
+      "api_count=" .. tostring(#apis),
+      "summary_total=" .. tostring(summary.total or #apis),
+      "summary_requires_player=" .. tostring(summary.requiresPlayer or 0),
+      "summary_stability_stable=" .. tostring((summary.stability and summary.stability.stable) or 0),
+      "summary_stability_experimental=" .. tostring((summary.stability and summary.stability.experimental) or 0),
+      "summary_stability_scaffold=" .. tostring((summary.stability and summary.stability.scaffold) or 0),
+      "summary_stability_file_backed=" .. tostring((summary.stability and summary.stability["file-backed"]) or 0),
+      "summary_stability_restricted=" .. tostring((summary.stability and summary.stability.restricted) or 0),
+      "summary_risk_unsafe_native=" .. tostring((summary.risk and summary.risk["unsafe-native"]) or 0),
+      "summary_risk_live_player=" .. tostring((summary.risk and summary.risk["live-player"]) or 0),
+    }
+    local count = math.min(#apis, limit)
+    for index = 1, count do
+      local api = apis[index]
+      lines[#lines + 1] =
+        "api_" .. tostring(index) ..
+        "=" .. tostring(api.name or "") ..
+        "|namespace=" .. tostring(api.namespace or "") ..
+        "|stability=" .. tostring(api.stability or "") ..
+        "|risk=" .. tostring(api.risk or "") ..
+        "|validation=" .. tostring(api.validation or "") ..
+        "|requires_player=" .. tostring(api.requiresPlayer == true) ..
+        "|capability=" .. tostring(api.capability or "")
+    end
+    if #apis > count then
+      lines[#lines + 1] = "api_truncated=" .. tostring(#apis - count)
+    end
+    listed.data = listed.data or {}
+    listed.data.lines = lines
+    return listed
+  end)
+
+  BMF.commands.register("bmf.sandbox", "Show BMF plugin sandbox policy.", function()
+    local policy = BMF.sandbox.policy()
+    local denials = BMF.sandbox.denials()
+    local blocked = (policy.data and policy.data.blockedGlobals) or {}
+    local lines = {
+      "unsafe_globals_allowed=" .. tostring((policy.data and policy.data.allowPluginUnsafeGlobals) == true),
+      "required_capability=" .. tostring((policy.data and policy.data.requiredCapability) or ""),
+      "blocked_globals_count=" .. tostring(#blocked),
+      "denied_lookup_count=" .. tostring((denials.data and denials.data.count) or 0),
+    }
+    for index, name in ipairs(blocked) do
+      lines[#lines + 1] = "blocked_global_" .. tostring(index) .. "=" .. tostring(name)
+    end
+    for index, denial in ipairs((denials.data and denials.data.denials) or {}) do
+      lines[#lines + 1] =
+        "denial_" .. tostring(index) ..
+        "=" .. tostring(denial.plugin or "") ..
+        "|global=" .. tostring(denial.global or "") ..
+        "|count=" .. tostring(denial.count or 0)
+    end
+    policy.data.lines = lines
+    return policy
+  end)
+
+  BMF.commands.register("bmf.commands", "List registered BMF console commands.", function()
+    local lines = {}
+    for _, name in ipairs(sorted_command_names()) do
+      local command = state.commands[name]
+      lines[#lines + 1] = name .. " - " .. tostring(command.description or "")
+    end
+    return result(true, "OK", "Commands listed", { lines = lines })
+  end)
+
+  BMF.commands.register("bmf.audit.tail", "Show recent BMF audit records.", function(args)
+    local options = parse_command_options(args)
+    local recent = BMF.audit.recent(option_number(options, "limit", 10))
+    local lines = {
+      "audit_count=" .. tostring((recent.data and recent.data.count) or 0),
+      "audit_path=" .. AUDIT_LOG_PATH,
+    }
+    if recent.data and type(recent.data.records) == "table" then
+      for index, record in ipairs(recent.data.records) do
+        lines[#lines + 1] =
+          "audit_" .. tostring(index) ..
+          "=" .. tostring(record.action or "") ..
+          "|severity=" .. tostring(record.severity or "") ..
+          "|source=" .. tostring(record.source or "") ..
+          "|code=" .. tostring(record.code or "") ..
+          "|plugin=" .. tostring(record.plugin or "")
+      end
+    end
+    recent.data.lines = lines
+    return recent
+  end)
+
+  BMF.commands.register("bmf.ratelimits", "Show active BMF rate-limit buckets.", function()
+    local listed = BMF.rateLimits.recent()
+    local buckets = (listed.data and listed.data.buckets) or {}
+    local lines = {
+      "bucket_count=" .. tostring(#buckets),
+    }
+    for index, bucket in ipairs(buckets) do
+      lines[#lines + 1] =
+        "bucket_" .. tostring(index) ..
+        "=" .. tostring(bucket.action or "") ..
+        "|subject=" .. tostring(bucket.subject or "") ..
+        "|count=" .. tostring(bucket.count or 0) ..
+        "|retry_after=" .. tostring(bucket.retryAfterSeconds or 0)
+    end
+    listed.data.lines = lines
+    return listed
+  end)
+
+  BMF.commands.register("bmf.tools.applicator.status", "Show live applicator hook status.", function(args)
+    local options = parse_command_options(args)
+    local refresh = tostring(options.refresh or ""):lower()
+    local status = BMF.tools.applicator.status({
+      refresh = refresh == "1" or refresh == "true" or refresh == "yes",
+      limit = option_number(options, "limit", 10),
+    })
+    return status
+  end)
+
+  BMF.commands.register("bmf.tools.applicator.refresh", "Refresh denied applicator component type cache.", function()
+    local refreshed = BMF.tools.applicator.refreshComponentCache()
+    local data = refreshed.data or {}
+    local lines = {
+      "cached_count=" .. tostring(data.cachedCount or 0),
+    }
+    local index = 0
+    for address, cached in pairs(data.cache or {}) do
+      index = index + 1
+      lines[#lines + 1] =
+        "component_cache_" .. tostring(index) .. "=" ..
+        tostring(cached.name or "") .. "|" .. tostring(address) .. "|source=" .. tostring(cached.source or "")
+    end
+    refreshed.data.lines = lines
+    return refreshed
+  end)
+
+  BMF.commands.register("bmf.tools.applicator.native-targets", "Resolve native ServerAddComponent blocker targets.", function(args)
+    local options = parse_command_options(args)
+    local refresh = tostring(options.refresh or "true"):lower()
+    return BMF.tools.applicator.nativeTargets({
+      refresh = not (refresh == "0" or refresh == "false" or refresh == "no"),
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.applicator.scan-objects", "Scan live UE objects for applicator target discovery.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.applicator.scanObjects({
+      pattern = options.pattern or options.patterns or "",
+      name = options.name or options.fullname or "",
+      class = options.class or options.classname or "",
+      any = options.any or "",
+      unsafe = options.unsafe or "",
+      limit = option_number(options, "limit", 50),
+      max = option_number(options, "max", option_number(options, "maxscan", 250000)),
+    })
+  end)
+
+  BMF.commands.register("bmf.unload", "Unload BMF plugins from memory.", function()
+    local unloaded = BMF.unloadPlugins("command")
+    return result(unloaded.ok, unloaded.code, unloaded.message, {
+      lines = {
+        "plugins_unloaded=" .. tostring(unloaded.data.plugins_unloaded or 0),
+        "unload_errors=" .. tostring(unloaded.data.unload_errors or 0),
+      },
+    })
+  end)
+
+  BMF.commands.register("bmf.load", "Load BMF plugins from disk.", function()
+    local loaded = BMF.loadPlugins()
+    return result(loaded.ok, loaded.code, "Plugins loaded", {
+      lines = {
+        "plugins_loaded=" .. tostring(loaded.data.plugins_loaded or 0),
+        "plugin_errors=" .. tostring(loaded.data.plugin_errors or 0),
+      },
+    })
+  end)
+
+  BMF.commands.register("bmf.reload", "Reload BMF plugins from disk.", function()
+    state.plugin_errors = {}
+    local unloaded = BMF.unloadPlugins("reload")
+    state.plugin_watchdog = {}
+    local reload = BMF.loadPlugins()
+    return result(true, "OK", "Plugins reloaded", {
+      lines = {
+        "plugins_unloaded=" .. tostring(unloaded.data.plugins_unloaded),
+        "unload_errors=" .. tostring(unloaded.data.unload_errors),
+        "plugins_loaded=" .. tostring(reload.data.plugins_loaded),
+        "plugin_errors=" .. tostring(reload.data.plugin_errors),
+      },
+    })
+  end)
+
+  BMF.commands.register("bmf.chat.broadcast", "Broadcast a server chat message.", function(args)
+    local message = trim_string(args or "")
+    local prefixed = message:match("^message=(.*)$")
+    if prefixed ~= nil then
+      message = trim_string(prefixed)
+    end
+
+    local broadcast = BMF.chat.broadcast(message)
+    local lines = {
+      "message=" .. tostring(message),
+    }
+    if broadcast.data then
+      lines[#lines + 1] = "executor=" .. tostring(broadcast.data.executor or "")
+      lines[#lines + 1] = "command=" .. tostring(broadcast.data.command or "")
+      lines[#lines + 1] = "delivered=" .. tostring(broadcast.data.delivered or false)
+      lines[#lines + 1] = "delivered_count=" .. tostring(broadcast.data.deliveredCount or 0)
+      lines[#lines + 1] = "attempted_count=" .. tostring(broadcast.data.attemptedCount or 0)
+      lines[#lines + 1] = "delivery_mode=" .. tostring(broadcast.data.deliveryMode or "")
+      lines[#lines + 1] = "validation=" .. tostring(broadcast.data.validation or "")
+    end
+    broadcast.data.lines = lines
+    return broadcast
+  end)
+
+  BMF.commands.register("bmf.chat.whisper", "Send a private chat message to a player.", function(args)
+    local text = tostring(args or "")
+    local target = text:match("target=([^%s]+)") or text:match("player=([^%s]+)") or text:match("uuid=([^%s]+)")
+    local message = text:match("message=(.*)$") or ""
+    local whispered = BMF.chat.whisper(target, trim_string(message))
+    local lines = {
+      "target=" .. tostring(target or ""),
+      "message=" .. tostring(trim_string(message)),
+      "code=" .. tostring(whispered.code or ""),
+    }
+    if whispered.data then
+      lines[#lines + 1] = "delivered=" .. tostring(whispered.data.delivered or false)
+      lines[#lines + 1] = "delivered_count=" .. tostring(whispered.data.deliveredCount or 0)
+      lines[#lines + 1] = "attempted_count=" .. tostring(whispered.data.attemptedCount or 0)
+      lines[#lines + 1] = "delivery_mode=" .. tostring(whispered.data.deliveryMode or "")
+      lines[#lines + 1] = "validation=" .. tostring(whispered.data.validation or "")
+      if whispered.data.adapter ~= nil then
+        lines[#lines + 1] = "adapter=" .. tostring(whispered.data.adapter or "")
+      end
+      if whispered.data.validationRequired ~= nil then
+        lines[#lines + 1] = "validation_required=" .. tostring(whispered.data.validationRequired or "")
+      end
+    end
+    whispered.data = whispered.data or {}
+    whispered.data.lines = lines
+    return whispered
+  end)
+
+  BMF.commands.register("bmf.chat.statusmessage", "Send a private status message to a player.", function(args)
+    local text = tostring(args or "")
+    local target = text:match("target=([^%s]+)") or text:match("player=([^%s]+)") or text:match("uuid=([^%s]+)")
+    local message = text:match("message=(.*)$") or ""
+    local sent = BMF.chat.statusMessage(target, trim_string(message))
+    local lines = {
+      "target=" .. tostring(target or ""),
+      "message=" .. tostring(trim_string(message)),
+      "code=" .. tostring(sent.code or ""),
+    }
+    if sent.data then
+      lines[#lines + 1] = "delivered=" .. tostring(sent.data.delivered or false)
+      lines[#lines + 1] = "delivered_count=" .. tostring(sent.data.deliveredCount or 0)
+      lines[#lines + 1] = "attempted_count=" .. tostring(sent.data.attemptedCount or 0)
+      lines[#lines + 1] = "delivery_mode=" .. tostring(sent.data.deliveryMode or "")
+      lines[#lines + 1] = "validation=" .. tostring(sent.data.validation or "")
+      if sent.data.adapter ~= nil then
+        lines[#lines + 1] = "adapter=" .. tostring(sent.data.adapter or "")
+      end
+      if sent.data.validationRequired ~= nil then
+        lines[#lines + 1] = "validation_required=" .. tostring(sent.data.validationRequired or "")
+      end
+    end
+    sent.data = sent.data or {}
+    sent.data.lines = lines
+    return sent
+  end)
+
+  BMF.commands.register("bmf.players.list", "List known BMF player records.", function()
+    local listed = BMF.players.list()
+    local players = {}
+    if listed.data and type(listed.data.players) == "table" then
+      players = listed.data.players
+    end
+
+    local lines = {
+      "players_count=" .. tostring(#players),
+      "known_players_count=" .. tostring((listed.data and listed.data.knownPlayerCount) or #players),
+      "live_controllers_count=" .. tostring((listed.data and listed.data.liveControllerCount) or 0),
+      "adapter=" .. tostring((listed.data and listed.data.adapter) or "headless-empty"),
+      "cache_path=" .. tostring((listed.data and listed.data.cachePath) or PLAYER_CACHE_PATH),
+    }
+    if listed.data and listed.data.updatedAt then
+      lines[#lines + 1] = "updated_at=" .. tostring(listed.data.updatedAt or "")
+    end
+    if listed.data and listed.data.cacheError and tostring(listed.data.cacheError) ~= "" then
+      lines[#lines + 1] = "cache_error=" .. tostring(listed.data.cacheError)
+    end
+    for index, player in ipairs(players) do
+      lines[#lines + 1] =
+        "player_" .. tostring(index) ..
+        "=" .. tostring(player.uuid or player.id or "") ..
+        "|username=" .. tostring(player.username or "") ..
+        "|display_name=" .. tostring(player.displayName or "") ..
+        "|controller=" .. tostring(player.controllerPath or "")
+    end
+    listed.data.lines = lines
+    return listed
+  end)
+
+  BMF.commands.register("bmf.players.sync", "Sync safe external player identity records into BMF.", function(args)
+    local text = tostring(args or "")
+    local options = parse_command_options(args)
+    local raw = ""
+    local source = tostring(options.source or "command")
+    local adapter = tostring(options.adapter or "external-cache")
+
+    if options.file and tostring(options.file) ~= "" then
+      raw = read_file(tostring(options.file)) or ""
+      source = "file:" .. tostring(options.file)
+    else
+      raw = text:match("json=(.*)$") or text:match("players=(.*)$") or ""
+    end
+
+    if trim_string(raw) == "" then
+      local response = result(false, "INVALID_OPTIONS", "players JSON or file is required", {
+        lines = {
+          "source=" .. source,
+          "adapter=" .. adapter,
+          "cache_path=" .. PLAYER_CACHE_PATH,
+        },
+      })
+      return response
+    end
+
+    local decoded, err = json_decode(raw)
+    if err ~= nil then
+      local response = result(false, "JSON_PARSE_FAILED", "player sync JSON could not be parsed", {
+        error = err,
+        lines = {
+          "source=" .. source,
+          "adapter=" .. adapter,
+          "error=" .. tostring(err),
+          "cache_path=" .. PLAYER_CACHE_PATH,
+        },
+      })
+      return response
+    end
+
+    local records = decoded
+    if type(decoded) == "table" and type(decoded.players) == "table" then
+      records = decoded.players
+      source = tostring(decoded.source or source)
+      adapter = tostring(decoded.adapter or adapter)
+    end
+
+    local synced = BMF.players.sync(records, {
+      source = source,
+      adapter = adapter,
+    })
+    local lines = {
+      "source=" .. source,
+      "adapter=" .. adapter,
+      "players_count=" .. tostring((synced.data and synced.data.playerCount) or 0),
+      "invalid_count=" .. tostring((synced.data and synced.data.invalidCount) or 0),
+      "cache_path=" .. tostring((synced.data and synced.data.cachePath) or PLAYER_CACHE_PATH),
+    }
+    if synced.data and synced.data.updatedAt then
+      lines[#lines + 1] = "updated_at=" .. tostring(synced.data.updatedAt or "")
+    end
+    synced.data = synced.data or {}
+    synced.data.lines = lines
+    return synced
+  end)
+
+  BMF.commands.register("bmf.interact.console", "Forward an Interactable Print-to-Console event into BMF.", function(args)
+    local options = parse_command_options(args)
+    local forwarded = BMF.interact.handleConsoleMessage({
+      source = percent_decode(options.source or options.adapter or "command"),
+      message = percent_decode(options.message or options.tag or options.consoletag or options.value or ""),
+      player = {
+        uuid = tostring(options.player or options.uuid or options.id or options.playerid or ""),
+        username = percent_decode(options.username or options.name or options.playername or ""),
+        displayName = percent_decode(options.displayname or options.display or options.name or ""),
+        controller = percent_decode(options.controller or ""),
+        pawn = percent_decode(options.pawn or ""),
+      },
+      brickName = percent_decode(options.brick or options.brickname or ""),
+      brickAsset = percent_decode(options.asset or options.brickasset or ""),
+      x = options.x,
+      y = options.y,
+      z = options.z,
+    })
+    forwarded.data = forwarded.data or {}
+    forwarded.data.lines = forwarded.data.lines or {}
+    forwarded.data.lines[#forwarded.data.lines + 1] = "code=" .. tostring(forwarded.code or "")
+    forwarded.data.lines[#forwarded.data.lines + 1] = "ok=" .. tostring(forwarded.ok == true)
+    return forwarded
+  end)
+
+  BMF.commands.register("bmf.players.find", "Find a known BMF player record.", function(args)
+    local query = tostring(args or ""):match("query=(.*)$") or tostring(args or "")
+    local found = BMF.players.find(trim_string(query))
+    local lines = {
+      "query=" .. tostring(trim_string(query)),
+      "code=" .. tostring(found.code or ""),
+    }
+    if found.data then
+      lines[#lines + 1] = "adapter=" .. tostring(found.data.adapter or "")
+      if found.data.player then
+        lines[#lines + 1] = "player_uuid=" .. tostring(found.data.player.uuid or "")
+        lines[#lines + 1] = "display_name=" .. tostring(found.data.player.displayName or "")
+        lines[#lines + 1] = "match=" .. tostring(found.data.match or "")
+      end
+    end
+    found.data = found.data or {}
+    found.data.lines = lines
+    return found
+  end)
+
+  BMF.commands.register("bmf.players.getname", "Resolve known BMF player names.", function(args)
+    local query = tostring(args or ""):match("query=(.*)$") or tostring(args or "")
+    local named = BMF.players.getName(trim_string(query))
+    local lines = {
+      "query=" .. tostring(trim_string(query)),
+      "code=" .. tostring(named.code or ""),
+    }
+    if named.data then
+      lines[#lines + 1] = "adapter=" .. tostring(named.data.adapter or "")
+      lines[#lines + 1] = "uuid=" .. tostring(named.data.uuid or "")
+      lines[#lines + 1] = "username=" .. tostring(named.data.username or "")
+      lines[#lines + 1] = "player_name=" .. tostring(named.data.playerName or "")
+      lines[#lines + 1] = "display_name=" .. tostring(named.data.displayName or "")
+      lines[#lines + 1] = "original_name=" .. tostring(named.data.originalName or "")
+    end
+    named.data = named.data or {}
+    named.data.lines = lines
+    return named
+  end)
+
+  BMF.commands.register("bmf.players.summary", "Resolve and optionally whisper a player identity summary.", function(args)
+    local options = parse_command_options(args)
+    local target = trim_string(options.target or options.query or table.concat(options._positional or {}, " "))
+    local whisper = tostring(options.whisper or options.tell or ""):lower()
+    local should_whisper = whisper == "true" or whisper == "1" or whisper == "yes"
+    local summarized = should_whisper and BMF.players.whisperSummary(target) or BMF.players.summary(target)
+    local data = summarized.data or {}
+    local summary_data = data.summary or data
+    local player = summary_data.player or data.player or {}
+
+    local lines = {
+      "target=" .. target,
+      "code=" .. tostring(summarized.code or ""),
+      "player_uuid=" .. tostring(player.uuid or player.id or ""),
+      "username=" .. tostring(player.username or ""),
+      "player_name=" .. tostring(player.playerName or ""),
+      "display_name=" .. tostring(player.displayName or ""),
+      "original_name=" .. tostring(player.originalName or ""),
+      "known_players_count=" .. tostring(summary_data.knownPlayerCount or summary_data.playerCount or 0),
+      "live_controllers_count=" .. tostring(summary_data.liveControllerCount or 0),
+      "adapter=" .. tostring(summary_data.adapter or data.adapter or ""),
+    }
+    if data.message or summary_data.message then
+      lines[#lines + 1] = "message=" .. tostring(data.message or summary_data.message or "")
+    end
+    if should_whisper then
+      lines[#lines + 1] = "whispered=" .. tostring(data.delivered == true)
+      lines[#lines + 1] = "whisper_code=" .. tostring(data.whisperCode or "")
+      lines[#lines + 1] = "delivered_count=" .. tostring(data.deliveredCount or 0)
+      lines[#lines + 1] = "delivery_mode=" .. tostring(data.deliveryMode or "")
+    end
+    summarized.data = summarized.data or {}
+    summarized.data.lines = lines
+    return summarized
+  end)
+
+  BMF.commands.register("bmf.permissions.role-assignments", "Show configured player role assignments.", function(args)
+    local options = parse_command_options(args)
+    local loaded = BMF.permissions.loadRoleAssignments({
+      path = options.path or options.assignments or options.file,
+      savedDir = options.saveddir or options.saved,
+    })
+    local lines = {
+      "code=" .. tostring(loaded.code or ""),
+      "ok=" .. tostring(loaded.ok == true),
+    }
+    if loaded.data and type(loaded.data.lines) == "table" then
+      for _, line in ipairs(loaded.data.lines) do
+        lines[#lines + 1] = line
+      end
+    end
+    if loaded.data and type(loaded.data.players) == "table" then
+      local limit = tonumber(options.limit or 10) or 10
+      if limit < 0 then
+        limit = 0
+      end
+      for index, player in ipairs(loaded.data.players) do
+        if index > limit then
+          break
+        end
+        lines[#lines + 1] = "player_" .. tostring(index) .. "=" ..
+          tostring(player.uuid or "") .. "|roles=" .. table.concat(player.roles or {}, "|")
+      end
+    end
+    loaded.data = loaded.data or {}
+    loaded.data.lines = lines
+    return loaded
+  end)
+
+  BMF.commands.register("bmf.permissions.enforce-nospawnitem", "Patch RoleSetup2 so applicator remains allowed while spawn items are forbidden.", function(args)
+    local options = parse_command_options(args)
+    local enforced = BMF.permissions.enforceNoSpawnItemApplicator({
+      path = options.path or options.rolesetup or options.file,
+      savedDir = options.saveddir or options.saved,
+      dryRun = options.dryrun or options["dry-run"],
+      backup = options.backup,
+    })
+    local lines = {
+      "code=" .. tostring(enforced.code or ""),
+      "ok=" .. tostring(enforced.ok == true),
+    }
+    if enforced.data and type(enforced.data.lines) == "table" then
+      for _, line in ipairs(enforced.data.lines) do
+        lines[#lines + 1] = line
+      end
+    end
+    enforced.data = enforced.data or {}
+    enforced.data.lines = lines
+    return enforced
+  end)
+
+  BMF.commands.register("bmf.minigames.list", "List minigames through the server console.", function()
+    local listed = BMF.minigames.list()
+    local lines = {}
+    if listed.data then
+      lines[#lines + 1] = "command=" .. tostring(listed.data.command or "")
+      lines[#lines + 1] = "executor=" .. tostring(listed.data.executor or "")
+      if listed.data.output and tostring(listed.data.output) ~= "" then
+        lines[#lines + 1] = "output=" .. tostring(listed.data.output)
+      end
+    end
+    listed.data.lines = lines
+    return listed
+  end)
+
+  local function minigame_command_lines(response, action, index, preset, owner)
+    local lines = {
+      "action=" .. tostring(action or ""),
+    }
+    if index ~= nil then
+      lines[#lines + 1] = "index=" .. tostring(index)
+    end
+    if preset ~= nil then
+      lines[#lines + 1] = "preset=" .. tostring(preset)
+    end
+    if owner ~= nil then
+      lines[#lines + 1] = "owner=" .. tostring(owner)
+    end
+    lines[#lines + 1] = "code=" .. tostring(response.code or "")
+    if response.data then
+      lines[#lines + 1] = "command=" .. tostring(response.data.command or "")
+      lines[#lines + 1] = "executor=" .. tostring(response.data.executor or "")
+      if response.data.output and tostring(response.data.output) ~= "" then
+        lines[#lines + 1] = "output=" .. tostring(response.data.output)
+      end
+    end
+    response.data = response.data or {}
+    response.data.lines = lines
+    return response
+  end
+
+  BMF.commands.register("bmf.minigames.loadpreset", "Load a minigame preset through the server console.", function(args)
+    local options = parse_command_options(args)
+    local preset = options.name or options.preset
+    if (not preset or preset == "") and options._positional[1] then
+      preset = options._positional[1]
+    end
+    local owner = options.owner or options.player or ""
+    local loaded = BMF.minigames.loadPreset(preset, owner)
+    return minigame_command_lines(loaded, "loadPreset", nil, preset, owner)
+  end)
+
+  BMF.commands.register("bmf.minigames.savepreset", "Save a minigame preset through the server console.", function(args)
+    local options = parse_command_options(args)
+    local index = options.index or options.minigame
+    if (index == nil or index == "") and options._positional[1] then
+      index = options._positional[1]
+    end
+    local preset = options.name or options.preset
+    if (not preset or preset == "") and options._positional[2] then
+      preset = options._positional[2]
+    end
+    local saved = BMF.minigames.savePreset(index, preset)
+    return minigame_command_lines(saved, "savePreset", index, preset, nil)
+  end)
+
+  BMF.commands.register("bmf.minigames.reset", "Reset a minigame through the server console.", function(args)
+    local options = parse_command_options(args)
+    local index = options.index or options.minigame
+    if (index == nil or index == "") and options._positional[1] then
+      index = options._positional[1]
+    end
+    local reset = BMF.minigames.reset(index)
+    return minigame_command_lines(reset, "reset", index, nil, nil)
+  end)
+
+  BMF.commands.register("bmf.minigames.nextround", "Advance a minigame to the next round through the server console.", function(args)
+    local options = parse_command_options(args)
+    local index = options.index or options.minigame
+    if (index == nil or index == "") and options._positional[1] then
+      index = options._positional[1]
+    end
+    local advanced = BMF.minigames.nextRound(index)
+    return minigame_command_lines(advanced, "nextRound", index, nil, nil)
+  end)
+
+  BMF.commands.register("bmf.minigames.delete", "Delete a minigame through the server console.", function(args)
+    local options = parse_command_options(args)
+    local index = options.index or options.minigame
+    if (index == nil or index == "") and options._positional[1] then
+      index = options._positional[1]
+    end
+    local deleted = BMF.minigames.delete(index)
+    return minigame_command_lines(deleted, "delete", index, nil, nil)
+  end)
+
+  BMF.commands.register("bmf.world.saveas", "Save the running world as a named BRDB.", function(args)
+    local options = parse_command_options(args)
+    local name = options.name or options.world or options.save
+    if not name and options._positional[1] then
+      name = options._positional[1]
+    end
+
+    local save = BMF.world.saveAs(name)
+    local lines = {}
+    if save.data then
+      lines[#lines + 1] = "world=" .. tostring(save.data.world or "")
+      lines[#lines + 1] = "command=" .. tostring(save.data.command or "")
+    end
+    save.data.lines = lines
+    return save
+  end)
+
+  BMF.commands.register("bmf.prefabs.loadbrz", "Load a staged BRZ-derived prefab world.", function(args)
+    local options = parse_command_options(args)
+    local source = options.source or options.brz or options.prefab or options._positional[1] or "Car.brz"
+    local world = options.name or options.world or options.stage or options.stagedworld or options.bundle or options._positional[2]
+    local x = option_number(options, "x", option_number(options, "loadx", 0))
+    local y = option_number(options, "y", option_number(options, "loady", 0))
+    local z = option_number(options, "z", option_number(options, "loadz", 1000))
+    local yaw = option_number(options, "yaw", option_number(options, "loadyaw", 0))
+
+    local loaded = BMF.prefabs.loadBrz({
+      source = source,
+      name = world,
+      position = { x = x, y = y, z = z },
+      yaw = yaw,
+    })
+
+    loaded.data = loaded.data or {}
+    local prefab = loaded.data.prefab or {}
+    local lines = {
+      "source=" .. tostring(source or ""),
+      "world=" .. tostring(world or ""),
+      "x=" .. tostring(x),
+      "y=" .. tostring(y),
+      "z=" .. tostring(z),
+      "yaw=" .. tostring(yaw),
+    }
+    if loaded.data.requiresStaging ~= nil then
+      lines[#lines + 1] = "staging_required=" .. tostring(loaded.data.requiresStaging)
+    end
+    if prefab.stagedWorld then
+      lines[#lines + 1] = "staged_world=" .. tostring(prefab.stagedWorld)
+    end
+    if loaded.data.command then
+      lines[#lines + 1] = "command=" .. tostring(loaded.data.command)
+    end
+    if loaded.data.api then
+      lines[#lines + 1] = "api=" .. tostring(loaded.data.api)
+    end
+    if loaded.ok then
+      lines[#lines + 1] = "next=bmf.world.saveas"
+    elseif loaded.code == "PREFAB_STAGING_REQUIRED" then
+      lines[#lines + 1] = "next=stage-brz-prefab"
+    end
+
+    loaded.data.lines = lines
+    return loaded
+  end)
+
+  BMF.commands.register("bmf.prefabs.loadbrdb", "Load a staged BRDB prefab world.", function(args)
+    local options = parse_command_options(args)
+    local world = options.name or options.world or options.stage or options.stagedworld or options.bundle or options._positional[1]
+    local x = option_number(options, "x", option_number(options, "loadx", 0))
+    local y = option_number(options, "y", option_number(options, "loady", 0))
+    local z = option_number(options, "z", option_number(options, "loadz", 1000))
+    local yaw = option_number(options, "yaw", option_number(options, "loadyaw", 0))
+
+    local loaded = BMF.prefabs.loadBrdb({
+      name = world,
+      position = { x = x, y = y, z = z },
+      yaw = yaw,
+    })
+
+    loaded.data = loaded.data or {}
+    local prefab = loaded.data.prefab or {}
+    local lines = {
+      "world=" .. tostring(world or ""),
+      "x=" .. tostring(x),
+      "y=" .. tostring(y),
+      "z=" .. tostring(z),
+      "yaw=" .. tostring(yaw),
+    }
+    if prefab.stagedWorld then
+      lines[#lines + 1] = "staged_world=" .. tostring(prefab.stagedWorld)
+    end
+    if loaded.data.command then
+      lines[#lines + 1] = "command=" .. tostring(loaded.data.command)
+    end
+    if loaded.data.api then
+      lines[#lines + 1] = "api=" .. tostring(loaded.data.api)
+    end
+    if loaded.ok then
+      lines[#lines + 1] = "next=bmf.world.saveas"
+    end
+
+    loaded.data.lines = lines
+    return loaded
+  end)
+
+  BMF.commands.register("bmf.vehicles.spawnset", "Load a staged vehicle spawn set.", function(args)
+    local options = parse_command_options(args)
+    local prefix = options.prefix or options.worldnameprefix or options.world or options.name or "BMF_VehicleSpawnSet"
+    local count = math.floor(option_number(options, "count", option_number(options, "vehiclecount", 3)))
+    local start_x = option_number(options, "startx", option_number(options, "x", 70000))
+    local y = option_number(options, "y", option_number(options, "loady", 0))
+    local z = option_number(options, "z", option_number(options, "loadz", 1000))
+    local step_x = option_number(options, "stepx", 2000)
+    local yaw = option_number(options, "yaw", option_number(options, "loadyaw", 0))
+
+    local spawned = BMF.vehicles.spawnSet({
+      worldNamePrefix = prefix,
+      vehicleCount = count,
+      start = { x = start_x, y = y, z = z },
+      step = { x = step_x },
+      yaw = yaw,
+    })
+
+    local lines = {
+      "prefix=" .. tostring(prefix),
+      "requested_count=" .. tostring(count),
+      "loaded_count=" .. tostring(spawned.data and spawned.data.vehicleCount or 0),
+    }
+    if spawned.data and type(spawned.data.responses) == "table" then
+      for _, item in ipairs(spawned.data.responses) do
+        local data = item.data or {}
+        local position = data.position or {}
+        lines[#lines + 1] = table.concat({
+          "vehicle=" .. tostring(data.vehicleIndex or ""),
+          "world=" .. tostring(data.stagedWorld or ""),
+          "ok=" .. tostring(item.ok),
+          "x=" .. tostring(position.x or ""),
+          "y=" .. tostring(position.y or ""),
+          "z=" .. tostring(position.z or ""),
+        }, " ")
+      end
+    end
+    spawned.data.lines = lines
+    return spawned
+  end)
+
+  BMF.commands.register("bmf.vehicles.snapshot", "Save the running world for vehicle inventory parsing.", function(args)
+    local options = parse_command_options(args)
+    local name = options.name or options.world or options.save
+    if not name and options._positional[1] then
+      name = options._positional[1]
+    end
+    if not name or trim_string(name) == "" then
+      name = "BMF_VehicleSnapshot_" .. os.date("!%Y%m%d%H%M%S")
+    end
+
+    local save = BMF.world.saveAs(name)
+    local lines = {}
+    if save.data then
+      lines[#lines + 1] = "world=" .. tostring(save.data.world or "")
+      lines[#lines + 1] = "command=" .. tostring(save.data.command or "")
+      lines[#lines + 1] = "next=summarize-vehicle-graphs"
+      lines[#lines + 1] = "inventory=export-vehicle-inventory"
+    end
+    save.data.lines = lines
+    return save
+  end)
+end
+
+local function normalize_settings_text(value, label, max_length)
+  if value == nil then
+    return nil, nil
+  end
+  if type(value) ~= "string" then
+    return nil, label .. " must be a string"
+  end
+  local text = value:gsub("\r", " "):gsub("\n", " ")
+  if text:match("[%z\001-\008\011\012\014-\031]") then
+    return nil, label .. " contains unsupported control characters"
+  end
+  if max_length and #text > max_length then
+    return nil, label .. " must be " .. tostring(max_length) .. " characters or fewer"
+  end
+  return text, nil
+end
+
+local function normalize_settings_bool(value, label)
+  if value == nil then
+    return nil, nil
+  end
+  if type(value) == "boolean" then
+    return value, nil
+  end
+  if type(value) == "string" then
+    local lower = trim_string(value):lower()
+    if lower == "true" or lower == "1" or lower == "yes" or lower == "public" then
+      return true, nil
+    end
+    if lower == "false" or lower == "0" or lower == "no" or lower == "private" then
+      return false, nil
+    end
+  end
+  return nil, label .. " must be a boolean"
+end
+
+BMF.server.planSettingsPatch = function(options)
+  if type(options) ~= "table" then
+    return result(false, "INVALID_OPTIONS", "settings options table is required")
+  end
+
+  local settings = {}
+  local changes = {}
+  local errors = {}
+
+  local function set_text(field, ini_key, label, max_length)
+    local text, err = normalize_settings_text(options[field], label, max_length)
+    if err then
+      errors[#errors + 1] = err
+      return
+    end
+    if text ~= nil then
+      settings[ini_key] = text
+      changes[#changes + 1] = ini_key
+    end
+  end
+
+  set_text("serverName", "ServerName", "serverName", 128)
+  if settings.ServerName == nil then
+    set_text("name", "ServerName", "name", 128)
+  end
+  set_text("serverDescription", "ServerDescription", "serverDescription", 512)
+  if settings.ServerDescription == nil then
+    set_text("description", "ServerDescription", "description", 512)
+  end
+  set_text("password", "ServerPassword", "password", 128)
+  set_text("welcomeMessage", "WelcomeMessage", "welcomeMessage", 512)
+
+  local max_players_source = options.maxPlayers
+  if max_players_source == nil then
+    max_players_source = options.players
+  end
+  if max_players_source ~= nil then
+    local max_players, err = normalize_integer(max_players_source, "maxPlayers")
+    if err then
+      errors[#errors + 1] = err
+    elseif max_players < 1 or max_players > 255 then
+      errors[#errors + 1] = "maxPlayers must be between 1 and 255"
+    else
+      settings.MaxPlayers = max_players
+      changes[#changes + 1] = "MaxPlayers"
+    end
+  end
+
+  local public_source = options.publiclyListed
+  if public_source == nil then
+    public_source = options.public
+  end
+  if public_source ~= nil then
+    local publicly_listed, err = normalize_settings_bool(public_source, "publiclyListed")
+    if err then
+      errors[#errors + 1] = err
+    else
+      settings.bPubliclyListed = publicly_listed
+      changes[#changes + 1] = "bPubliclyListed"
+    end
+  end
+
+  if #errors > 0 then
+    return result(false, "INVALID_SETTINGS", table.concat(errors, "; "), {
+      errors = errors,
+    })
+  end
+
+  if #changes == 0 then
+    return result(false, "NO_SETTINGS", "at least one setting is required")
+  end
+
+  return result(true, "OK", "Server settings patch planned", {
+    settings = settings,
+    changes = changes,
+  })
+end
+
+BMF.permissions = {}
+BMF.permissions.SPAWN_ITEMS = "BR.Permission.SpawnItems"
+BMF.permissions.APPLICATOR_SAFE = {
+  "BR.Permission.Building",
+  "BR.Permission.Building.Applicator",
+  "BR.Permission.Building.Applicator.EditBricks",
+  "BR.Permission.Building.Applicator.EditEntities",
+}
+BMF.permissions.APPLICATOR_DENIED_COMPONENTS = {
+  "SpawnItem",
+  "ItemSpawn",
+}
+BMF.permissions.INTERACT_CONSOLE_ADMIN_ROLES = {
+  "Owner",
+  "Admin",
+}
+BMF.permissions.INTERACT_CONSOLE_ALLOWED_PREFIXES = {}
+
+BMF.permissions.normalizeName = function(name)
+  local value = trim_string(name)
+  if value == "" then
+    return result(false, "INVALID_PERMISSION", "permission name is required")
+  end
+  if value:match("[%c]") or value:match("[/\\]") then
+    return result(false, "INVALID_PERMISSION", "permission name contains unsupported characters")
+  end
+  return result(true, "OK", "Permission name is valid", { name = value })
+end
+
+BMF.permissions.normalizeRoleName = function(name)
+  local value = trim_string(name)
+  if value == "" then
+    return result(false, "INVALID_ROLE_NAME", "role name is required")
+  end
+  if #value > 64 then
+    return result(false, "INVALID_ROLE_NAME", "role name must be 64 characters or fewer")
+  end
+  if value:match("[%c]") or value:match("[/\\]") then
+    return result(false, "INVALID_ROLE_NAME", "role name contains unsupported characters")
+  end
+  return result(true, "OK", "Role name is valid", { name = value })
+end
+
+BMF.permissions.toMap = function(permissions)
+  local map = {}
+  if type(permissions) ~= "table" then
+    return map
+  end
+
+  for key, value in pairs(permissions) do
+    if type(key) == "string" then
+      local allowed = permission_state_to_bool(value)
+      if allowed ~= nil then
+        map[key] = allowed
+      end
+    elseif type(value) == "string" then
+      map[value] = true
+    elseif type(value) == "table" and type(value.name) == "string" then
+      local allowed = permission_state_to_bool(value.state)
+      if allowed == nil then
+        allowed = permission_state_to_bool(value.allowed)
+      end
+      if allowed ~= nil then
+        map[value.name] = allowed
+      end
+    end
+  end
+
+  return map
+end
+
+local function permission_bool_to_state(value)
+  if value == true then
+    return "Allowed"
+  end
+  if value == false then
+    return "Forbidden"
+  end
+  return "missing"
+end
+
+BMF.permissions.describeRole = function(role)
+  if type(role) ~= "table" then
+    return result(false, "INVALID_ROLE", "role table is required")
+  end
+
+  local role_name = first_string(role.name, role.roleName, role.displayName) or ""
+  local entries = {}
+  local permissions = {}
+  local counts = {}
+  local invalid = {}
+
+  if type(role.permissions) == "table" then
+    for _, permission in ipairs(role.permissions) do
+      local permission_name = nil
+      local state = nil
+      local allowed = nil
+
+      if type(permission) == "string" then
+        permission_name = permission
+        state = "Allowed"
+        allowed = true
+      elseif type(permission) == "table" and type(permission.name) == "string" then
+        permission_name = permission.name
+        state = first_string(permission.state, permission.status, permission.value) or ""
+        allowed = permission_state_to_bool(permission.state)
+        if allowed == nil then
+          allowed = permission_state_to_bool(permission.allowed)
+        end
+        if state == "" then
+          state = permission_bool_to_state(allowed)
+        end
+      end
+
+      if permission_name then
+        local normalized = BMF.permissions.normalizeName(permission_name)
+        if normalized.ok then
+          permission_name = normalized.data.name
+          counts[permission_name] = (counts[permission_name] or 0) + 1
+          if permissions[permission_name] == nil and allowed ~= nil then
+            permissions[permission_name] = allowed
+          end
+          entries[#entries + 1] = {
+            name = permission_name,
+            state = state,
+            allowed = allowed,
+          }
+        else
+          invalid[#invalid + 1] = tostring(permission_name)
+        end
+      end
+    end
+  end
+
+  local duplicates = {}
+  for name, count in pairs(counts) do
+    if count > 1 then
+      duplicates[#duplicates + 1] = {
+        name = name,
+        count = count,
+      }
+    end
+  end
+  table.sort(duplicates, function(a, b)
+    return tostring(a.name) < tostring(b.name)
+  end)
+
+  return result(true, "OK", "Role permissions described", {
+    roleName = role_name,
+    permissionCount = #entries,
+    permissions = permissions,
+    entries = entries,
+    duplicates = duplicates,
+    duplicateCount = #duplicates,
+    invalid = invalid,
+    invalidCount = #invalid,
+  })
+end
+
+local function evaluate_no_spawn_item_role_policy(role, options)
+  options = type(options) == "table" and options or {}
+  local described = BMF.permissions.describeRole(role)
+  if not described.ok then
+    return described
+  end
+
+  local data = described.data or {}
+  local permissions = data.permissions or {}
+  local allow_inherited_spawn_items = options.allowInheritedSpawnItems == true
+  local required = {}
+  local missing_allowed = {}
+  for _, permission_name in ipairs(BMF.permissions.APPLICATOR_SAFE) do
+    local allowed = permissions[permission_name] == true
+    required[#required + 1] = {
+      name = permission_name,
+      allowed = allowed,
+      state = permission_bool_to_state(permissions[permission_name]),
+    }
+    if not allowed then
+      missing_allowed[#missing_allowed + 1] = permission_name
+    end
+  end
+
+  local spawn_items_allowed = permissions[BMF.permissions.SPAWN_ITEMS]
+  local spawn_items_missing = spawn_items_allowed == nil
+  local spawn_items_forbidden = spawn_items_allowed == false
+    or (allow_inherited_spawn_items and spawn_items_missing)
+  local spawn_items_state = permission_bool_to_state(spawn_items_allowed)
+  if allow_inherited_spawn_items and spawn_items_missing then
+    spawn_items_state = "Inherited"
+  end
+  local spawn_items_entry_count = 0
+  for _, entry in ipairs(data.entries or {}) do
+    if entry.name == BMF.permissions.SPAWN_ITEMS then
+      spawn_items_entry_count = spawn_items_entry_count + 1
+    end
+  end
+  local compliant = #missing_allowed == 0 and spawn_items_forbidden and (data.duplicateCount or 0) == 0 and (data.invalidCount or 0) == 0
+
+  return result(true, "OK", "No-spawn-item applicator policy evaluated", {
+    policy = "noSpawnItemApplicator",
+    compliant = compliant,
+    roleName = data.roleName or "",
+    safeApplicatorAllowed = #missing_allowed == 0,
+    spawnItemsForbidden = spawn_items_forbidden,
+    spawnItemsState = spawn_items_state,
+    spawnItemsInherited = allow_inherited_spawn_items and spawn_items_missing,
+    spawnItemsEntryCount = spawn_items_entry_count,
+    spawnItemsDuplicateCount = math.max(spawn_items_entry_count - 1, 0),
+    allowInheritedSpawnItems = allow_inherited_spawn_items,
+    requiredAllowed = required,
+    missingAllowed = missing_allowed,
+    duplicateCount = data.duplicateCount or 0,
+    duplicates = data.duplicates or {},
+    invalidCount = data.invalidCount or 0,
+    invalid = data.invalid or {},
+    permissionCount = data.permissionCount or 0,
+  })
+end
+
+BMF.permissions.evaluateNoSpawnItemApplicator = function(role)
+  return evaluate_no_spawn_item_role_policy(role)
+end
+
+local function normalize_component_key(value)
+  local text = trim_string(value)
+  if text == "" then
+    return result(false, "INVALID_COMPONENT", "component name is required")
+  end
+  if text:match("[%c]") then
+    return result(false, "INVALID_COMPONENT", "component name contains unsupported characters")
+  end
+
+  local key = text:lower():gsub("[^a-z0-9]", "")
+  if key == "" then
+    return result(false, "INVALID_COMPONENT", "component name did not contain searchable characters")
+  end
+  if key:sub(-9) == "component" then
+    key = key:sub(1, #key - 9)
+  end
+
+  return result(true, "OK", "Component name normalized", {
+    name = text,
+    key = key,
+  })
+end
+
+local function component_rule_list(value, fallback)
+  if type(value) == "table" then
+    return value
+  end
+  if type(fallback) == "table" then
+    return fallback
+  end
+  return {}
+end
+
+local function normalize_component_rules(values)
+  local rules = {}
+  if type(values) ~= "table" then
+    return rules
+  end
+
+  for _, value in ipairs(values) do
+    local normalized = normalize_component_key(value)
+    if normalized.ok then
+      rules[#rules + 1] = normalized.data
+    end
+  end
+  return rules
+end
+
+local function component_matches_rule(component_key, rule_key)
+  if not component_key or not rule_key or rule_key == "" then
+    return false
+  end
+  if component_key == rule_key then
+    return true
+  end
+  return component_key:sub(0 - #rule_key) == rule_key
+end
+
+local function find_component_rule(component_key, rules)
+  for _, rule in ipairs(rules or {}) do
+    if component_matches_rule(component_key, rule.key) then
+      return rule
+    end
+  end
+  return nil
+end
+
+BMF.permissions.evaluateApplicatorComponentAccess = function(options)
+  if type(options) == "string" then
+    options = { component = options }
+  end
+  if type(options) ~= "table" then
+    return result(false, "INVALID_COMPONENT_POLICY", "options table or component string is required")
+  end
+
+  local component_source = options.component or options.componentName or options.name or options.type
+  local component = normalize_component_key(component_source)
+  if not component.ok then
+    return component
+  end
+
+  local policy = type(options.policy) == "table" and options.policy or {}
+  local denied_components = component_rule_list(
+    options.deniedComponents or options.denyComponents or options.blockedComponents or policy.deniedComponents or policy.denyComponents or policy.blockedComponents,
+    BMF.permissions.APPLICATOR_DENIED_COMPONENTS
+  )
+  local allowed_components = component_rule_list(
+    options.allowedComponents or options.allowComponents or policy.allowedComponents or policy.allowComponents,
+    nil
+  )
+
+  local denied_rules = normalize_component_rules(denied_components)
+  local allowed_rules = normalize_component_rules(allowed_components)
+  local denied_match = find_component_rule(component.data.key, denied_rules)
+  local allowed_match = find_component_rule(component.data.key, allowed_rules)
+
+  local actor = options.actor or options.player or {}
+  local actor_uuid = ""
+  local actor_name = ""
+  if type(actor) == "table" then
+    actor_uuid = first_string(actor.uuid, actor.id, actor.playerId, actor.playerID) or ""
+    actor_name = first_string(actor.username, actor.name, actor.displayName, actor.playerName) or ""
+  elseif type(actor) == "string" then
+    actor_uuid = actor
+  end
+
+  local allowed = true
+  local decision = "component-allowed"
+  local reason = "component is not denied"
+  local matched_component = ""
+
+  if denied_match then
+    allowed = false
+    decision = "component-denied"
+    reason = "component matched denied applicator component policy"
+    matched_component = denied_match.name
+  elseif #allowed_rules > 0 and not allowed_match then
+    allowed = false
+    decision = "component-not-allowlisted"
+    reason = "component did not match allowlisted applicator components"
+  elseif allowed_match then
+    matched_component = allowed_match.name
+    reason = "component matched allowlisted applicator component policy"
+  end
+
+  return result(true, "OK", "Applicator component access evaluated", {
+    policy = "applicatorComponentAccess",
+    allowed = allowed,
+    decision = decision,
+    reason = reason,
+    component = component.data.name,
+    componentKey = component.data.key,
+    matchedComponent = matched_component,
+    deniedComponentCount = #denied_rules,
+    allowedComponentCount = #allowed_rules,
+    actorUuid = actor_uuid,
+    actorName = actor_name,
+    global = true,
+  })
+end
+
+local function normalize_interact_prefix(value)
+  local text = trim_string(value)
+  if text == "" then
+    return nil
+  end
+  if text:match("[%c]") then
+    return nil
+  end
+  return {
+    name = text,
+    key = text:lower(),
+  }
+end
+
+local function normalize_interact_prefix_rules(values)
+  local rules = {}
+  if type(values) ~= "table" then
+    return rules
+  end
+  for _, value in ipairs(values) do
+    local rule = normalize_interact_prefix(value)
+    if rule then
+      rules[#rules + 1] = rule
+    end
+  end
+  return rules
+end
+
+local function normalize_role_list(value)
+  local roles = {}
+  local seen = {}
+  local function add(role)
+    local normalized = BMF.permissions.normalizeRoleName(role)
+    if normalized.ok then
+      local name = normalized.data.name
+      local key = name:lower()
+      if not seen[key] then
+        seen[key] = true
+        roles[#roles + 1] = name
+      end
+    end
+  end
+
+  if type(value) == "string" then
+    for role in value:gmatch("[^,|]+") do
+      add(role)
+    end
+  elseif type(value) == "table" then
+    for _, role in ipairs(value) do
+      add(role)
+    end
+  end
+  return roles
+end
+
+local function actor_role_list(actor, explicit_roles)
+  local roles = normalize_role_list(explicit_roles)
+  if #roles > 0 then
+    return roles
+  end
+  if type(actor) == "table" then
+    roles = normalize_role_list(actor.roles or actor.roleNames or actor.role)
+    if #roles > 0 then
+      return roles
+    end
+  end
+  return {}
+end
+
+local function find_role_match(roles, allowed_roles)
+  local map = {}
+  for _, role in ipairs(roles or {}) do
+    map[tostring(role):lower()] = tostring(role)
+  end
+  for _, allowed in ipairs(allowed_roles or {}) do
+    local matched = map[tostring(allowed):lower()]
+    if matched then
+      return matched
+    end
+  end
+  return ""
+end
+
+local function find_interact_prefix_match(tag_key, rules)
+  for _, rule in ipairs(rules or {}) do
+    if tag_key:sub(1, #rule.key) == rule.key then
+      return rule
+    end
+  end
+  return nil
+end
+
+BMF.permissions.evaluateInteractConsolePrefixAccess = function(options)
+  if type(options) == "string" then
+    options = { tag = options }
+  end
+  if type(options) ~= "table" then
+    return result(false, "INVALID_INTERACT_CONSOLE_POLICY", "options table or tag string is required")
+  end
+
+  local policy = type(options.policy) == "table" and options.policy or {}
+  local raw_tag = first_string(options.tag, options.consoleTag, options.message, options.value, policy.tag) or ""
+  local tag = trim_string(raw_tag)
+  if tag:match("[%c]") then
+    return result(false, "INVALID_INTERACT_CONSOLE_TAG", "Interact console tag contains unsupported characters", {
+      tag = tostring(raw_tag or ""),
+    })
+  end
+
+  local actor = options.actor or options.player or {}
+  local actor_uuid = ""
+  local actor_name = ""
+  if type(actor) == "table" then
+    actor_uuid = first_string(actor.uuid, actor.id, actor.playerId, actor.playerID) or ""
+    actor_name = first_string(actor.username, actor.name, actor.displayName, actor.playerName) or ""
+  elseif type(actor) == "string" then
+    actor_uuid = actor
+  end
+
+  local allowed_prefixes = component_rule_list(
+    options.allowedPrefixes or options.allowPrefixes or options.prefixes or policy.allowedPrefixes or policy.allowPrefixes or policy.prefixes,
+    BMF.permissions.INTERACT_CONSOLE_ALLOWED_PREFIXES
+  )
+  local admin_roles = component_rule_list(
+    options.adminRoles or options.bypassRoles or policy.adminRoles or policy.bypassRoles,
+    BMF.permissions.INTERACT_CONSOLE_ADMIN_ROLES
+  )
+  local prefix_rules = normalize_interact_prefix_rules(allowed_prefixes)
+  local bypass_roles = normalize_role_list(admin_roles)
+  local roles = actor_role_list(actor, options.roles or policy.roles)
+  local matched_role = find_role_match(roles, bypass_roles)
+  local allow_empty = options.allowEmpty
+  if allow_empty == nil then
+    allow_empty = policy.allowEmpty
+  end
+  allow_empty = allow_empty ~= false
+  local deny_unknown = options.denyUnknown
+  if deny_unknown == nil then
+    deny_unknown = policy.denyUnknown
+  end
+  deny_unknown = deny_unknown ~= false
+
+  local tag_key = tag:lower()
+  local matched_prefix = ""
+  local allowed = false
+  local decision = "prefix-denied"
+  local reason = "interact console tag did not match an allowed prefix"
+
+  if tag == "" and allow_empty then
+    allowed = true
+    decision = "empty-allowed"
+    reason = "empty interact console tag is allowed"
+  elseif matched_role ~= "" then
+    allowed = true
+    decision = "admin-bypass"
+    reason = "actor matched an interact console bypass role"
+  else
+    local rule = find_interact_prefix_match(tag_key, prefix_rules)
+    if rule then
+      allowed = true
+      decision = "prefix-allowed"
+      reason = "interact console tag matched an allowed prefix"
+      matched_prefix = rule.name
+    elseif not deny_unknown then
+      allowed = true
+      decision = "unknown-allowed"
+      reason = "unknown interact console prefixes are allowed by policy"
+    end
+  end
+
+  return result(true, "OK", "Interact console prefix access evaluated", {
+    policy = "interactConsolePrefixAccess",
+    allowed = allowed,
+    decision = decision,
+    reason = reason,
+    tag = tag,
+    normalizedTag = tag_key,
+    matchedPrefix = matched_prefix,
+    actorUuid = actor_uuid,
+    actorName = actor_name,
+    roles = roles,
+    matchedRole = matched_role,
+    allowedPrefixCount = #prefix_rules,
+    adminRoleCount = #bypass_roles,
+    denyUnknown = deny_unknown,
+    allowEmpty = allow_empty,
+  })
+end
+
+local function role_assignments_path_from_options(options)
+  options = type(options) == "table" and options or {}
+  local explicit = first_string(options.path, options.roleAssignmentsPath, options.file)
+  if explicit then
+    return explicit:gsub("\\", "/"), nil
+  end
+
+  local saved_dir = first_string(options.savedDir, state.config.brickadiaSavedDir)
+  if not saved_dir then
+    return nil, "brickadiaSavedDir is not configured"
+  end
+
+  return join_path(saved_dir, "Server/RoleAssignments.json"), nil
+end
+
+BMF.permissions.loadRoleAssignments = function(options)
+  options = type(options) == "table" and options or {}
+  local path, path_error = role_assignments_path_from_options(options)
+  if not path then
+    return result(false, "ROLE_ASSIGNMENTS_PATH_UNAVAILABLE", path_error or "RoleAssignments path is unavailable", {
+      configuredSavedDir = tostring(state.config.brickadiaSavedDir or ""),
+      lines = {
+        "ok=false",
+        "code=ROLE_ASSIGNMENTS_PATH_UNAVAILABLE",
+        "configured_saved_dir=" .. tostring(state.config.brickadiaSavedDir or ""),
+      },
+    })
+  end
+
+  local raw = read_file(path)
+  if raw == nil or trim_string(raw) == "" then
+    return result(false, "ROLE_ASSIGNMENTS_NOT_FOUND", "RoleAssignments.json was not found or empty", {
+      path = path,
+      lines = {
+        "ok=false",
+        "code=ROLE_ASSIGNMENTS_NOT_FOUND",
+        "path=" .. tostring(path),
+      },
+    })
+  end
+
+  local decoded, err = json_decode(raw)
+  if err ~= nil or type(decoded) ~= "table" then
+    return result(false, "JSON_PARSE_FAILED", "RoleAssignments.json could not be parsed", {
+      path = path,
+      error = tostring(err or "decoded value was not an object"),
+      lines = {
+        "ok=false",
+        "code=JSON_PARSE_FAILED",
+        "path=" .. tostring(path),
+        "error=" .. tostring(err or "decoded value was not an object"),
+      },
+    })
+  end
+
+  local described = BMF.permissions.describeRoleAssignments(decoded)
+  if not described.ok then
+    return described
+  end
+
+  local lines = {
+    "path=" .. tostring(path),
+    "player_count=" .. tostring(described.data and described.data.playerCount or 0),
+    "invalid_player_count=" .. tostring(described.data and described.data.invalidPlayerCount or 0),
+    "invalid_role_count=" .. tostring(described.data and described.data.invalidRoleCount or 0),
+    "duplicate_role_count=" .. tostring(described.data and described.data.duplicateRoleCount or 0),
+  }
+
+  return result(true, "OK", "Role assignments loaded", {
+    path = path,
+    assignments = decoded,
+    players = described.data and described.data.players or {},
+    playerCount = described.data and described.data.playerCount or 0,
+    invalidPlayers = described.data and described.data.invalidPlayers or {},
+    invalidPlayerCount = described.data and described.data.invalidPlayerCount or 0,
+    invalidRoleCount = described.data and described.data.invalidRoleCount or 0,
+    duplicateRoleCount = described.data and described.data.duplicateRoleCount or 0,
+    lines = lines,
+  })
+end
+
+local function role_setup_path_from_options(options)
+  options = type(options) == "table" and options or {}
+  local explicit = first_string(options.path, options.roleSetupPath, options.file)
+  if explicit then
+    return explicit:gsub("\\", "/"), nil
+  end
+
+  local saved_dir = first_string(options.savedDir, state.config.brickadiaSavedDir)
+  if not saved_dir then
+    return nil, "brickadiaSavedDir is not configured"
+  end
+
+  return join_path(saved_dir, "Server/RoleSetup2.json"), nil
+end
+
+local function role_name_or_default(role, fallback)
+  if type(role) == "table" then
+    return first_string(role.name, role.roleName, role.displayName, fallback) or tostring(fallback or "")
+  end
+  return tostring(fallback or "")
+end
+
+local function patch_no_spawn_item_role(role, fallback_name, options)
+  options = type(options) == "table" and options or {}
+  if type(role) ~= "table" then
+    return nil, result(false, "INVALID_ROLE", "role table is required")
+  end
+
+  local allow_inherited_spawn_items = options.allowInheritedSpawnItems == true
+  local before = evaluate_no_spawn_item_role_policy(role, {
+    allowInheritedSpawnItems = allow_inherited_spawn_items,
+  })
+  local before_data = before.data or {}
+  local patch = nil
+  if allow_inherited_spawn_items then
+    patch = {
+      allow = BMF.permissions.APPLICATOR_SAFE,
+    }
+    if before_data.spawnItemsState == "Allowed" or (before_data.spawnItemsDuplicateCount or 0) > 0 then
+      patch.forbid = {
+        BMF.permissions.SPAWN_ITEMS,
+      }
+    end
+  else
+    patch = {
+      noSpawnItemApplicator = true,
+    }
+  end
+
+  local planned = BMF.permissions.planRolePatch(role, patch)
+  if not planned.ok then
+    return nil, planned
+  end
+
+  local after = evaluate_no_spawn_item_role_policy(planned.data and planned.data.role or {}, {
+    allowInheritedSpawnItems = allow_inherited_spawn_items,
+  })
+  local after_data = after.data or {}
+  local changed = before_data.compliant ~= true
+    or before_data.spawnItemsState ~= after_data.spawnItemsState
+    or before_data.safeApplicatorAllowed ~= after_data.safeApplicatorAllowed
+    or before_data.duplicateCount ~= after_data.duplicateCount
+    or before_data.invalidCount ~= after_data.invalidCount
+
+  return planned.data.role, result(true, "OK", "Role patched", {
+    roleName = role_name_or_default(role, fallback_name),
+    changed = changed,
+    beforeCompliant = before_data.compliant == true,
+    afterCompliant = after_data.compliant == true,
+    beforeSpawnItemsState = tostring(before_data.spawnItemsState or ""),
+    afterSpawnItemsState = tostring(after_data.spawnItemsState or ""),
+    allowInheritedSpawnItems = allow_inherited_spawn_items,
+    spawnItemsInherited = after_data.spawnItemsInherited == true,
+    safeApplicatorAllowed = after_data.safeApplicatorAllowed == true,
+  })
+end
+
+BMF.permissions.enforceNoSpawnItemApplicator = function(options)
+  options = type(options) == "table" and options or {}
+  local path, path_error = role_setup_path_from_options(options)
+  if not path then
+    return result(false, "ROLE_SETUP_PATH_UNAVAILABLE", path_error or "RoleSetup2 path is unavailable", {
+      configuredSavedDir = tostring(state.config.brickadiaSavedDir or ""),
+      lines = {
+        "ok=false",
+        "code=ROLE_SETUP_PATH_UNAVAILABLE",
+        "configured_saved_dir=" .. tostring(state.config.brickadiaSavedDir or ""),
+      },
+    })
+  end
+
+  local raw = read_file(path)
+  if raw == nil or trim_string(raw) == "" then
+    return result(false, "ROLE_SETUP_NOT_FOUND", "RoleSetup2.json was not found or empty", {
+      path = path,
+      lines = {
+        "ok=false",
+        "code=ROLE_SETUP_NOT_FOUND",
+        "path=" .. tostring(path),
+      },
+    })
+  end
+
+  local decoded, err = json_decode(raw)
+  if err ~= nil or type(decoded) ~= "table" then
+    return result(false, "JSON_PARSE_FAILED", "RoleSetup2.json could not be parsed", {
+      path = path,
+      error = tostring(err or "decoded value was not an object"),
+      lines = {
+        "ok=false",
+        "code=JSON_PARSE_FAILED",
+        "path=" .. tostring(path),
+        "error=" .. tostring(err or "decoded value was not an object"),
+      },
+    })
+  end
+
+  local role_reports = {}
+  local patched_roles = {}
+  local errors = {}
+  local changed_count = 0
+
+  if type(decoded.defaultRole) == "table" then
+    local patched, report = patch_no_spawn_item_role(decoded.defaultRole, "Default")
+    if patched then
+      role_reports[#role_reports + 1] = report.data
+      if report.data and report.data.changed then
+        decoded.defaultRole = patched
+        changed_count = changed_count + 1
+        patched_roles[#patched_roles + 1] = report.data.roleName
+      end
+    else
+      errors[#errors + 1] = tostring(report.code or "DEFAULT_ROLE_PATCH_FAILED")
+    end
+  else
+    errors[#errors + 1] = "defaultRole missing"
+  end
+
+  if type(decoded.roles) == "table" then
+    for index, role in ipairs(decoded.roles) do
+      if type(role) == "table" then
+        local patched, report = patch_no_spawn_item_role(role, "role_" .. tostring(index), {
+          allowInheritedSpawnItems = true,
+        })
+        if patched then
+          role_reports[#role_reports + 1] = report.data
+          if report.data and report.data.changed then
+            decoded.roles[index] = patched
+            changed_count = changed_count + 1
+            patched_roles[#patched_roles + 1] = report.data.roleName
+          end
+        else
+          errors[#errors + 1] = tostring(report.code or "ROLE_PATCH_FAILED") .. ":" .. tostring(index)
+        end
+      end
+    end
+  end
+
+  if #errors > 0 then
+    return result(false, "ROLE_PATCH_FAILED", "One or more roles could not be patched", {
+      path = path,
+      errors = errors,
+      lines = {
+        "ok=false",
+        "code=ROLE_PATCH_FAILED",
+        "path=" .. tostring(path),
+        "errors=" .. table.concat(errors, "|"),
+      },
+    })
+  end
+
+  local dry_run = options.dryRun == true or options.dryrun == true
+    or tostring(options.dryRun or options.dryrun or ""):lower() == "true"
+    or tostring(options.write or ""):lower() == "false"
+  local backup_enabled = not (
+    options.backup == false
+      or tostring(options.backup or ""):lower() == "false"
+      or tostring(options.backup or "") == "0"
+  )
+  local backup_path = ""
+  local written = false
+
+  if not dry_run and changed_count > 0 then
+    if backup_enabled then
+      backup_path = path .. ".bmf-backup-" .. os.date("!%Y%m%d%H%M%S") .. ".json"
+      if not write_file(backup_path, raw) then
+        return result(false, "ROLE_SETUP_BACKUP_FAILED", "Could not write RoleSetup2 backup", {
+          path = path,
+          backupPath = backup_path,
+          lines = {
+            "ok=false",
+            "code=ROLE_SETUP_BACKUP_FAILED",
+            "path=" .. tostring(path),
+            "backup_path=" .. tostring(backup_path),
+          },
+        })
+      end
+    end
+
+    if not write_file(path, json_encode(decoded) .. "\n") then
+      return result(false, "ROLE_SETUP_WRITE_FAILED", "Could not write patched RoleSetup2.json", {
+        path = path,
+        backupPath = backup_path,
+        lines = {
+          "ok=false",
+          "code=ROLE_SETUP_WRITE_FAILED",
+          "path=" .. tostring(path),
+          "backup_path=" .. tostring(backup_path),
+        },
+      })
+    end
+    written = true
+  end
+
+  local lines = {
+    "path=" .. tostring(path),
+    "dry_run=" .. tostring(dry_run),
+    "changed=" .. tostring(changed_count > 0),
+    "written=" .. tostring(written),
+    "patched_role_count=" .. tostring(changed_count),
+    "role_count=" .. tostring(#role_reports),
+    "patched_roles=" .. table.concat(patched_roles, "|"),
+    "backup_path=" .. tostring(backup_path),
+    "restart_required=" .. tostring(changed_count > 0),
+    "live_hot_reload_supported=false",
+  }
+
+  return result(true, "OK", "No-spawn-item applicator role policy enforced", {
+    path = path,
+    dryRun = dry_run,
+    changed = changed_count > 0,
+    written = written,
+    backupPath = backup_path,
+    roleCount = #role_reports,
+    patchedRoleCount = changed_count,
+    patchedRoles = patched_roles,
+    roles = role_reports,
+    restartRequired = changed_count > 0,
+    liveHotReloadSupported = false,
+    lines = lines,
+  })
+end
+
+BMF.permissions.planRolePatch = function(role, patch)
+  if type(role) ~= "table" then
+    return result(false, "INVALID_ROLE", "role table is required")
+  end
+  if type(patch) ~= "table" then
+    patch = {}
+  end
+
+  local planned = copy_table(role)
+  if type(planned.permissions) ~= "table" then
+    planned.permissions = {}
+  end
+
+  local permissions = {}
+  local by_name = {}
+  for _, permission in ipairs(planned.permissions) do
+    if type(permission) == "table" and type(permission.name) == "string" and by_name[permission.name] == nil then
+      local entry = {
+        name = permission.name,
+        state = first_string(permission.state, "Allowed") or "Allowed",
+      }
+      permissions[#permissions + 1] = entry
+      by_name[entry.name] = entry
+    end
+  end
+
+  local changes = {
+    allowed = {},
+    forbidden = {},
+    removed = {},
+  }
+
+  local function list_or_empty(value)
+    if type(value) == "table" then
+      return value
+    end
+    return {}
+  end
+
+  local function set_permission(name, state, bucket)
+    local normalized = BMF.permissions.normalizeName(name)
+    if not normalized.ok then
+      return
+    end
+    local permission_name = normalized.data.name
+    local entry = by_name[permission_name]
+    if not entry then
+      entry = { name = permission_name, state = state }
+      permissions[#permissions + 1] = entry
+      by_name[permission_name] = entry
+    else
+      entry.state = state
+    end
+    changes[bucket][#changes[bucket] + 1] = permission_name
+  end
+
+  local function remove_permission(name)
+    local normalized = BMF.permissions.normalizeName(name)
+    if not normalized.ok then
+      return
+    end
+    local permission_name = normalized.data.name
+    local next_permissions = {}
+    for _, permission in ipairs(permissions) do
+      if permission.name ~= permission_name then
+        next_permissions[#next_permissions + 1] = permission
+      end
+    end
+    permissions = next_permissions
+    by_name[permission_name] = nil
+    changes.removed[#changes.removed + 1] = permission_name
+  end
+
+  if patch.noSpawnItemApplicator then
+    for _, permission in ipairs(BMF.permissions.APPLICATOR_SAFE) do
+      set_permission(permission, "Allowed", "allowed")
+    end
+    set_permission(BMF.permissions.SPAWN_ITEMS, "Forbidden", "forbidden")
+  end
+
+  for _, permission in ipairs(list_or_empty(patch.allow)) do
+    set_permission(permission, "Allowed", "allowed")
+  end
+  for _, permission in ipairs(list_or_empty(patch.forbid)) do
+    set_permission(permission, "Forbidden", "forbidden")
+  end
+  for _, permission in ipairs(list_or_empty(patch.remove)) do
+    remove_permission(permission)
+  end
+
+  planned.permissions = permissions
+  return result(true, "OK", "Role patch planned", {
+    role = planned,
+    changes = changes,
+  })
+end
+
+local function normalize_role_list(value)
+  local roles = {}
+  local seen = {}
+  local invalid = {}
+  local duplicates = {}
+
+  if type(value) ~= "table" then
+    return roles, invalid, duplicates
+  end
+
+  for _, role in ipairs(value) do
+    local normalized = BMF.permissions.normalizeRoleName(role)
+    if normalized.ok then
+      local role_name = normalized.data.name
+      local key = role_name:lower()
+      if seen[key] then
+        duplicates[#duplicates + 1] = role_name
+      else
+        seen[key] = true
+        roles[#roles + 1] = role_name
+      end
+    else
+      invalid[#invalid + 1] = tostring(role)
+    end
+  end
+
+  return roles, invalid, duplicates
+end
+
+local function player_uuid_from_value(value)
+  if type(value) == "string" then
+    return trim_string(value)
+  end
+  if type(value) == "table" then
+    return first_string(value.uuid, value.playerId, value.playerID, value.id)
+  end
+  return nil
+end
+
+BMF.permissions.describeRoleAssignments = function(assignments)
+  if type(assignments) ~= "table" then
+    return result(false, "INVALID_ASSIGNMENTS", "role assignments table is required")
+  end
+
+  local source = assignments.savedPlayerRoles
+  if type(source) ~= "table" then
+    source = {}
+  end
+
+  local players = {}
+  local invalid_players = {}
+  local duplicate_role_count = 0
+  local invalid_role_count = 0
+  local player_ids = {}
+
+  for player_id in pairs(source) do
+    player_ids[#player_ids + 1] = tostring(player_id)
+  end
+  table.sort(player_ids)
+
+  for _, player_id in ipairs(player_ids) do
+    local record = source[player_id]
+    if not is_uuid(player_id) then
+      invalid_players[#invalid_players + 1] = player_id
+    else
+      local role_values = {}
+      if type(record) == "table" and type(record.roles) == "table" then
+        role_values = record.roles
+      end
+      local roles, invalid, duplicates = normalize_role_list(role_values)
+      duplicate_role_count = duplicate_role_count + #duplicates
+      invalid_role_count = invalid_role_count + #invalid
+      players[#players + 1] = {
+        uuid = player_id,
+        roles = roles,
+        roleCount = #roles,
+        invalidRoles = invalid,
+        invalidRoleCount = #invalid,
+        duplicateRoles = duplicates,
+        duplicateRoleCount = #duplicates,
+      }
+    end
+  end
+
+  return result(true, "OK", "Role assignments described", {
+    players = players,
+    playerCount = #players,
+    invalidPlayers = invalid_players,
+    invalidPlayerCount = #invalid_players,
+    duplicateRoleCount = duplicate_role_count,
+    invalidRoleCount = invalid_role_count,
+  })
+end
+
+BMF.permissions.getPlayerRoles = function(assignments, player)
+  local uuid = player_uuid_from_value(player)
+  if not is_uuid(uuid) then
+    return result(false, "INVALID_PLAYER_ID", "player UUID is missing or invalid")
+  end
+
+  if type(assignments) ~= "table" then
+    return result(false, "INVALID_ASSIGNMENTS", "role assignments table is required")
+  end
+
+  local source = assignments.savedPlayerRoles
+  local record = type(source) == "table" and source[uuid] or nil
+  local roles, invalid, duplicates = {}, {}, {}
+  local found = type(record) == "table"
+  if found then
+    roles, invalid, duplicates = normalize_role_list(record.roles)
+  end
+
+  return result(true, "OK", "Player roles resolved", {
+    uuid = uuid,
+    found = found,
+    roles = roles,
+    roleCount = #roles,
+    invalidRoles = invalid,
+    invalidRoleCount = #invalid,
+    duplicateRoles = duplicates,
+    duplicateRoleCount = #duplicates,
+  })
+end
+
+BMF.permissions.playerHasRole = function(assignments, player, role)
+  local normalized = BMF.permissions.normalizeRoleName(role)
+  if not normalized.ok then
+    return result(false, "INVALID_ROLE_NAME", normalized.message)
+  end
+
+  local resolved = BMF.permissions.getPlayerRoles(assignments, player)
+  if not resolved.ok then
+    return resolved
+  end
+
+  local requested = normalized.data.name:lower()
+  local matched = ""
+  for _, item in ipairs((resolved.data and resolved.data.roles) or {}) do
+    if tostring(item):lower() == requested then
+      matched = item
+      break
+    end
+  end
+
+  return result(true, "OK", "Player role membership checked", {
+    uuid = resolved.data.uuid,
+    role = normalized.data.name,
+    hasRole = matched ~= "",
+    matchedRole = matched,
+    roles = resolved.data.roles or {},
+    roleCount = resolved.data.roleCount or 0,
+    found = resolved.data.found == true,
+  })
+end
+
+local function normalize_command_policy_value(value, default)
+  if type(value) == "boolean" then
+    return value and "allow" or "deny"
+  end
+
+  local text = trim_string(value):lower()
+  if text == "" then
+    return default
+  end
+
+  if text == "allow" or text == "allowed" or text == "true" or text == "yes" then
+    return "allow"
+  end
+  if text == "deny" or text == "denied" or text == "forbid" or text == "forbidden" or text == "false" or text == "no" then
+    return "deny"
+  end
+
+  return default
+end
+
+local function command_policy_deny_enabled(value)
+  if type(value) == "boolean" then
+    return value
+  end
+
+  local text = trim_string(value):lower()
+  return text == "true" or text == "yes" or text == "deny" or text == "denied" or text == "forbid" or text == "forbidden"
+end
+
+local function normalize_command_policy_name(value)
+  local command_name = trim_string(value):lower()
+  if command_name == "" then
+    return result(false, "INVALID_COMMAND", "command name is required")
+  end
+  if not command_name:match("^bmf%.[a-z0-9_.%-]+$") then
+    return result(false, "INVALID_COMMAND", "command name must start with bmf. and use simple tokens")
+  end
+  return result(true, "OK", "Command name is valid", { name = command_name })
+end
+
+local function append_role_values(target, value)
+  if type(value) == "string" then
+    target[#target + 1] = value
+  elseif type(value) == "table" then
+    for _, item in ipairs(value) do
+      target[#target + 1] = item
+    end
+  end
+end
+
+local function normalize_command_role_fields(source, fields)
+  local values = {}
+  if type(source) == "table" then
+    for _, field in ipairs(fields) do
+      append_role_values(values, source[field])
+    end
+  end
+  return normalize_role_list(values)
+end
+
+local function role_map_from_list(roles)
+  local map = {}
+  for _, role in ipairs(roles or {}) do
+    map[tostring(role):lower()] = tostring(role)
+  end
+  return map
+end
+
+local function intersect_roles(actor_roles, required_roles)
+  local matched = {}
+  local actor_map = role_map_from_list(actor_roles)
+  for _, role in ipairs(required_roles or {}) do
+    local actor_role = actor_map[tostring(role):lower()]
+    if actor_role then
+      matched[#matched + 1] = actor_role
+    end
+  end
+  return matched
+end
+
+local function find_command_policy_rule(commands, command_name)
+  if type(commands) ~= "table" then
+    return nil
+  end
+
+  local direct = commands[command_name]
+  if direct ~= nil then
+    return direct
+  end
+
+  for key, value in pairs(commands) do
+    if type(key) == "string" and trim_string(key):lower() == command_name then
+      return value
+    end
+  end
+  return nil
+end
+
+BMF.permissions.evaluateCommandAccess = function(policy, actor, command)
+  if type(policy) ~= "table" then
+    return result(false, "INVALID_POLICY", "command policy table is required")
+  end
+
+  local normalized_command = normalize_command_policy_name(command)
+  if not normalized_command.ok then
+    return normalized_command
+  end
+  local command_name = normalized_command.data.name
+
+  local actor_source = ""
+  local actor_uuid = player_uuid_from_value(actor)
+  local actor_role_values = {}
+  if type(actor) == "table" then
+    actor_source = first_string(actor.source, actor.actorSource, actor.kind) or ""
+    append_role_values(actor_role_values, actor.roles)
+    append_role_values(actor_role_values, actor.roleNames)
+  end
+  actor_source = trim_string(actor_source):lower()
+  if actor_source == "" then
+    actor_source = "player"
+  end
+
+  local actor_roles, invalid_actor_roles, duplicate_actor_roles = normalize_role_list(actor_role_values)
+  local role_source = #actor_roles > 0 and "actor" or "none"
+  local assignment_found = false
+  local assignments = policy.assignments
+  if type(assignments) ~= "table" then
+    assignments = policy.roleAssignments
+  end
+  if type(assignments) == "table" and is_uuid(actor_uuid) then
+    local resolved = BMF.permissions.getPlayerRoles(assignments, actor_uuid)
+    if resolved.ok then
+      assignment_found = resolved.data and resolved.data.found == true
+      local merged = {}
+      append_role_values(merged, actor_roles)
+      append_role_values(merged, resolved.data and resolved.data.roles)
+      actor_roles, invalid_actor_roles, duplicate_actor_roles = normalize_role_list(merged)
+      if assignment_found then
+        role_source = role_source == "actor" and "actor+assignments" or "assignments"
+      end
+    end
+  end
+
+  local default_value = policy.default
+  if default_value == nil then
+    default_value = policy.defaultAccess
+  end
+  local console_value = policy.console
+  if console_value == nil then
+    console_value = policy.consoleAccess
+  end
+  local default_policy = normalize_command_policy_value(default_value, "deny")
+  local console_policy = normalize_command_policy_value(console_value, nil)
+  local rule = find_command_policy_rule(policy.commands, command_name)
+  local rule_found = rule ~= nil
+
+  local required_roles = {}
+  local denied_roles = {}
+  local invalid_policy_roles = {}
+  local duplicate_policy_roles = {}
+  local matched_roles = {}
+  local explicit = nil
+
+  if actor_source == "console" and console_policy ~= nil then
+    local allowed = console_policy == "allow"
+    return result(true, "OK", "Command access evaluated", {
+      command = command_name,
+      actorSource = actor_source,
+      uuid = actor_uuid or "",
+      allowed = allowed,
+      decision = allowed and "console-source" or "console-denied",
+      reason = allowed and "console-source" or "console-denied",
+      ruleFound = rule_found,
+      defaultPolicy = default_policy,
+      consolePolicy = console_policy,
+      actorRoles = actor_roles,
+      actorRoleCount = #actor_roles,
+      requiredRoles = required_roles,
+      matchedRoles = matched_roles,
+      deniedRoles = denied_roles,
+      invalidActorRoles = invalid_actor_roles,
+      duplicateActorRoles = duplicate_actor_roles,
+      invalidPolicyRoles = invalid_policy_roles,
+      duplicatePolicyRoles = duplicate_policy_roles,
+      assignmentFound = assignment_found,
+      roleSource = role_source,
+    })
+  end
+
+  if type(rule) == "boolean" then
+    explicit = rule and "allow" or "deny"
+  elseif type(rule) == "string" then
+    explicit = normalize_command_policy_value(rule, nil)
+  elseif type(rule) == "table" then
+    local rule_policy_value = rule.access
+    if rule_policy_value == nil then
+      rule_policy_value = rule.effect
+    end
+    if rule_policy_value == nil then
+      rule_policy_value = rule.policy
+    end
+    explicit = normalize_command_policy_value(rule_policy_value, nil)
+    local allow_setting = normalize_command_policy_value(rule.allow, nil)
+    if allow_setting ~= nil then
+      explicit = allow_setting
+    end
+    if command_policy_deny_enabled(rule.deny) or explicit == "deny" then
+      explicit = "deny"
+    end
+
+    local invalid_required = {}
+    local duplicate_required = {}
+    required_roles, invalid_required, duplicate_required = normalize_command_role_fields(rule, {
+      "roles",
+      "allowedRoles",
+      "requiredRoles",
+      "anyRole",
+      "anyRoles",
+    })
+    local invalid_denied = {}
+    local duplicate_denied = {}
+    denied_roles, invalid_denied, duplicate_denied = normalize_command_role_fields(rule, {
+      "denyRoles",
+      "deniedRoles",
+      "blockedRoles",
+    })
+    append_role_values(invalid_policy_roles, invalid_required)
+    append_role_values(invalid_policy_roles, invalid_denied)
+    append_role_values(duplicate_policy_roles, duplicate_required)
+    append_role_values(duplicate_policy_roles, duplicate_denied)
+  end
+
+  local allowed = false
+  local decision = ""
+  if explicit == "deny" then
+    allowed = false
+    decision = "explicit-deny"
+  else
+    local denied_matches = intersect_roles(actor_roles, denied_roles)
+    if #denied_matches > 0 then
+      allowed = false
+      decision = "role-denied"
+      matched_roles = denied_matches
+    elseif #required_roles > 0 then
+      matched_roles = intersect_roles(actor_roles, required_roles)
+      allowed = #matched_roles > 0
+      decision = allowed and "role-allowed" or "role-missing"
+    elseif explicit == "allow" then
+      allowed = true
+      decision = "explicit-allow"
+    else
+      allowed = default_policy == "allow"
+      decision = rule_found and ("default-" .. default_policy) or ("unknown-command-default-" .. default_policy)
+    end
+  end
+
+  return result(true, "OK", "Command access evaluated", {
+    command = command_name,
+    actorSource = actor_source,
+    uuid = actor_uuid or "",
+    allowed = allowed,
+    decision = decision,
+    reason = decision,
+    ruleFound = rule_found,
+    defaultPolicy = default_policy,
+    consolePolicy = console_policy or "",
+    actorRoles = actor_roles,
+    actorRoleCount = #actor_roles,
+    requiredRoles = required_roles,
+    matchedRoles = matched_roles,
+    deniedRoles = denied_roles,
+    invalidActorRoles = invalid_actor_roles,
+    duplicateActorRoles = duplicate_actor_roles,
+    invalidPolicyRoles = invalid_policy_roles,
+    duplicatePolicyRoles = duplicate_policy_roles,
+    assignmentFound = assignment_found,
+    roleSource = role_source,
+  })
+end
+
+BMF.permissions.planPlayerRoleAssignment = function(assignments, patch)
+  if type(assignments) ~= "table" then
+    assignments = {}
+  end
+  if type(patch) ~= "table" then
+    return result(false, "INVALID_OPTIONS", "assignment patch table is required")
+  end
+
+  local uuid = first_string(patch.uuid, patch.id, patch.playerId, patch.playerID)
+  if not is_uuid(uuid) then
+    return result(false, "INVALID_PLAYER_ID", "player UUID is missing or invalid")
+  end
+
+  local planned = copy_table(assignments)
+  if type(planned.savedPlayerRoles) ~= "table" then
+    planned.savedPlayerRoles = {}
+  end
+
+  local record = planned.savedPlayerRoles[uuid]
+  if type(record) ~= "table" then
+    record = { roles = {} }
+    planned.savedPlayerRoles[uuid] = record
+  end
+  if type(record.roles) ~= "table" then
+    record.roles = {}
+  end
+
+  local roles = {}
+  local seen = {}
+  local errors = {}
+
+  local function push_role(role)
+    local normalized = BMF.permissions.normalizeRoleName(role)
+    if not normalized.ok then
+      errors[#errors + 1] = normalized.message
+      return
+    end
+    local role_name = normalized.data.name
+    local key = role_name:lower()
+    if not seen[key] then
+      roles[#roles + 1] = role_name
+      seen[key] = true
+    end
+  end
+
+  local function list_or_empty(value)
+    if type(value) == "table" then
+      return value
+    end
+    return {}
+  end
+
+  if type(patch.set) == "table" then
+    for _, role in ipairs(patch.set) do
+      push_role(role)
+    end
+  elseif type(patch.roles) == "table" then
+    for _, role in ipairs(patch.roles) do
+      push_role(role)
+    end
+  else
+    for _, role in ipairs(record.roles) do
+      push_role(role)
+    end
+  end
+
+  local removed = {}
+  local remove_map = {}
+  for _, role in ipairs(list_or_empty(patch.remove or patch.revoke)) do
+    local normalized = BMF.permissions.normalizeRoleName(role)
+    if normalized.ok then
+      remove_map[normalized.data.name:lower()] = normalized.data.name
+    else
+      errors[#errors + 1] = normalized.message
+    end
+  end
+
+  if patch.clear then
+    for _, role in ipairs(roles) do
+      removed[#removed + 1] = role
+    end
+    roles = {}
+    seen = {}
+  elseif next(remove_map) ~= nil then
+    local kept = {}
+    for _, role in ipairs(roles) do
+      if remove_map[role:lower()] then
+        removed[#removed + 1] = role
+      else
+        kept[#kept + 1] = role
+      end
+    end
+    roles = kept
+    seen = {}
+    for _, role in ipairs(roles) do
+      seen[role:lower()] = true
+    end
+  end
+
+  local added = {}
+  for _, role in ipairs(list_or_empty(patch.add or patch.grant)) do
+    local before_count = #roles
+    push_role(role)
+    if #roles > before_count then
+      added[#added + 1] = roles[#roles]
+    end
+  end
+
+  if #errors > 0 then
+    return result(false, "INVALID_ROLE_ASSIGNMENT", table.concat(errors, "; "), {
+      errors = errors,
+    })
+  end
+
+  record.roles = roles
+  if #roles == 0 and patch.deleteWhenEmpty then
+    planned.savedPlayerRoles[uuid] = nil
+  end
+
+  return result(true, "OK", "Player role assignment patch planned", {
+    assignments = planned,
+    uuid = uuid,
+    roles = roles,
+    added = added,
+    removed = removed,
+  })
+end
+
+local remove_tool_handlers_for_owner
+
+BMF.tools = {}
+BMF.tools.applicator = {}
+
+do
+
+local APPLICATOR_TRACE_PATH = RUNTIME_DIR .. "/logs/applicator.jsonl"
+local APPLICATOR_HOOK_CANDIDATES = {
+  "Function /Script/Brickadia.BRTool_Applicator.ServerAddComponent",
+  "Function /Script/Brickadia.BRTool_Applicator:ServerAddComponent",
+  "/Script/Brickadia.BRTool_Applicator:ServerAddComponent",
+  "/Script/Brickadia.BRTool_Applicator.ServerAddComponent",
+  "ServerAddComponent",
+}
+
+local APPLICATOR_MODIFY_HOOK_CANDIDATES = {
+  "Function /Script/Brickadia.BRTool_Applicator.ServerModifyComponent",
+  "Function /Script/Brickadia.BRTool_Applicator:ServerModifyComponent",
+  "/Script/Brickadia.BRTool_Applicator:ServerModifyComponent",
+  "/Script/Brickadia.BRTool_Applicator.ServerModifyComponent",
+  "ServerModifyComponent",
+}
+
+local APPLICATOR_CONTEXT_CANDIDATES = {
+  "BRTool_Applicator",
+  "Tool_Applicator_C",
+}
+
+local function tool_object_valid(object)
+  if object == nil or type(object) ~= "userdata" then
+    return false
+  end
+  if type(object.IsValid) ~= "function" then
+    return true
+  end
+  local ok, is_valid = pcall(function()
+    return object:IsValid()
+  end)
+  return ok and is_valid == true
+end
+
+local function tool_object_address_from_string(object)
+  local hex = tostring(object or ""):match("UObject:%s*([0-9A-Fa-f]+)")
+  if hex and hex ~= "" then
+    return "0x" .. hex
+  end
+  return ""
+end
+
+local function tool_object_address(object)
+  if object == nil or type(object) ~= "userdata" then
+    return ""
+  end
+  if type(object.GetAddress) == "function" then
+    local ok, address = pcall(function()
+      return object:GetAddress()
+    end)
+    if ok and type(address) == "number" then
+      return string.format("0x%X", address)
+    end
+    if ok and type(address) == "string" then
+      local hex = address:match("0x[0-9A-Fa-f]+") or address:match("([0-9A-Fa-f]+)")
+      if hex and hex ~= "" then
+        if hex:match("^0x") then
+          return hex
+        end
+        return "0x" .. hex
+      end
+    end
+  end
+  return tool_object_address_from_string(object)
+end
+
+local function tool_object_full_name(object)
+  if not tool_object_valid(object) or type(object.GetFullName) ~= "function" then
+    return ""
+  end
+  local ok, full_name = pcall(function()
+    return object:GetFullName()
+  end)
+  if ok and full_name ~= nil then
+    local text = trim_string(full_name)
+    if text ~= "." and text ~= "" then
+      return text
+    end
+  end
+  return ""
+end
+
+local function tool_object_class_full_name(object)
+  if not tool_object_valid(object) or type(object.GetClass) ~= "function" then
+    return ""
+  end
+  local ok, class_object = pcall(function()
+    return object:GetClass()
+  end)
+  if ok and tool_object_valid(class_object) then
+    return tool_object_full_name(class_object)
+  end
+  return ""
+end
+
+local function tool_param_get(value)
+  if value ~= nil and type(value.get) == "function" then
+    local ok, unwrapped = pcall(function()
+      return value:get()
+    end)
+    if ok then
+      return unwrapped, true
+    end
+  end
+  if value ~= nil and type(value.Get) == "function" then
+    local ok, unwrapped = pcall(function()
+      return value:Get()
+    end)
+    if ok then
+      return unwrapped, true
+    end
+  end
+  return value, false
+end
+
+local function tool_param_set(value, replacement)
+  if value ~= nil and type(value.set) == "function" then
+    local ok = pcall(function()
+      value:set(replacement)
+    end)
+    if ok then
+      return true
+    end
+  end
+  if value ~= nil and type(value.Set) == "function" then
+    local ok = pcall(function()
+      value:Set(replacement)
+    end)
+    if ok then
+      return true
+    end
+  end
+  return false
+end
+
+local function tool_try_property(object, name)
+  if not tool_object_valid(object) then
+    return nil
+  end
+  if type(object.GetPropertyValue) == "function" then
+    local ok, value = pcall(function()
+      return object:GetPropertyValue(name)
+    end)
+    if ok and value ~= nil then
+      return value
+    end
+  end
+  local ok, value = pcall(function()
+    return object[name]
+  end)
+  if ok and value ~= nil then
+    return value
+  end
+  return nil
+end
+
+local function applicator_add_candidate(candidates, seen, value, source)
+  local text = trim_string(value or "")
+  if text == "" or text == "." then
+    return
+  end
+  local key = source .. ":" .. text
+  if seen[key] then
+    return
+  end
+  seen[key] = true
+  candidates[#candidates + 1] = {
+    value = text,
+    source = source,
+  }
+end
+
+local function applicator_component_aliases(name)
+  local aliases = {}
+  local seen = {}
+  local function add(value)
+    local text = trim_string(value or "")
+    if text == "" then
+      return
+    end
+    local normalized = normalize_component_key(text)
+    local key = normalized.ok and normalized.data.key or text:lower()
+    if seen[key] then
+      return
+    end
+    seen[key] = true
+    aliases[#aliases + 1] = text:gsub("[^A-Za-z0-9_]", "")
+  end
+
+  add(name)
+  local normalized = normalize_component_key(name)
+  local key = normalized.ok and normalized.data.key or ""
+  if key == "spawnitem" then
+    add("ItemSpawn")
+  elseif key == "itemspawn" then
+    add("SpawnItem")
+  end
+  return aliases
+end
+
+local function applicator_component_class_candidates(name)
+  local candidates = {}
+  local seen = {}
+  local function add(value)
+    local text = trim_string(value or "")
+    if text == "" or seen[text] then
+      return
+    end
+    seen[text] = true
+    candidates[#candidates + 1] = text
+  end
+
+  for _, alias in ipairs(applicator_component_aliases(name)) do
+    add("BrickComponentType_" .. alias)
+    add("UBrickComponentType_" .. alias)
+    add("BrickComponentData_" .. alias)
+    add("UBrickComponentData_" .. alias)
+  end
+  return candidates
+end
+
+local function applicator_cache_component_address(name, object, source)
+  local address = tool_object_address(object)
+  if address == "" then
+    return false
+  end
+  local cache = state.tools.applicator.component_cache
+  cache[address] = {
+    name = tostring(name or ""),
+    address = address,
+    source = tostring(source or ""),
+    fullName = tool_object_full_name(object),
+    className = tool_object_class_full_name(object),
+  }
+  return true
+end
+
+local function applicator_find_first_of(class_name)
+  if type(FindFirstOf) ~= "function" then
+    return nil, "FindFirstOf unavailable"
+  end
+  local ok, object = pcall(FindFirstOf, class_name)
+  if ok and (tool_object_valid(object) or tool_object_address_from_string(object) ~= "") then
+    return object, nil
+  end
+  return nil, tostring(object or "not found")
+end
+
+local function applicator_static_find(name)
+  if type(StaticFindObject) ~= "function" then
+    return nil, "StaticFindObject unavailable"
+  end
+  for _, candidate in ipairs({
+    name,
+    "/Script/Brickadia." .. tostring(name or ""),
+    "/Script/Brickadia:" .. tostring(name or ""),
+  }) do
+    local ok, object = pcall(StaticFindObject, candidate)
+    if ok and tool_object_valid(object) then
+      return object, candidate
+    end
+  end
+  return nil, "not found"
+end
+
+function BMF.tools.applicator.refreshComponentCache(options)
+  options = type(options) == "table" and options or {}
+  local denied = component_rule_list(options.deniedComponents, BMF.permissions.APPLICATOR_DENIED_COMPONENTS)
+  local cached = 0
+  local notes = {}
+
+  for _, component in ipairs(denied) do
+    for _, class_name in ipairs(applicator_component_class_candidates(component)) do
+      local object, find_error = applicator_find_first_of(class_name)
+      if object then
+        if applicator_cache_component_address(component, object, "FindFirstOf(" .. class_name .. ")") then
+          cached = cached + 1
+        end
+      else
+        notes[#notes + 1] = class_name .. ":" .. tostring(find_error)
+      end
+
+      local static_object, static_source = applicator_static_find(class_name)
+      if static_object then
+        if applicator_cache_component_address(component, static_object, "StaticFindObject(" .. static_source .. ")") then
+          cached = cached + 1
+        end
+      end
+    end
+  end
+
+  state.tools.applicator.component_cache_notes = notes
+  return result(true, "OK", "Applicator component cache refreshed", {
+    cachedCount = cached,
+    cache = copy_table(state.tools.applicator.component_cache),
+    notes = notes,
+  })
+end
+
+local function applicator_resolve_component_type(name)
+  local notes = {}
+  for _, class_name in ipairs(applicator_component_class_candidates(name)) do
+    local object, find_error = applicator_find_first_of(class_name)
+    if object then
+      local cached = {
+        name = tostring(name or ""),
+        address = tool_object_address(object),
+        source = "FindFirstOf(" .. class_name .. ")",
+        fullName = tool_object_full_name(object),
+        className = tool_object_class_full_name(object),
+      }
+      if cached.address ~= "" then
+        return cached, notes
+      end
+    else
+      notes[#notes + 1] = class_name .. ":" .. tostring(find_error or "not found")
+    end
+
+    local static_object, static_source = applicator_static_find(class_name)
+    if static_object then
+      local cached = {
+        name = tostring(name or ""),
+        address = tool_object_address(static_object),
+        source = "StaticFindObject(" .. tostring(static_source or class_name) .. ")",
+        fullName = tool_object_full_name(static_object),
+        className = tool_object_class_full_name(static_object),
+      }
+      if cached.address ~= "" then
+        return cached, notes
+      end
+    end
+  end
+  return nil, notes
+end
+
+local applicator_scan_uobjects_raw
+
+local function applicator_find_server_function(function_name, candidates)
+  local errors = {}
+  local lowered_function_name = tostring(function_name or ""):lower()
+  for _, hook_path in ipairs(candidates or {}) do
+    local object, source = applicator_static_find(hook_path)
+    if object then
+      return object, "StaticFindObject(" .. tostring(source or hook_path) .. ")", errors
+    end
+    errors[#errors + 1] = hook_path .. ":" .. tostring(source or "not found")
+  end
+
+  if type(FindAllOf) == "function" then
+    for _, class_name in ipairs({ "Function", "UFunction" }) do
+      local ok, objects = pcall(FindAllOf, class_name)
+      if ok and type(objects) == "table" then
+        for _, object in pairs(objects) do
+          local full_name = tool_object_full_name(object)
+          local lowered = full_name:lower()
+          if lowered:find(lowered_function_name, 1, true)
+            and lowered:find("applicator", 1, true) then
+            return object, "FindAllOf(" .. class_name .. "):" .. full_name, errors
+          end
+        end
+        errors[#errors + 1] = "FindAllOf(" .. class_name .. "):no applicator " .. tostring(function_name or "")
+      else
+        errors[#errors + 1] = "FindAllOf(" .. class_name .. "):" .. tostring(objects or "failed")
+      end
+    end
+  else
+    errors[#errors + 1] = "FindAllOf unavailable"
+  end
+
+  errors[#errors + 1] = "ForEachUObject scanner disabled; it aborts UE4SS simple-action cleanup on this dedicated server build"
+
+  return nil, "", errors
+end
+
+local function applicator_find_server_add_component_function()
+  return applicator_find_server_function("ServerAddComponent", APPLICATOR_HOOK_CANDIDATES)
+end
+
+local function applicator_find_server_modify_component_function()
+  return applicator_find_server_function("ServerModifyComponent", APPLICATOR_MODIFY_HOOK_CANDIDATES)
+end
+
+local function applicator_scan_tokens(value)
+  local tokens = {}
+  local raw = trim_string(value or "")
+  if raw == "" then
+    return tokens
+  end
+  for token in raw:gmatch("[^,|]+") do
+    local text = trim_string(token):lower()
+    if text ~= "" then
+      tokens[#tokens + 1] = text
+    end
+  end
+  return tokens
+end
+
+local function applicator_tokens_match(value, tokens, any)
+  if #tokens == 0 then
+    return true
+  end
+  local text = tostring(value or ""):lower()
+  if any then
+    for _, token in ipairs(tokens) do
+      if text:find(token, 1, true) then
+        return true
+      end
+    end
+    return false
+  end
+  for _, token in ipairs(tokens) do
+    if not text:find(token, 1, true) then
+      return false
+    end
+  end
+  return true
+end
+
+applicator_scan_uobjects_raw = function(options)
+  options = type(options) == "table" and options or {}
+  if type(ForEachUObject) ~= "function" then
+    return {
+      ok = false,
+      code = "FOREACHUOBJECT_UNAVAILABLE",
+      message = "ForEachUObject is unavailable",
+      data = {
+        matches = {},
+        lines = { "ok=false", "code=FOREACHUOBJECT_UNAVAILABLE" },
+      },
+    }
+end
+
+  local limit = tonumber(options.limit) or 50
+  if limit < 1 then
+    limit = 1
+  elseif limit > 250 then
+    limit = 250
+  end
+
+  local max_scan = tonumber(options.max or options.maxScan) or 250000
+  if max_scan < 1 then
+    max_scan = 1
+  elseif max_scan > 1000000 then
+    max_scan = 1000000
+  end
+
+  local any = tostring(options.any or ""):lower()
+  local match_any = any == "1" or any == "true" or any == "yes"
+  local patterns = applicator_scan_tokens(options.patterns or options.pattern or "")
+  local name_patterns = applicator_scan_tokens(options.name or options.fullName or "")
+  local class_patterns = applicator_scan_tokens(options.class or options.className or "")
+  local matches = {}
+  local visited = 0
+  local scanned = 0
+  local matched = 0
+  local errors = 0
+  local truncated = false
+
+  local ok, err = pcall(ForEachUObject, function(object, chunk_index, object_index)
+    visited = visited + 1
+    if visited > max_scan then
+      truncated = true
+      return
+    end
+    scanned = scanned + 1
+
+    local inspect_ok, include = pcall(function()
+      local full_name = tool_object_full_name(object)
+      local class_name = tool_object_class_full_name(object)
+      local combined = full_name .. " " .. class_name
+      if not applicator_tokens_match(combined, patterns, match_any) then
+        return false
+      end
+      if not applicator_tokens_match(full_name, name_patterns, match_any) then
+        return false
+      end
+      if not applicator_tokens_match(class_name, class_patterns, match_any) then
+        return false
+      end
+      matched = matched + 1
+      if #matches < limit then
+        matches[#matches + 1] = {
+          object = object,
+          address = tool_object_address(object),
+          fullName = full_name,
+          className = class_name,
+          chunkIndex = chunk_index,
+          objectIndex = object_index,
+        }
+      end
+      return true
+    end)
+
+    if not inspect_ok then
+      errors = errors + 1
+    end
+  end)
+
+  if not ok then
+    return {
+      ok = false,
+      code = "UOBJECT_SCAN_FAILED",
+      message = tostring(err or "ForEachUObject failed"),
+      data = {
+        matches = matches,
+        visited = visited,
+        scanned = scanned,
+        matched = matched,
+        errors = errors,
+        truncated = truncated,
+      },
+    }
+  end
+
+  return {
+    ok = true,
+    code = "OK",
+    message = "UE object scan completed",
+    data = {
+      matches = matches,
+      visited = visited,
+      scanned = scanned,
+      matched = matched,
+      errors = errors,
+      truncated = truncated,
+      limit = limit,
+      maxScan = max_scan,
+      pattern = tostring(options.patterns or options.pattern or ""),
+      name = tostring(options.name or options.fullName or ""),
+      class = tostring(options.class or options.className or ""),
+      any = match_any,
+    },
+  }
+end
+
+local function applicator_scan_public_data(data)
+  data = type(data) == "table" and data or {}
+  local public_matches = {}
+  for index, match in ipairs(data.matches or {}) do
+    public_matches[#public_matches + 1] = {
+      address = tostring(match.address or ""),
+      fullName = tostring(match.fullName or ""),
+      className = tostring(match.className or ""),
+      chunkIndex = match.chunkIndex,
+      objectIndex = match.objectIndex,
+    }
+  end
+
+  local lines = {
+    "ok=true",
+    "visited=" .. tostring(data.visited or 0),
+    "scanned=" .. tostring(data.scanned or 0),
+    "matched=" .. tostring(data.matched or 0),
+    "returned=" .. tostring(#public_matches),
+    "errors=" .. tostring(data.errors or 0),
+    "truncated=" .. tostring(data.truncated == true),
+    "pattern=" .. tostring(data.pattern or ""),
+    "name=" .. tostring(data.name or ""),
+    "class=" .. tostring(data.class or ""),
+    "any=" .. tostring(data.any == true),
+  }
+  for index, match in ipairs(public_matches) do
+    lines[#lines + 1] =
+      "match_" .. tostring(index) .. "=" ..
+      tostring(match.address or "") ..
+      "|class=" .. tostring(match.className or "") ..
+      "|name=" .. tostring(match.fullName or "") ..
+      "|chunk=" .. tostring(match.chunkIndex or "") ..
+      "|index=" .. tostring(match.objectIndex or "")
+  end
+
+  return {
+    matches = public_matches,
+    visited = data.visited or 0,
+    scanned = data.scanned or 0,
+    matched = data.matched or 0,
+    errors = data.errors or 0,
+    truncated = data.truncated == true,
+    limit = data.limit,
+    maxScan = data.maxScan,
+    pattern = tostring(data.pattern or ""),
+    name = tostring(data.name or ""),
+    class = tostring(data.class or ""),
+    any = data.any == true,
+    lines = lines,
+  }
+end
+
+function BMF.tools.applicator.scanObjects(options)
+  options = type(options) == "table" and options or {}
+  local unsafe = tostring(options.unsafe or ""):lower()
+  if not (unsafe == "1" or unsafe == "true" or unsafe == "yes") then
+    return result(false, "UOBJECT_SCAN_UNSAFE", "ForEachUObject scan is disabled unless unsafe=1 is explicitly set", {
+      lines = {
+        "ok=false",
+        "code=UOBJECT_SCAN_UNSAFE",
+        "reason=ForEachUObject aborts UE4SS simple-action cleanup on this dedicated server build",
+      },
+    })
+  end
+  local scanned = applicator_scan_uobjects_raw(options)
+  local public_data = applicator_scan_public_data(scanned.data or {})
+  if not scanned.ok then
+    public_data.lines[1] = "ok=false"
+    public_data.lines[#public_data.lines + 1] = "code=" .. tostring(scanned.code or "")
+    public_data.lines[#public_data.lines + 1] = "message=" .. tostring(scanned.message or "")
+  end
+  return result(scanned.ok, scanned.code, scanned.message, public_data)
+end
+
+local function applicator_denied_component_target()
+  for address, cached in pairs(state.tools.applicator.component_cache or {}) do
+    local normalized = normalize_component_key(cached and cached.name or "")
+    local key = normalized.ok and normalized.data.key or ""
+    if key == "itemspawn" or key == "spawnitem" then
+      return tostring(address), cached
+    end
+  end
+  return "", nil
+end
+
+local function applicator_process_event_context_candidates()
+  local candidates = {}
+  for _, class_name in ipairs(APPLICATOR_CONTEXT_CANDIDATES) do
+    local object, error_text = applicator_find_first_of(class_name)
+    if object then
+      candidates[#candidates + 1] = {
+        className = class_name,
+        address = tool_object_address(object),
+        fullName = tool_object_full_name(object),
+        objectClassName = tool_object_class_full_name(object),
+        source = "FindFirstOf(" .. class_name .. ")",
+      }
+    else
+      candidates[#candidates + 1] = {
+        className = class_name,
+        address = "",
+        fullName = "",
+        objectClassName = "",
+        source = "FindFirstOf(" .. class_name .. ")",
+        error = tostring(error_text or "not found"),
+      }
+    end
+  end
+  return candidates
+end
+
+function BMF.tools.applicator.nativeTargets(options)
+  options = type(options) == "table" and options or {}
+  if options.refresh ~= false then
+    BMF.tools.applicator.refreshComponentCache(options)
+  end
+
+  local function_object, function_source, function_errors = applicator_find_server_add_component_function()
+  local function_address = tool_object_address(function_object)
+  local modify_function_object, modify_function_source, modify_function_errors = applicator_find_server_modify_component_function()
+  local modify_function_address = tool_object_address(modify_function_object)
+  local denied_component_address, denied_component = applicator_denied_component_target()
+  local interact_component, interact_component_errors = applicator_resolve_component_type("Interact")
+  local context_candidates = applicator_process_event_context_candidates()
+  local process_event_context_address = ""
+  local process_event_context_source = ""
+  for _, candidate in ipairs(context_candidates) do
+    if candidate.address ~= "" and process_event_context_address == "" then
+      process_event_context_address = candidate.address
+      process_event_context_source = candidate.source
+    end
+  end
+  local ok = function_address ~= "" and denied_component_address ~= ""
+  local lines = {
+    "ok=" .. tostring(ok),
+    "function=" .. tostring(function_address),
+    "function_source=" .. tostring(function_source or ""),
+    "modify_function=" .. tostring(modify_function_address),
+    "modify_function_source=" .. tostring(modify_function_source or ""),
+    "denied_component=" .. tostring(denied_component_address),
+    "denied_component_name=" .. tostring(denied_component and denied_component.name or ""),
+    "denied_component_source=" .. tostring(denied_component and denied_component.source or ""),
+    "interact_component=" .. tostring(interact_component and interact_component.address or ""),
+    "interact_component_name=" .. tostring(interact_component and interact_component.name or ""),
+    "interact_component_source=" .. tostring(interact_component and interact_component.source or ""),
+    "process_event_context=" .. tostring(process_event_context_address),
+    "process_event_context_source=" .. tostring(process_event_context_source),
+    "func_offset=0xD8",
+    "locals_offset=0x28",
+  }
+  for index, candidate in ipairs(context_candidates) do
+    lines[#lines + 1] =
+      "process_event_context_candidate_" .. tostring(index) .. "=" ..
+      tostring(candidate.address or "") ..
+      "|source=" .. tostring(candidate.source or "") ..
+      "|class=" .. tostring(candidate.objectClassName or "") ..
+      "|name=" .. tostring(candidate.fullName or "") ..
+      "|error=" .. tostring(candidate.error or "")
+  end
+  for index, item in ipairs(function_errors or {}) do
+    lines[#lines + 1] = "function_error_" .. tostring(index) .. "=" .. tostring(item)
+  end
+  for index, item in ipairs(modify_function_errors or {}) do
+    lines[#lines + 1] = "modify_function_error_" .. tostring(index) .. "=" .. tostring(item)
+  end
+  for index, item in ipairs(interact_component_errors or {}) do
+    lines[#lines + 1] = "interact_component_error_" .. tostring(index) .. "=" .. tostring(item)
+  end
+
+  return result(ok, ok and "OK" or "NATIVE_TARGETS_INCOMPLETE", "Applicator native targets resolved", {
+    functionAddress = function_address,
+    functionSource = function_source or "",
+    modifyFunctionAddress = modify_function_address,
+    modifyFunctionSource = modify_function_source or "",
+    deniedComponentAddress = denied_component_address,
+    deniedComponent = copy_table(denied_component or {}),
+    interactComponentAddress = tostring(interact_component and interact_component.address or ""),
+    interactComponent = copy_table(interact_component or {}),
+    processEventContextAddress = process_event_context_address,
+    processEventContextSource = process_event_context_source,
+    processEventContextCandidates = context_candidates,
+    funcOffset = "0xD8",
+    localsOffset = "0x28",
+    functionErrors = function_errors or {},
+    modifyFunctionErrors = modify_function_errors or {},
+    interactComponentErrors = interact_component_errors or {},
+    lines = lines,
+  })
+end
+
+local function applicator_recent_events(limit)
+  limit = tonumber(limit) or 10
+  if limit < 1 then
+    limit = 1
+  end
+  if limit > state.tools.applicator.max_events then
+    limit = state.tools.applicator.max_events
+  end
+  local events = {}
+  local source = state.tools.applicator.events
+  local start_index = math.max(1, #source - limit + 1)
+  for index = start_index, #source do
+    events[#events + 1] = copy_table(source[index])
+  end
+  return events
+end
+
+local function applicator_record_event(event)
+  local app = state.tools.applicator
+  app.total_events = app.total_events + 1
+  event.sequence = app.total_events
+  event.timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  app.last_event = copy_table(event)
+  app.events[#app.events + 1] = copy_table(event)
+  while #app.events > app.max_events do
+    table.remove(app.events, 1)
+  end
+  append_file(APPLICATOR_TRACE_PATH, json_encode(event) .. "\n")
+end
+
+local function applicator_build_event(context_param, brick_handle_param, component_type_param)
+  local context, context_unwrapped = tool_param_get(context_param)
+  local component_object, component_unwrapped = tool_param_get(component_type_param)
+  local data_struct = tool_try_property(component_object, "DataStruct")
+    or tool_try_property(component_object, "ComponentDataStruct")
+    or tool_try_property(component_object, "Data")
+
+  local candidates = {}
+  local seen = {}
+  local component_address = tool_object_address(component_object)
+  local data_struct_address = tool_object_address(data_struct)
+  local cached = state.tools.applicator.component_cache[component_address]
+    or state.tools.applicator.component_cache[data_struct_address]
+
+  if cached then
+    applicator_add_candidate(candidates, seen, cached.name, "cache")
+  end
+  applicator_add_candidate(candidates, seen, tool_object_full_name(component_object), "component.fullName")
+  applicator_add_candidate(candidates, seen, tool_object_class_full_name(component_object), "component.className")
+  applicator_add_candidate(candidates, seen, tool_object_full_name(data_struct), "dataStruct.fullName")
+  applicator_add_candidate(candidates, seen, tool_object_class_full_name(data_struct), "dataStruct.className")
+
+  local component_name = ""
+  if candidates[1] then
+    component_name = candidates[1].value
+  elseif component_address ~= "" then
+    component_name = component_address
+  end
+
+  return {
+    kind = "applicator.component.apply",
+    functionName = "ServerAddComponent",
+    component = component_name,
+    componentAddress = component_address,
+    componentFullName = tool_object_full_name(component_object),
+    componentClassName = tool_object_class_full_name(component_object),
+    componentDataStructAddress = data_struct_address,
+    componentDataStructName = tool_object_full_name(data_struct),
+    componentCandidates = candidates,
+    contextAddress = tool_object_address(context),
+    contextFullName = tool_object_full_name(context),
+    contextClassName = tool_object_class_full_name(context),
+    contextUnwrapped = context_unwrapped == true,
+    componentUnwrapped = component_unwrapped == true,
+    hasBrickHandleParam = brick_handle_param ~= nil,
+    decision = "pending",
+    denied = false,
+    paramNulled = false,
+    blockMode = "",
+  }
+end
+
+local function applicator_evaluate_candidate(event)
+  for _, candidate in ipairs(event.componentCandidates or {}) do
+    local access = BMF.permissions.evaluateApplicatorComponentAccess({
+      component = candidate.value,
+    })
+    if access.ok and access.data and access.data.allowed == false then
+      return access, candidate
+    end
+  end
+  if event.component and event.component ~= "" and not tostring(event.component):match("^0x") then
+    local access = BMF.permissions.evaluateApplicatorComponentAccess({
+      component = event.component,
+    })
+    if access.ok and access.data and access.data.allowed == false then
+      return access, { value = event.component, source = "event.component" }
+    end
+  end
+  return nil, nil
+end
+
+local function applicator_run_handlers(event)
+  local handler_results = {}
+  local denied = false
+  local denial = nil
+
+  local access, candidate = applicator_evaluate_candidate(event)
+  if access then
+    denied = true
+    denial = {
+      owner = "core-policy",
+      code = tostring(access.code or "APPLICATOR_COMPONENT_DENIED"),
+      message = tostring(access.message or "Applicator component denied"),
+      candidate = candidate,
+      access = access.data or {},
+    }
+  end
+
+  for id, registered in pairs(state.tools.applicator.handlers or {}) do
+    local ok, response = pcall(registered.handler, copy_table(event))
+    if not ok then
+      record_plugin_error(registered.owner or "unknown", "onApplicatorComponentApply", response, event)
+      handler_results[#handler_results + 1] = {
+        id = id,
+        owner = registered.owner or "",
+        ok = false,
+        error = tostring(response),
+      }
+    else
+      local response_denied = false
+      if response == false then
+        response_denied = true
+      elseif type(response) == "table" then
+        response_denied = response.ok == false
+          or (type(response.data) == "table" and response.data.allowed == false)
+      end
+      handler_results[#handler_results + 1] = {
+        id = id,
+        owner = registered.owner or "",
+        ok = true,
+        denied = response_denied,
+        code = type(response) == "table" and tostring(response.code or "") or "",
+      }
+      if response_denied and not denied then
+        denied = true
+        denial = {
+          owner = registered.owner or "",
+          code = type(response) == "table" and tostring(response.code or "APPLICATOR_COMPONENT_DENIED") or "APPLICATOR_COMPONENT_DENIED",
+          message = type(response) == "table" and tostring(response.message or "Applicator component denied") or "Applicator component denied",
+          access = type(response) == "table" and type(response.data) == "table" and response.data or {},
+        }
+      end
+    end
+  end
+
+  return denied, denial, handler_results
+end
+
+local function applicator_handle_server_add_component(context_param, brick_handle_param, component_type_param)
+  local event = applicator_build_event(context_param, brick_handle_param, component_type_param)
+  local denied, denial, handler_results = applicator_run_handlers(event)
+
+  event.handlerResults = handler_results
+  event.denied = denied == true
+  if denial then
+    event.decision = tostring(denial.code or "APPLICATOR_COMPONENT_DENIED")
+    event.deniedBy = tostring(denial.owner or "")
+    event.denialMessage = tostring(denial.message or "")
+    if type(denial.candidate) == "table" then
+      event.deniedCandidate = tostring(denial.candidate.value or "")
+      event.deniedCandidateSource = tostring(denial.candidate.source or "")
+    end
+  else
+    event.decision = "allowed"
+  end
+
+  if denied then
+    state.tools.applicator.denied_events = state.tools.applicator.denied_events + 1
+    if tool_param_set(component_type_param, nil) then
+      event.paramNulled = true
+      event.blockMode = "component-param-nulled"
+      state.tools.applicator.param_null_events = state.tools.applicator.param_null_events + 1
+    else
+      event.blockMode = "deny-recorded-param-set-unavailable"
+    end
+    audit_record("applicator.component.denied", event, {
+      source = "framework",
+      severity = "warn",
+      ok = event.paramNulled == true,
+      code = event.decision,
+    })
+  else
+    state.tools.applicator.allowed_events = state.tools.applicator.allowed_events + 1
+  end
+
+  applicator_record_event(event)
+  return nil
+end
+
+local function ensure_applicator_component_hook()
+  local app = state.tools.applicator
+  if app.registered then
+    return result(true, "OK", "Applicator component hook already registered", {
+      hookPath = app.hook_path,
+      preId = app.pre_id,
+      postId = app.post_id,
+    })
+  end
+  if app.registering then
+    return result(false, "HOOK_REGISTERING", "Applicator component hook registration is already in progress")
+  end
+  if state.config.allowUnsafeApplicatorLuaHook ~= true then
+    app.enabled = false
+    app.last_error = "Unsafe UE4SS Lua RegisterHook path is disabled; ServerAddComponent struct parameters crash while being marshaled to Lua on Brickadia CL13530"
+    return result(false, "APPLICATOR_LUA_HOOK_UNSAFE", app.last_error, {
+      hookMode = "unsafe-lua-registerhook-disabled",
+      optInConfig = "allowUnsafeApplicatorLuaHook",
+      crashSignature = "UE4SS.dll!RC::LuaType::push_structproperty",
+    })
+  end
+  if type(RegisterHook) ~= "function" then
+    app.last_error = "RegisterHook is unavailable"
+    return result(false, "REGISTER_HOOK_UNAVAILABLE", app.last_error)
+  end
+
+  app.registering = true
+  BMF.tools.applicator.refreshComponentCache()
+  local errors = {}
+  for _, hook_path in ipairs(APPLICATOR_HOOK_CANDIDATES) do
+    local callback = function(Context, BrickHandle, ComponentType)
+      return applicator_handle_server_add_component(Context, BrickHandle, ComponentType)
+    end
+    local ok, pre_id, post_id = pcall(RegisterHook, hook_path, callback)
+    if ok and type(pre_id) == "number" and type(post_id) == "number" then
+      app.callback = callback
+      app.hook_path = hook_path
+      app.pre_id = pre_id
+      app.post_id = post_id
+      app.registered = true
+      app.enabled = true
+      app.registering = false
+      app.last_error = ""
+      log("info", "registered applicator component hook path=" .. hook_path)
+      return result(true, "OK", "Applicator component hook registered", {
+        hookPath = hook_path,
+        preId = pre_id,
+        postId = post_id,
+      })
+    end
+    errors[#errors + 1] = hook_path .. ":" .. tostring(pre_id or "unknown")
+  end
+
+  app.registering = false
+  app.last_error = table.concat(errors, " | ")
+  return result(false, "APPLICATOR_HOOK_REGISTER_FAILED", app.last_error, {
+    errors = errors,
+  })
+end
+
+function BMF.tools.onApplicatorComponentApply(handler, options)
+  if type(handler) ~= "function" then
+    return result(false, "INVALID_HANDLER", "handler function is required")
+  end
+  options = type(options) == "table" and options or {}
+  local app = state.tools.applicator
+  local id = app.next_handler_id
+  app.next_handler_id = id + 1
+  app.handlers[id] = {
+    id = id,
+    owner = tostring(options.owner or options.plugin or "anonymous"),
+    handler = handler,
+  }
+  local hook = ensure_applicator_component_hook()
+  return result(hook.ok, hook.code, hook.message, {
+    handlerId = id,
+    owner = app.handlers[id].owner,
+    hookRegistered = app.registered == true,
+    unsafeLuaHookAllowed = state.config.allowUnsafeApplicatorLuaHook == true,
+    hookPath = app.hook_path,
+    hook = hook.data or {},
+    lines = {
+      "handler_id=" .. tostring(id),
+      "owner=" .. tostring(app.handlers[id].owner),
+      "hook_registered=" .. tostring(app.registered == true),
+      "unsafe_lua_hook_allowed=" .. tostring(state.config.allowUnsafeApplicatorLuaHook == true),
+      "hook_path=" .. tostring(app.hook_path or ""),
+      "code=" .. tostring(hook.code or ""),
+    },
+  })
+end
+
+remove_tool_handlers_for_owner = function(owner)
+  local removed = 0
+  local owner_name = tostring(owner or "")
+  for id, registered in pairs(state.tools.applicator.handlers or {}) do
+    if tostring(registered.owner or "") == owner_name then
+      state.tools.applicator.handlers[id] = nil
+      removed = removed + 1
+    end
+  end
+  return removed
+end
+
+function BMF.tools.applicator.status(options)
+  options = type(options) == "table" and options or {}
+  if options.refresh == true then
+    BMF.tools.applicator.refreshComponentCache()
+  end
+
+  local app = state.tools.applicator
+  local handler_count = 0
+  local handlers = {}
+  for id, registered in pairs(app.handlers or {}) do
+    handler_count = handler_count + 1
+    handlers[#handlers + 1] = {
+      id = id,
+      owner = tostring(registered.owner or ""),
+    }
+  end
+  table.sort(handlers, function(a, b)
+    return tostring(a.id) < tostring(b.id)
+  end)
+
+  local cache_count = 0
+  local cache_lines = {}
+  for address, cached in pairs(app.component_cache or {}) do
+    cache_count = cache_count + 1
+    cache_lines[#cache_lines + 1] =
+      "component_cache_" .. tostring(cache_count) .. "=" ..
+      tostring(cached.name or "") .. "|" .. tostring(address) .. "|source=" .. tostring(cached.source or "")
+  end
+  table.sort(cache_lines)
+
+  local last = app.last_event or {}
+  local lines = {
+    "registered=" .. tostring(app.registered == true),
+    "enabled=" .. tostring(app.enabled == true),
+    "unsafe_lua_hook_allowed=" .. tostring(state.config.allowUnsafeApplicatorLuaHook == true),
+    "hook_path=" .. tostring(app.hook_path or ""),
+    "pre_id=" .. tostring(app.pre_id or ""),
+    "post_id=" .. tostring(app.post_id or ""),
+    "handler_count=" .. tostring(handler_count),
+    "total_events=" .. tostring(app.total_events or 0),
+    "allowed_events=" .. tostring(app.allowed_events or 0),
+    "denied_events=" .. tostring(app.denied_events or 0),
+    "param_null_events=" .. tostring(app.param_null_events or 0),
+    "last_component=" .. tostring(last.component or ""),
+    "last_component_address=" .. tostring(last.componentAddress or ""),
+    "last_denied=" .. tostring(last.denied == true),
+    "last_decision=" .. tostring(last.decision or ""),
+    "last_block_mode=" .. tostring(last.blockMode or ""),
+    "cache_count=" .. tostring(cache_count),
+    "trace_path=" .. tostring(APPLICATOR_TRACE_PATH),
+    "last_error=" .. tostring(app.last_error or ""),
+  }
+  for _, cache_line in ipairs(cache_lines) do
+    lines[#lines + 1] = cache_line
+  end
+
+  return result(true, "OK", "Applicator hook status collected", {
+    registered = app.registered == true,
+    enabled = app.enabled == true,
+    unsafeLuaHookAllowed = state.config.allowUnsafeApplicatorLuaHook == true,
+    hookPath = app.hook_path,
+    preId = app.pre_id,
+    postId = app.post_id,
+    handlerCount = handler_count,
+    handlers = handlers,
+    totalEvents = app.total_events or 0,
+    allowedEvents = app.allowed_events or 0,
+    deniedEvents = app.denied_events or 0,
+    paramNullEvents = app.param_null_events or 0,
+    recentEvents = applicator_recent_events(options.limit or 10),
+    lastEvent = copy_table(last),
+    componentCache = copy_table(app.component_cache or {}),
+    componentCacheNotes = copy_table(app.component_cache_notes or {}),
+    tracePath = APPLICATOR_TRACE_PATH,
+    lastError = app.last_error or "",
+    lines = lines,
+  })
+end
+
+end
+
+BMF.minigames = {}
+
+local function normalize_preset_name(value)
+  local name = trim_string(value)
+  if name == "" then
+    return nil, "preset name is required"
+  end
+  if name:match("[%c]") or name:match("[/\\]") or name:match("%.%.") then
+    return nil, "preset name must not contain control characters or path separators"
+  end
+  return name
+end
+
+local function minigame_command_response(command)
+  local response = exec_console_manager(command)
+  response.data.command = command
+  return response
+end
+
+BMF.minigames.list = function()
+  return minigame_command_response("Server.Minigames.List")
+end
+
+BMF.minigames.loadPreset = function(name, owner)
+  local preset_name, name_error = normalize_preset_name(name)
+  if not preset_name then
+    return result(false, "INVALID_PRESET_NAME", name_error)
+  end
+
+  local command = "Server.Minigames.LoadPreset " .. quote_console_string(preset_name)
+  local owner_name = trim_string(owner)
+  if owner_name ~= "" then
+    command = command .. " " .. quote_console_string(owner_name)
+  end
+  local response = minigame_command_response(command)
+  response.data.preset = preset_name
+  response.data.owner = owner_name
+  return response
+end
+
+BMF.minigames.savePreset = function(index, name)
+  local minigame_index, index_error = normalize_integer(index, "minigame index")
+  if minigame_index == nil then
+    return result(false, "INVALID_MINIGAME_INDEX", index_error)
+  end
+  local preset_name, name_error = normalize_preset_name(name)
+  if not preset_name then
+    return result(false, "INVALID_PRESET_NAME", name_error)
+  end
+
+  local command = "Server.Minigames.SavePreset " .. tostring(minigame_index) .. " " .. quote_console_string(preset_name)
+  local response = minigame_command_response(command)
+  response.data.index = minigame_index
+  response.data.preset = preset_name
+  return response
+end
+
+BMF.minigames.reset = function(index)
+  local minigame_index, index_error = normalize_integer(index, "minigame index")
+  if minigame_index == nil then
+    return result(false, "INVALID_MINIGAME_INDEX", index_error)
+  end
+  local response = minigame_command_response("Server.Minigames.Reset " .. tostring(minigame_index))
+  response.data.index = minigame_index
+  return response
+end
+
+BMF.minigames.nextRound = function(index)
+  local minigame_index, index_error = normalize_integer(index, "minigame index")
+  if minigame_index == nil then
+    return result(false, "INVALID_MINIGAME_INDEX", index_error)
+  end
+  local response = minigame_command_response("Server.Minigames.NextRound " .. tostring(minigame_index))
+  response.data.index = minigame_index
+  return response
+end
+
+BMF.minigames.delete = function(index)
+  local minigame_index, index_error = normalize_integer(index, "minigame index")
+  if minigame_index == nil then
+    return result(false, "INVALID_MINIGAME_INDEX", index_error)
+  end
+  local response = minigame_command_response("Server.Minigames.Delete " .. tostring(minigame_index))
+  response.data.index = minigame_index
+  return response
+end
+
+BMF.world = {}
+BMF.world.loadAdditive = function(options)
+  if type(options) == "string" then
+    options = { name = options }
+  end
+  if type(options) ~= "table" then
+    return result(false, "INVALID_OPTIONS", "options table is required")
+  end
+
+  local name, name_error = normalize_world_name(options.name or options.bundle or options.world)
+  if not name then
+    return result(false, "INVALID_WORLD_NAME", name_error)
+  end
+
+  local position = options.position
+  if type(position) ~= "table" then
+    position = {}
+  end
+  local x = finite_number(options.x or position.x or position.X, 0)
+  local y = finite_number(options.y or position.y or position.Y, 0)
+  local z = finite_number(options.z or position.z or position.Z, 0)
+  local yaw = finite_number(options.yaw or options.orientation or options.rotation, 0)
+
+  local command = table.concat({
+    "BR.World.LoadAdditive",
+    quote_console_token(name),
+    format_number(x),
+    format_number(y),
+    format_number(z),
+    format_number(yaw),
+  }, " ")
+
+  local limited = rate_limit_check("world.loadAdditive")
+  if not limited.ok then
+    return limited
+  end
+
+  local response = exec_console_manager(command)
+  response.data.command = command
+  response.data.world = name
+  response.data.position = { x = x, y = y, z = z, yaw = yaw }
+  audit_record("world.loadAdditive", {
+    world = name,
+    command = command,
+    position = response.data.position,
+  }, {
+    source = "framework",
+    severity = response.ok and "info" or "warn",
+    ok = response.ok,
+    code = response.code,
+  })
+  if response.ok then
+    BMF.events.emit("worldLoaded", {
+      mode = "additive",
+      world = name,
+      command = command,
+      position = response.data.position,
+    })
+  end
+  return response
+end
+
+BMF.world.saveAs = function(name)
+  local world_name, name_error = normalize_world_name(name)
+  if not world_name then
+    return result(false, "INVALID_WORLD_NAME", name_error)
+  end
+
+  local command = "BR.World.SaveAs " .. quote_console_string(world_name)
+  local limited = rate_limit_check("world.saveAs")
+  if not limited.ok then
+    return limited
+  end
+  local response = exec_console_manager(command)
+  response.data.command = command
+  response.data.world = world_name
+  audit_record("world.saveAs", {
+    world = world_name,
+    command = command,
+  }, {
+    source = "framework",
+    severity = response.ok and "info" or "warn",
+    ok = response.ok,
+    code = response.code,
+  })
+  if response.ok then
+    BMF.events.emit("worldSaved", {
+      world = world_name,
+      command = command,
+    })
+  end
+  return response
+end
+
+BMF.prefabs = {}
+
+local function normalize_prefab_source(value)
+  local source = trim_string(value)
+  if source == "" then
+    return nil, "prefab source is required"
+  end
+  if source:match("[%c]") or source:match("[/\\]") or source:match("%.%.") then
+    return nil, "prefab source must not contain control characters or path separators"
+  end
+  local lower = source:lower()
+  if lower:match("%.") and not lower:match("%.brz$") then
+    return nil, "prefab source must be a .brz file"
+  end
+  return source
+end
+
+local function prefab_position_from_options(options)
+  local position = options.position
+  if type(position) ~= "table" then
+    position = {}
+  end
+  return {
+    x = finite_number(options.x or position.x or position.X, 0),
+    y = finite_number(options.y or position.y or position.Y, 0),
+    z = finite_number(options.z or position.z or position.Z, 0),
+    yaw = finite_number(options.yaw or options.orientation or options.rotation, 0),
+  }
+end
+
+local function normalize_staged_prefab_world(options)
+  return normalize_world_name(options.stagedWorld or options.stage or options.name or options.bundle or options.world)
+end
+
+local function has_staged_prefab_world_option(options)
+  return options.stagedWorld ~= nil or options.stage ~= nil or options.name ~= nil or options.bundle ~= nil or options.world ~= nil
+end
+
+BMF.prefabs.planLoadBrz = function(options)
+  if type(options) ~= "table" then
+    return result(false, "INVALID_OPTIONS", "options table is required")
+  end
+
+  local source, source_error = normalize_prefab_source(options.source or options.brz or options.prefab)
+  if not source then
+    return result(false, "INVALID_PREFAB_SOURCE", source_error)
+  end
+
+  local staged_world = nil
+  local staged_world_error = nil
+  if has_staged_prefab_world_option(options) then
+    staged_world, staged_world_error = normalize_staged_prefab_world(options)
+    if not staged_world then
+      return result(false, "INVALID_WORLD_NAME", staged_world_error)
+    end
+  end
+
+  local position = prefab_position_from_options(options)
+  local load_options = nil
+  if staged_world then
+    load_options = {
+      name = staged_world,
+      position = { x = position.x, y = position.y, z = position.z },
+      yaw = position.yaw,
+    }
+  end
+
+  return result(true, "OK", "BRZ prefab load planned", {
+    source = source,
+    stagedWorld = staged_world,
+    requiresStaging = staged_world == nil,
+    position = position,
+    loadOptions = load_options,
+  })
+end
+
+BMF.prefabs.loadBrdb = function(options)
+  if type(options) == "string" then
+    options = { name = options }
+  end
+  if type(options) ~= "table" then
+    return result(false, "INVALID_OPTIONS", "options table is required")
+  end
+
+  local staged_world, staged_world_error = normalize_staged_prefab_world(options)
+  if not staged_world then
+    return result(false, "INVALID_WORLD_NAME", staged_world_error)
+  end
+
+  local position = prefab_position_from_options(options)
+  local response = BMF.world.loadAdditive({
+    name = staged_world,
+    position = { x = position.x, y = position.y, z = position.z },
+    yaw = position.yaw,
+  })
+  response.data.api = "BMF.prefabs.loadBrdb"
+  response.data.prefab = {
+    stagedWorld = staged_world,
+  }
+  return response
+end
+
+BMF.prefabs.loadBrz = function(options)
+  local planned = BMF.prefabs.planLoadBrz(options)
+  if not planned.ok then
+    return planned
+  end
+
+  if planned.data.requiresStaging then
+    return result(false, "PREFAB_STAGING_REQUIRED", "BRZ prefab must be staged as a BRDB world before runtime load", planned.data)
+  end
+
+  local response = BMF.world.loadAdditive(planned.data.loadOptions)
+  response.data.api = "BMF.prefabs.loadBrz"
+  response.data.prefab = {
+    source = planned.data.source,
+    stagedWorld = planned.data.stagedWorld,
+  }
+  return response
+end
+
+BMF.vehicles = {}
+
+local function vehicle_spawn_position(options, fallback)
+  options = options or {}
+  fallback = fallback or {}
+  local position = options.position
+  if type(position) ~= "table" then
+    position = {}
+  end
+
+  return {
+    x = finite_number(options.x or position.x or position.X, fallback.x or 0),
+    y = finite_number(options.y or position.y or position.Y, fallback.y or 0),
+    z = finite_number(options.z or position.z or position.Z, fallback.z or 0),
+    yaw = finite_number(options.yaw or options.orientation or options.rotation, fallback.yaw or 0),
+  }
+end
+
+local function vehicle_spawn_load(name, position, index)
+  local load_options = {
+    name = name,
+    position = { x = position.x, y = position.y, z = position.z },
+    yaw = position.yaw,
+  }
+  local command = table.concat({
+    "BR.World.LoadAdditive",
+    quote_console_token(name),
+    format_number(position.x),
+    format_number(position.y),
+    format_number(position.z),
+    format_number(position.yaw),
+  }, " ")
+
+  return {
+    index = index,
+    worldName = name,
+    position = position,
+    command = command,
+    loadOptions = load_options,
+  }
+end
+
+BMF.vehicles.planSpawnSet = function(options)
+  if type(options) ~= "table" then
+    return result(false, "INVALID_OPTIONS", "options table is required")
+  end
+
+  local loads = {}
+  local errors = {}
+  local copies = options.copies or options.stagedWorlds or options.worlds
+
+  if type(copies) == "table" then
+    for index, copy in ipairs(copies) do
+      local copy_options = copy
+      if type(copy_options) == "string" then
+        copy_options = { name = copy_options }
+      end
+      if type(copy_options) ~= "table" then
+        errors[#errors + 1] = "copy " .. tostring(index) .. " must be a table or world name"
+      else
+        local world_name, name_error = normalize_world_name(copy_options.worldName or copy_options.stagedWorld or copy_options.name or copy_options.world or copy_options.bundle)
+        if not world_name then
+          errors[#errors + 1] = "copy " .. tostring(index) .. ": " .. name_error
+        else
+          local position = vehicle_spawn_position(copy_options, vehicle_spawn_position(options, {}))
+          loads[#loads + 1] = vehicle_spawn_load(world_name, position, index)
+        end
+      end
+    end
+  else
+    local count, count_error = normalize_integer(options.count or options.vehicleCount, "vehicle count")
+    if count == nil then
+      return result(false, "INVALID_VEHICLE_COUNT", count_error)
+    end
+    if count < 1 then
+      return result(false, "INVALID_VEHICLE_COUNT", "vehicle count must be at least 1")
+    end
+
+    local prefix, prefix_error = normalize_world_name(options.worldNamePrefix or options.prefix)
+    if not prefix then
+      return result(false, "INVALID_WORLD_NAME", prefix_error)
+    end
+
+    local start = options.start or options.position or {}
+    if type(start) ~= "table" then
+      start = {}
+    end
+    local step = options.step or {}
+    if type(step) ~= "table" then
+      step = {}
+    end
+
+    local base = {
+      x = finite_number(options.x or start.x or start.X, 0),
+      y = finite_number(options.y or start.y or start.Y, 0),
+      z = finite_number(options.z or start.z or start.Z, 0),
+      yaw = finite_number(options.yaw or options.orientation or options.rotation, 0),
+    }
+    local delta = {
+      x = finite_number(options.stepX or step.x or step.X, 0),
+      y = finite_number(options.stepY or step.y or step.Y, 0),
+      z = finite_number(options.stepZ or step.z or step.Z, 0),
+      yaw = finite_number(options.stepYaw or step.yaw or step.Yaw, 0),
+    }
+
+    for index = 1, count do
+      local world_name = string.format("%s_%02d", prefix, index)
+      local position = {
+        x = base.x + ((index - 1) * delta.x),
+        y = base.y + ((index - 1) * delta.y),
+        z = base.z + ((index - 1) * delta.z),
+        yaw = base.yaw + ((index - 1) * delta.yaw),
+      }
+      loads[#loads + 1] = vehicle_spawn_load(world_name, position, index)
+    end
+  end
+
+  if #errors > 0 then
+    return result(false, "INVALID_VEHICLE_SPAWN_SET", table.concat(errors, "; "), {
+      errors = errors,
+    })
+  end
+  if #loads == 0 then
+    return result(false, "INVALID_VEHICLE_SPAWN_SET", "at least one staged vehicle world is required")
+  end
+
+  return result(true, "OK", "Vehicle spawn set planned", {
+    vehicleCount = #loads,
+    loads = loads,
+    requiresStaging = false,
+  })
+end
+
+BMF.vehicles.spawnSet = function(options)
+  local planned = BMF.vehicles.planSpawnSet(options)
+  if not planned.ok then
+    return planned
+  end
+
+  local responses = {}
+  for _, spawn in ipairs(planned.data.loads) do
+    local response = BMF.world.loadAdditive(spawn.loadOptions)
+    response.data.api = "BMF.vehicles.spawnSet"
+    response.data.vehicleIndex = spawn.index
+    response.data.stagedWorld = spawn.worldName
+    responses[#responses + 1] = response
+    if not response.ok then
+      return result(false, "VEHICLE_SPAWN_FAILED", "Vehicle spawn failed at copy " .. tostring(spawn.index), {
+        planned = planned.data,
+        responses = responses,
+        failedIndex = spawn.index,
+      })
+    end
+  end
+
+  return result(true, "OK", "Vehicle spawn set loaded", {
+    vehicleCount = #responses,
+    planned = planned.data,
+    responses = responses,
+  })
+end
+
+BMF.chat = {}
+
+local LIVE_CHAT_CONTROLLER_CLASSES = { "PlayerController", "BRPlayerController", "BP_PlayerController_C" }
+
+local function live_chat_is_valid_object(object)
+  if object == nil then
+    return false
+  end
+  if type(object.IsValid) ~= "function" then
+    return false
+  end
+  local ok, is_valid = pcall(function()
+    return object:IsValid()
+  end)
+  return ok and is_valid == true
+end
+
+local function live_chat_object_key(object, fallback)
+  if live_chat_is_valid_object(object) and type(object.GetAddress) == "function" then
+    local ok, address = pcall(function()
+      return object:GetAddress()
+    end)
+    if ok and address ~= nil then
+      return tostring(address)
+    end
+  end
+  return tostring(fallback or object or "")
+end
+
+local function live_chat_object_label(object, fallback)
+  local address = live_chat_object_key(object, "")
+  if address ~= "" then
+    return tostring(fallback or "object") .. "@" .. address
+  end
+  return tostring(fallback or "object")
+end
+
+local function live_chat_object_full_name(object)
+  if live_chat_is_valid_object(object) and type(object.GetFullName) == "function" then
+    local ok, full_name = pcall(function()
+      return object:GetFullName()
+    end)
+    if ok and full_name ~= nil then
+      return tostring(full_name)
+    end
+  end
+  return ""
+end
+
+local function live_chat_find_controller_by_name(object_name)
+  local name = trim_string(tostring(object_name or ""))
+  if name == "" then
+    return nil
+  end
+
+  if type(FindObject) == "function" then
+    local ok, object = pcall(FindObject, nil, name, nil, nil)
+    if ok and live_chat_is_valid_object(object) then
+      return object
+    end
+
+    for _, class_name in ipairs(LIVE_CHAT_CONTROLLER_CLASSES) do
+      ok, object = pcall(FindObject, class_name, name, nil, nil)
+      if ok and live_chat_is_valid_object(object) then
+        return object
+      end
+    end
+  end
+
+  if type(StaticFindObject) == "function" then
+    local ok, object = pcall(StaticFindObject, name)
+    if ok and live_chat_is_valid_object(object) then
+      return object
+    end
+  end
+
+  return nil
+end
+
+local function live_chat_cached_players()
+  local raw = read_file(PLAYER_CACHE_PATH)
+  if not raw or trim_string(raw) == "" then
+    return {}
+  end
+
+  local cache = json_decode(raw)
+  if type(cache) ~= "table" or type(cache.players) ~= "table" then
+    return {}
+  end
+  return cache.players
+end
+
+local function live_chat_collect_targets()
+  local targets = {}
+  local seen = {}
+
+  local function add_target(controller, source, metadata)
+    if not live_chat_is_valid_object(controller) then
+      return
+    end
+    local key = live_chat_object_key(controller, tostring(controller))
+    if seen[key] then
+      return
+    end
+    seen[key] = true
+
+    metadata = type(metadata) == "table" and metadata or {}
+    local full_name = live_chat_object_full_name(controller)
+    local label = full_name ~= "" and full_name or live_chat_object_label(controller, source or "player_controller")
+
+    targets[#targets + 1] = {
+      controller = controller,
+      name = tostring(metadata.name or metadata.playerName or metadata.username or ""),
+      userName = tostring(metadata.userName or metadata.username or metadata.playerName or ""),
+      displayName = tostring(metadata.displayName or metadata.name or metadata.username or ""),
+      playerId = tostring(metadata.uuid or metadata.id or metadata.playerId or ""),
+      controllerPath = tostring(metadata.controllerPath or ""),
+      playerStatePath = tostring(metadata.playerStatePath or ""),
+      label = label,
+      source = tostring(source or ""),
+    }
+  end
+
+  for _, player in ipairs(live_chat_cached_players()) do
+    local controller_path = tostring(player.controllerPath or "")
+    local controller = live_chat_find_controller_by_name(controller_path)
+    if controller ~= nil then
+      add_target(controller, "player_cache.controllerPath", player)
+    end
+  end
+
+  if type(FindFirstOf) == "function" then
+    for _, class_name in ipairs(LIVE_CHAT_CONTROLLER_CLASSES) do
+      local ok, controller = pcall(FindFirstOf, class_name)
+      if ok then
+        add_target(controller, "FindFirstOf(" .. class_name .. ")")
+      end
+    end
+  end
+
+  return targets
+end
+
+local function live_chat_target_summary(target)
+  return {
+    name = tostring(target.name or ""),
+    userName = tostring(target.userName or ""),
+    displayName = tostring(target.displayName or ""),
+    playerId = tostring(target.playerId or ""),
+    controllerPath = tostring(target.controllerPath or ""),
+    playerStatePath = tostring(target.playerStatePath or ""),
+    label = tostring(target.label or ""),
+    source = tostring(target.source or ""),
+  }
+end
+
+local function live_chat_target_matches(target, query)
+  local normalized = trim_string(tostring(query or "")):lower()
+  if normalized == "" then
+    return false
+  end
+  for _, value in ipairs({
+    target.name,
+    target.userName,
+    target.displayName,
+    target.playerId,
+    target.controllerPath,
+    target.playerStatePath,
+    target.label,
+  }) do
+    local text = trim_string(tostring(value or "")):lower()
+    if text ~= "" and (text == normalized or text:find(normalized, 1, true) ~= nil) then
+      return true
+    end
+  end
+  return false
+end
+
+local function live_chat_query_text(player)
+  if type(player) == "table" then
+    return first_string(
+      player.uuid,
+      player.id,
+      player.userId,
+      player.userID,
+      player.playerId,
+      player.playerID,
+      player.username,
+      player.userName,
+      player.displayName,
+      player.playerName,
+      player.originalName,
+      player.name,
+      player.query
+    ) or ""
+  end
+  return tostring(player or "")
+end
+
+local function live_chat_resolve_target(player)
+  local query = live_chat_query_text(player)
+  local targets = live_chat_collect_targets()
+  if trim_string(query) ~= "" and #targets == 1 then
+    return targets[1], targets
+  end
+  for _, target in ipairs(targets) do
+    if live_chat_target_matches(target, query) then
+      return target, targets
+    end
+  end
+  return nil, targets
+end
+
+local function live_chat_send_to_controller(controller, message)
+  if type(OmeggaCallFunctionByNameWithArguments) ~= "function" then
+    return false, "OmeggaCallFunctionByNameWithArguments is unavailable"
+  end
+  if not live_chat_is_valid_object(controller) then
+    return false, "target controller is unavailable"
+  end
+
+  local command = "ClientPushChatMessage " .. quote_console_string(message)
+  local ok, success, output = pcall(OmeggaCallFunctionByNameWithArguments, controller, command, controller)
+  if ok and success ~= false then
+    return true, tostring(output or ""), command
+  end
+  if ok then
+    return false, tostring(output or "native call returned false"), command
+  end
+  return false, tostring(success), command
+end
+
+local function live_chat_send_to_targets(targets, message)
+  local delivered = {}
+  local failed = {}
+  local command = ""
+  for _, target in ipairs(targets or {}) do
+    local ok, detail, used_command = live_chat_send_to_controller(target.controller, message)
+    command = used_command or command
+    if ok then
+      delivered[#delivered + 1] = live_chat_target_summary(target)
+    else
+      local failure = live_chat_target_summary(target)
+      failure.error = detail
+      failed[#failed + 1] = failure
+    end
+  end
+  return delivered, failed, command
+end
+
+BMF.chat.broadcast = function(message)
+  if tostring(message or "") == "" then
+    return result(false, "INVALID_OPTIONS", "message is required")
+  end
+  local limited = rate_limit_check("chat.broadcast")
+  if not limited.ok then
+    return limited
+  end
+
+  local live_targets = live_chat_collect_targets()
+  if #live_targets > 0 and type(OmeggaCallFunctionByNameWithArguments) == "function" then
+    local delivered, failed, command = live_chat_send_to_targets(live_targets, message)
+    local response = result(#delivered > 0, #delivered > 0 and "OK" or "PLAYER_DELIVERY_UNAVAILABLE", #delivered > 0 and "Message delivered to live player controllers" or "No live player controller accepted the message", {
+      message = tostring(message or ""),
+      delivered = #delivered > 0,
+      deliveredCount = #delivered,
+      attemptedCount = #live_targets,
+      failedCount = #failed,
+      targets = delivered,
+      failures = failed,
+      command = command,
+      executor = "player_controller.client_push_chat_message",
+      deliveryMode = "player-controller-client-push-chat-message",
+      validation = "L3 Live Player UI confirmed",
+    })
+    audit_record("chat.broadcast", {
+      command = command,
+      message = tostring(message or ""),
+      deliveredCount = #delivered,
+      attemptedCount = #live_targets,
+      deliveryMode = response.data.deliveryMode,
+    }, {
+      source = "framework",
+      severity = response.ok and "info" or "warn",
+      ok = response.ok,
+      code = response.code,
+    })
+    return response
+  end
+
+  local command = "Chat.Broadcast " .. quote_console_string(message)
+  local response = exec_console(command)
+  if not response.ok and response.code == "CONSOLE_EXEC_UNAVAILABLE" then
+    response = exec_console_manager(command)
+  end
+  response.data.command = command
+  response.data.message = tostring(message or "")
+  response.data.delivered = false
+  response.data.deliveredCount = 0
+  response.data.attemptedCount = #live_targets
+  response.data.deliveryMode = "legacy-console-fallback"
+  response.data.validation = "L2 command acceptance only; visible delivery not implied"
+  audit_record("chat.broadcast", {
+    command = command,
+    message = tostring(message or ""),
+    deliveredCount = 0,
+    attemptedCount = #live_targets,
+    deliveryMode = response.data.deliveryMode,
+  }, {
+    source = "framework",
+    severity = response.ok and "info" or "warn",
+    ok = response.ok,
+    code = response.code,
+  })
+  return response
+end
+
+BMF.players = {}
+
+local function external_player_record(record)
+  if type(record) ~= "table" then
+    return record
+  end
+
+  if record[1] ~= nil or record[2] ~= nil or record[3] ~= nil then
+    return {
+      username = tostring(record[1] or ""),
+      playerName = tostring(record[1] or ""),
+      originalName = tostring(record[1] or ""),
+      displayName = tostring(record[2] or record[1] or ""),
+      id = tostring(record[3] or ""),
+      uuid = tostring(record[3] or ""),
+      controllerPath = tostring(record[4] or ""),
+      playerStatePath = tostring(record[5] or ""),
+      controllerAvailable = trim_string(record[4] or "") ~= "",
+    }
+  end
+
+  return record
+end
+
+local function load_player_cache()
+  local raw = read_file(PLAYER_CACHE_PATH)
+  if raw == nil or trim_string(raw) == "" then
+    state.player_cache = nil
+    state.player_cache_error = ""
+    return nil, ""
+  end
+
+  local decoded, err = json_decode(raw)
+  if err ~= nil then
+    state.player_cache = nil
+    state.player_cache_error = tostring(err)
+    return nil, tostring(err)
+  end
+
+  state.player_cache = decoded
+  state.player_cache_error = ""
+  return decoded, ""
+end
+
+local function write_player_cache(cache)
+  local ok = write_file(PLAYER_CACHE_PATH, json_encode(cache or {}) .. "\n")
+  if ok then
+    state.player_cache = cache
+    state.player_cache_error = ""
+  end
+  return ok
+end
+
+local function configured_saved_dir()
+  local saved_dir = trim_string(state.config.brickadiaSavedDir or "")
+  if saved_dir == "" then
+    return ""
+  end
+  return saved_dir:gsub("\\", "/"):gsub("/+$", "")
+end
+
+local function load_player_name_cache(saved_dir)
+  local path = join_path(saved_dir, "Server/PlayerNameCache.json")
+  local raw = read_file(path)
+  if not raw or trim_string(raw) == "" then
+    return {}, path, "missing"
+  end
+
+  local decoded, err = json_decode(raw)
+  if err ~= nil or type(decoded) ~= "table" or type(decoded.savedPlayerNames) ~= "table" then
+    return {}, path, tostring(err or "invalid name cache")
+  end
+  return decoded.savedPlayerNames, path, ""
+end
+
+local function player_name_cache_lookup(name_cache, uuid)
+  if type(name_cache) ~= "table" then
+    return ""
+  end
+  return tostring(name_cache[tostring(uuid or "")] or "")
+end
+
+local function record_from_pending_login(pending, name_cache)
+  if type(pending) ~= "table" or not is_uuid(pending.uuid) then
+    return nil
+  end
+  local original_name = player_name_cache_lookup(name_cache, pending.uuid)
+  local username = first_string(pending.username, original_name, pending.displayName) or ""
+  local display_name = first_string(pending.displayName, username, original_name) or ""
+  return {
+    id = pending.uuid,
+    uuid = pending.uuid,
+    username = username,
+    playerName = username,
+    displayName = display_name,
+    originalName = first_string(original_name, username) or "",
+    controllerAvailable = false,
+    source = "brickadia-log",
+  }
+end
+
+local function remove_active_player_by_name(active, order, player_name)
+  local lowered = trim_string(player_name):lower()
+  if lowered == "" then
+    return
+  end
+  for uuid, player in pairs(active) do
+    for _, value in ipairs({ player.username, player.playerName, player.displayName, player.originalName }) do
+      if trim_string(value):lower() == lowered then
+        active[uuid] = nil
+        for index = #order, 1, -1 do
+          if order[index] == uuid then
+            table.remove(order, index)
+          end
+        end
+        return
+      end
+    end
+  end
+end
+
+local function parse_brickadia_log_players(saved_dir)
+  local path = join_path(saved_dir, "Logs/Brickadia.log")
+  local raw = read_file(path)
+  if not raw or trim_string(raw) == "" then
+    return {}, {
+      adapter = "brickadia-log",
+      path = path,
+      error = "missing",
+    }
+  end
+
+  local name_cache = load_player_name_cache(saved_dir)
+  local active = {}
+  local order = {}
+  local pending = nil
+
+  local function upsert_player(player)
+    if not player or not is_uuid(player.uuid) then
+      return
+    end
+    if active[player.uuid] == nil then
+      order[#order + 1] = player.uuid
+    end
+    active[player.uuid] = player
+  end
+
+  for line in raw:gmatch("[^\r\n]+") do
+    if line:find("LogServerList:%s+Auth payload valid%. Result:") then
+      pending = {}
+    elseif pending ~= nil then
+      local username = line:match("LogServerList:%s+UserName:%s*(.-)%s*$")
+      local display_name = line:match("LogServerList:%s+DisplayName:%s*(.-)%s*$")
+      local user_id = line:match("LogServerList:%s+UserId:%s*([0-9a-fA-F%-]+)")
+      if username then
+        pending.username = username
+      elseif display_name then
+        pending.displayName = display_name
+      elseif user_id then
+        pending.uuid = user_id:lower()
+      end
+    end
+
+    local joined = line:match("LogChat:%s*(.-)%s+joined the game%.")
+    if joined then
+      local player = record_from_pending_login(pending, name_cache)
+      if player ~= nil then
+        upsert_player(player)
+      end
+      pending = nil
+    end
+
+    local left = line:match("LogChat:%s*(.-)%s+left the game%.")
+    if left then
+      remove_active_player_by_name(active, order, left)
+    end
+  end
+
+  local players = {}
+  for _, uuid in ipairs(order) do
+    if active[uuid] ~= nil then
+      players[#players + 1] = active[uuid]
+    end
+  end
+
+  return players, {
+    adapter = "brickadia-log",
+    path = path,
+    error = "",
+  }
+end
+
+local function native_player_records()
+  local saved_dir = configured_saved_dir()
+  if saved_dir == "" then
+    return {}, {
+      adapter = "none",
+      source = "native-disabled",
+      error = "brickadiaSavedDir is not configured",
+    }
+  end
+
+  local players, detail = parse_brickadia_log_players(saved_dir)
+  detail = type(detail) == "table" and detail or {}
+  detail.source = "brickadia-log"
+  detail.savedDir = saved_dir
+  return players, detail
+end
+
+local function live_player_controller_count()
+  local targets = live_chat_collect_targets()
+  return #targets, targets
+end
+
+local function player_cache_records(cache)
+  if type(cache) ~= "table" then
+    return {}
+  end
+  if type(cache.players) == "table" then
+    return cache.players
+  end
+  return cache
+end
+
+BMF.players.list = function()
+  local native_records, native_detail = native_player_records()
+  local cache, cache_err = load_player_cache()
+  local raw_records = #native_records > 0 and native_records or player_cache_records(cache)
+  local adapter = "headless-empty"
+  local source = ""
+  local updated_at = ""
+  local cache_path = PLAYER_CACHE_PATH
+  local cache_error = cache_err
+  if #native_records > 0 then
+    adapter = tostring(native_detail.adapter or "brickadia-log")
+    source = tostring(native_detail.source or "brickadia-log")
+    cache_path = tostring(native_detail.path or "")
+    cache_error = tostring(native_detail.error or "")
+    updated_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  elseif type(cache) == "table" and type(cache.players) == "table" then
+    adapter = tostring(cache.adapter or "external-cache")
+    source = tostring(cache.source or "")
+    updated_at = tostring(cache.updatedAt or "")
+  elseif type(raw_records) == "table" and #raw_records > 0 then
+    adapter = "external-cache"
+  end
+
+  local normalized = BMF.players.normalizeList(raw_records)
+  local players = {}
+  local invalid = {}
+  if normalized.ok and normalized.data then
+    players = normalized.data.players or {}
+    invalid = normalized.data.invalid or {}
+  end
+  if #players == 0 then
+    adapter = "headless-empty"
+  end
+
+  local live_count = live_player_controller_count()
+  return result(true, "OK", #players > 0 and "Known player records listed" or "No cached player identity records are available", {
+    players = players,
+    invalid = invalid,
+    playerCount = #players,
+    knownPlayerCount = #players,
+    invalidCount = #invalid,
+    liveControllerCount = live_count,
+    adapter = adapter,
+    source = source,
+    updatedAt = updated_at,
+    cachePath = cache_path,
+    cacheError = cache_error,
+    native = native_detail,
+  })
+end
+
+BMF.players.normalize = function(record)
+  if type(record) ~= "table" then
+    return result(false, "INVALID_PLAYER", "player record table is required")
+  end
+
+  local uuid = first_string(record.uuid, record.id, record.playerId, record.playerID)
+  if not is_uuid(uuid) then
+    return result(false, "INVALID_PLAYER_ID", "player UUID is missing or invalid")
+  end
+
+  local username = first_string(record.username, record.playerName, record.originalName, record.name)
+  local display_name = first_string(record.displayName, record.display_name, record.name, username)
+  local original_name = first_string(record.originalName, record.playerName, username)
+
+  local roles = {}
+  if type(record.roles) == "table" then
+    for _, role in ipairs(record.roles) do
+      if type(role) == "string" and trim_string(role) ~= "" then
+        roles[#roles + 1] = role
+      end
+    end
+  end
+
+  local normalized = {
+    id = uuid,
+    uuid = uuid,
+    username = username or "",
+    playerName = first_string(record.playerName, username) or "",
+    displayName = display_name or "",
+    originalName = original_name or "",
+    roles = roles,
+    permissions = BMF.permissions.toMap(record.permissions),
+    controllerAvailable = record.controllerAvailable and true or false,
+  }
+
+  if type(record.pingMs) == "number" then
+    normalized.pingMs = record.pingMs
+  end
+  if type(record.onlineTimeMs) == "number" then
+    normalized.onlineTimeMs = record.onlineTimeMs
+  end
+  if type(record.address) == "string" then
+    normalized.address = record.address
+  end
+  if type(record.health) == "number" then
+    normalized.health = record.health
+  end
+  if type(record.playerStatePath) == "string" then
+    normalized.playerStatePath = record.playerStatePath
+  end
+  if type(record.controllerPath) == "string" then
+    normalized.controllerPath = record.controllerPath
+  end
+  if type(record.position) == "table" then
+    normalized.position = {
+      x = finite_number(record.position.x or record.position.X, 0),
+      y = finite_number(record.position.y or record.position.Y, 0),
+      z = finite_number(record.position.z or record.position.Z, 0),
+    }
+  end
+
+  return result(true, "OK", "Player record normalized", { player = normalized })
+end
+
+BMF.players.normalizeList = function(records)
+  if type(records) ~= "table" then
+    return result(false, "INVALID_PLAYERS", "players array is required")
+  end
+
+  local players = {}
+  local invalid = {}
+  for index, record in ipairs(records) do
+    local normalized = BMF.players.normalize(external_player_record(record))
+    if normalized.ok then
+      players[#players + 1] = normalized.data.player
+    else
+      invalid[#invalid + 1] = {
+        index = index,
+        code = normalized.code,
+        message = normalized.message,
+      }
+    end
+  end
+
+  return result(true, "OK", "Player list normalized", {
+    players = players,
+    invalid = invalid,
+  })
+end
+
+BMF.players.sync = function(records, options)
+  if type(records) ~= "table" then
+    return result(false, "INVALID_PLAYERS", "players array is required", {
+      cachePath = PLAYER_CACHE_PATH,
+    })
+  end
+
+  options = type(options) == "table" and options or {}
+  local normalized = BMF.players.normalizeList(records)
+  if not normalized.ok then
+    return normalized
+  end
+
+  local players = normalized.data.players or {}
+  local invalid = normalized.data.invalid or {}
+  local cache = {
+    schemaVersion = 1,
+    adapter = tostring(options.adapter or "external-cache"),
+    source = tostring(options.source or "external"),
+    updatedAt = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    players = players,
+    invalid = invalid,
+  }
+
+  local written = write_player_cache(cache)
+  local response = result(written, written and (#invalid > 0 and "PARTIAL" or "OK") or "CACHE_WRITE_FAILED", written and "Player identity cache synced" or "Player identity cache could not be written", {
+    players = players,
+    invalid = invalid,
+    playerCount = #players,
+    knownPlayerCount = #players,
+    invalidCount = #invalid,
+    adapter = cache.adapter,
+    source = cache.source,
+    updatedAt = cache.updatedAt,
+    cachePath = PLAYER_CACHE_PATH,
+  })
+  audit_record("players.sync", {
+    playerCount = #players,
+    invalidCount = #invalid,
+    adapter = cache.adapter,
+    source = cache.source,
+    cachePath = PLAYER_CACHE_PATH,
+  }, {
+    source = "framework",
+    severity = response.ok and "info" or "warn",
+    ok = response.ok,
+    code = response.code,
+  })
+  return response
+end
+
+local function player_query_text(query)
+  if type(query) == "table" then
+    return first_string(
+      query.uuid,
+      query.id,
+      query.playerId,
+      query.playerID,
+      query.username,
+      query.displayName,
+      query.playerName,
+      query.originalName,
+      query.playerStatePath,
+      query.controllerPath,
+      query.name,
+      query.query
+    ) or ""
+  end
+  return tostring(query or "")
+end
+
+local function player_matches_query(player, needle)
+  local lowered = tostring(needle or ""):lower()
+  if lowered == "" then
+    return false, ""
+  end
+
+  local exact_fields = {
+    "uuid",
+    "id",
+    "username",
+    "playerName",
+    "displayName",
+    "originalName",
+    "playerStatePath",
+    "controllerPath",
+  }
+  for _, field in ipairs(exact_fields) do
+    local value = tostring(player[field] or "")
+    if value ~= "" and value:lower() == lowered then
+      return true, field
+    end
+  end
+
+  if #lowered >= 2 then
+    for _, field in ipairs({ "username", "playerName", "displayName", "originalName" }) do
+      local value = tostring(player[field] or "")
+      if value ~= "" and value:lower():find(lowered, 1, true) then
+        return true, "partial:" .. field
+      end
+    end
+  end
+
+  return false, ""
+end
+
+BMF.players.find = function(records, query)
+  local source = "provided"
+  local raw_records = records
+  local raw_query = query
+  local adapter = "provided"
+
+  if query == nil then
+    source = "current"
+    raw_query = records
+    local listed = BMF.players.list()
+    if not listed.ok then
+      return listed
+    end
+    raw_records = (listed.data and listed.data.players) or {}
+    adapter = (listed.data and listed.data.adapter) or "unknown"
+  end
+
+  local normalized = BMF.players.normalizeList(raw_records)
+  if not normalized.ok then
+    return normalized
+  end
+
+  local needle = trim_string(player_query_text(raw_query))
+  if needle == "" then
+    return result(false, "PLAYER_REQUIRED", "player query is required", {
+      source = source,
+      adapter = adapter,
+      players = normalized.data.players,
+      invalid = normalized.data.invalid,
+    })
+  end
+
+  for _, player in ipairs(normalized.data.players) do
+    local matched, match_field = player_matches_query(player, needle)
+    if matched then
+      return result(true, "OK", "Player found", {
+        player = player,
+        query = needle,
+        match = match_field,
+        source = source,
+        adapter = adapter,
+      })
+    end
+  end
+
+  return result(false, "PLAYER_NOT_FOUND", "No normalized player matched query", {
+    query = needle,
+    source = source,
+    adapter = adapter,
+    players = normalized.data.players,
+    invalid = normalized.data.invalid,
+  })
+end
+
+BMF.players.resolve = function(player)
+  if type(player) == "table" then
+    local direct = BMF.players.normalize(player)
+    if direct.ok then
+      direct.data.source = "direct"
+      direct.data.adapter = "direct"
+      return direct
+    end
+  end
+  return BMF.players.find(player)
+end
+
+BMF.players.getName = function(player)
+  local resolved = BMF.players.resolve(player)
+  if not resolved.ok then
+    return resolved
+  end
+  local record = resolved.data.player
+  return result(true, "OK", "Player names resolved", {
+    player = record,
+    id = record.id,
+    uuid = record.uuid,
+    username = record.username,
+    playerName = record.playerName,
+    displayName = record.displayName,
+    originalName = record.originalName,
+    source = resolved.data.source,
+    adapter = resolved.data.adapter,
+  })
+end
+
+BMF.players.summary = function(player)
+  local listed = BMF.players.list()
+  if not listed.ok then
+    return listed
+  end
+
+  local players = (listed.data and listed.data.players) or {}
+  local query = trim_string(player_query_text(player))
+  local found = nil
+  local match = ""
+
+  if query == "" and #players == 1 then
+    found = players[1]
+    match = "single-player-cache"
+  elseif query ~= "" then
+    local lookup = BMF.players.find(players, query)
+    if lookup.ok then
+      found = lookup.data.player
+      match = lookup.data.match or ""
+    else
+      lookup.data = lookup.data or {}
+      lookup.data.knownPlayerCount = #players
+      lookup.data.playerCount = #players
+      lookup.data.liveControllerCount = (listed.data and listed.data.liveControllerCount) or 0
+      lookup.data.adapter = (listed.data and listed.data.adapter) or ""
+      lookup.data.cachePath = PLAYER_CACHE_PATH
+      return lookup
+    end
+  else
+    return result(false, "PLAYER_REQUIRED", "player query is required when the cache has zero or multiple players", {
+      players = players,
+      knownPlayerCount = #players,
+      playerCount = #players,
+      liveControllerCount = (listed.data and listed.data.liveControllerCount) or 0,
+      adapter = (listed.data and listed.data.adapter) or "",
+      cachePath = PLAYER_CACHE_PATH,
+    })
+  end
+
+  local data = {
+    player = found,
+    id = found.id,
+    uuid = found.uuid,
+    username = found.username,
+    playerName = found.playerName,
+    displayName = found.displayName,
+    originalName = found.originalName,
+    match = match,
+    query = query,
+    knownPlayerCount = #players,
+    playerCount = #players,
+    liveControllerCount = (listed.data and listed.data.liveControllerCount) or 0,
+    adapter = (listed.data and listed.data.adapter) or "",
+    source = (listed.data and listed.data.source) or "",
+    updatedAt = (listed.data and listed.data.updatedAt) or "",
+    cachePath = PLAYER_CACHE_PATH,
+  }
+  return result(true, "OK", "Player summary resolved", data)
+end
+
+BMF.players.formatSummary = function(summary)
+  local data = summary or {}
+  local player = data.player or data
+  local username = first_string(player.username, player.playerName, player.originalName, player.name) or "unknown"
+  local display_name = first_string(player.displayName, player.name, username) or "unknown"
+  local player_id = first_string(player.uuid, player.id, player.playerId, player.playerID) or "unknown"
+  local known_count = tonumber(data.knownPlayerCount or data.playerCount or 0) or 0
+  local live_count = tonumber(data.liveControllerCount or 0) or 0
+  return "BMF player summary: username=" .. tostring(username) ..
+    " displayName=" .. tostring(display_name) ..
+    " id=" .. tostring(player_id) ..
+    " knownPlayers=" .. tostring(known_count) ..
+    " liveControllers=" .. tostring(live_count)
+end
+
+BMF.players.whisperSummary = function(player)
+  local summarized = BMF.players.summary(player)
+  if not summarized.ok then
+    return summarized
+  end
+
+  local message = BMF.players.formatSummary(summarized.data)
+  local whispered = BMF.chat.whisper(summarized.data.player, message)
+  local response = result(whispered.ok, whispered.code or (whispered.ok and "OK" or "ERROR"), whispered.ok and "Player summary whispered" or "Player summary resolved but whisper failed", {
+    player = summarized.data.player,
+    summary = summarized.data,
+    message = message,
+    delivered = whispered.ok == true and whispered.data and whispered.data.delivered == true,
+    deliveredCount = whispered.data and whispered.data.deliveredCount or 0,
+    attemptedCount = whispered.data and whispered.data.attemptedCount or 0,
+    deliveryMode = whispered.data and whispered.data.deliveryMode or "",
+    whisperCode = whispered.code,
+    whisper = whispered.data,
+  })
+  audit_record("players.summary.whisper", {
+    target = summarized.data.uuid,
+    username = summarized.data.username,
+    displayName = summarized.data.displayName,
+    knownPlayerCount = summarized.data.knownPlayerCount,
+    liveControllerCount = summarized.data.liveControllerCount,
+    deliveredCount = response.data.deliveredCount,
+    deliveryMode = response.data.deliveryMode,
+  }, {
+    source = "framework",
+    severity = response.ok and "info" or "warn",
+    ok = response.ok,
+    code = response.code,
+  })
+  return response
+end
+
+BMF.interact = {}
+
+local function interact_event_player(event)
+  local player = event.player
+  if type(player) == "table" then
+    return {
+      uuid = first_string(player.uuid, player.id, player.playerId, player.playerID) or "",
+      username = first_string(player.username, player.playerName, player.originalName, player.name) or "",
+      displayName = first_string(player.displayName, player.name, player.username) or "",
+      controller = first_string(player.controller, player.controllerName) or "",
+      pawn = first_string(player.pawn, player.pawnName) or "",
+    }
+  end
+  return {
+    uuid = first_string(event.playerUuid, event.playerId, event.uuid, event.id, event.player) or "",
+    username = first_string(event.username, event.playerName, event.name) or "",
+    displayName = first_string(event.displayName, event.name, event.username) or "",
+    controller = first_string(event.controller, event.controllerName) or "",
+    pawn = first_string(event.pawn, event.pawnName) or "",
+  }
+end
+
+BMF.interact.handleConsoleMessage = function(event)
+  if type(event) ~= "table" then
+    return result(false, "INVALID_INTERACT_EVENT", "interact event table is required")
+  end
+
+  local message = first_string(event.message, event.consoleTag, event.tag, event.value) or ""
+  local player = interact_event_player(event)
+  local position = event.position
+  if type(position) ~= "table" then
+    position = {
+      tonumber(event.x) or 0,
+      tonumber(event.y) or 0,
+      tonumber(event.z) or 0,
+    }
+  end
+
+  local payload = {
+    source = first_string(event.source, event.adapter) or "unknown",
+    message = tostring(message or ""),
+    player = player,
+    brickName = first_string(event.brickName, event.brick) or "",
+    brickAsset = first_string(event.brickAsset, event.asset) or "",
+    position = position,
+  }
+
+  local emitted = BMF.events.emit("interactConsole", payload)
+  audit_record("interact.console", {
+    source = payload.source,
+    playerUuid = player.uuid,
+    playerName = player.username,
+    message = payload.message,
+    brickName = payload.brickName,
+    brickAsset = payload.brickAsset,
+    handlerCount = emitted.data and emitted.data.handlers or 0,
+    errorCount = emitted.data and #(emitted.data.errors or {}) or 0,
+  }, {
+    source = "framework",
+    actor = player.uuid,
+    severity = emitted.ok and "info" or "warn",
+    ok = emitted.ok,
+    code = emitted.code,
+  })
+
+  local lines = {
+    "event=interactConsole",
+    "source=" .. tostring(payload.source or ""),
+    "player_uuid=" .. tostring(player.uuid or ""),
+    "player_name=" .. tostring(player.username or ""),
+    "message=" .. tostring(payload.message or ""),
+    "handler_count=" .. tostring(emitted.data and emitted.data.handlers or 0),
+    "error_count=" .. tostring(emitted.data and #(emitted.data.errors or {}) or 0),
+  }
+
+  return result(emitted.ok, emitted.code, "Interact console message forwarded", {
+    event = payload,
+    handlerCount = emitted.data and emitted.data.handlers or 0,
+    errors = emitted.data and emitted.data.errors or {},
+    lines = lines,
+  })
+end
+
+local function private_chat_result(kind, player, message)
+  local text = tostring(message or "")
+  if trim_string(text) == "" then
+    return result(false, "INVALID_OPTIONS", "message is required")
+  end
+  if player_query_text(player) == "" then
+    return result(false, "INVALID_OPTIONS", "player target is required")
+  end
+  local limited = rate_limit_check("chat." .. tostring(kind or "private"))
+  if not limited.ok then
+    return limited
+  end
+
+  local live_target, live_targets = live_chat_resolve_target(player)
+  if live_target ~= nil then
+    local delivered, failed, command = live_chat_send_to_targets({ live_target }, text)
+    local response = result(#delivered > 0, #delivered > 0 and "OK" or "PLAYER_DELIVERY_UNAVAILABLE", #delivered > 0 and "Private message delivered to live player controller" or "Live player controller rejected private message", {
+      channel = kind,
+      query = player_query_text(player),
+      target = live_chat_target_summary(live_target),
+      message = text,
+      delivered = #delivered > 0,
+      deliveredCount = #delivered,
+      attemptedCount = 1,
+      failedCount = #failed,
+      targets = delivered,
+      failures = failed,
+      command = command,
+      executor = "player_controller.client_push_chat_message",
+      deliveryMode = "player-controller-client-push-chat-message",
+      validation = "L3 Live Player UI confirmed",
+    })
+    audit_record("chat." .. tostring(kind or "private"), {
+      channel = kind,
+      query = player_query_text(player),
+      target = response.data.target,
+      message = text,
+      deliveredCount = #delivered,
+      deliveryMode = response.data.deliveryMode,
+    }, {
+      source = "framework",
+      severity = response.ok and "info" or "warn",
+      ok = response.ok,
+      code = response.code,
+    })
+    return response
+  end
+
+  local resolved = BMF.players.resolve(player)
+  if not resolved.ok then
+    audit_record("chat." .. tostring(kind or "private") .. ".target_not_found", {
+      channel = kind,
+      query = player_query_text(player),
+      message = text,
+      adapter = resolved.data and resolved.data.adapter or "",
+      liveTargets = #(live_targets or {}),
+    }, {
+      source = "framework",
+      severity = "warn",
+      ok = false,
+      code = resolved.code,
+    })
+    return resolved
+  end
+
+  local response = result(false, "PLAYER_DELIVERY_UNAVAILABLE", "Private player message delivery requires a live player adapter", {
+    channel = kind,
+    player = resolved.data.player,
+    target = resolved.data.player.uuid,
+    message = text,
+    delivered = false,
+    deliveredCount = 0,
+    source = resolved.data.source,
+    adapter = resolved.data.adapter,
+    liveTargets = #(live_targets or {}),
+    validationRequired = "L3 Live Player",
+  })
+  audit_record("chat." .. tostring(kind or "private") .. ".delivery_unavailable", {
+    channel = kind,
+    target = response.data.target,
+    message = text,
+    adapter = response.data.adapter,
+    validationRequired = response.data.validationRequired,
+  }, {
+    source = "framework",
+    severity = "warn",
+    ok = false,
+    code = response.code,
+  })
+  return response
+end
+
+BMF.chat.whisper = function(player, message)
+  return private_chat_result("whisper", player, message)
+end
+
+BMF.chat.statusMessage = function(player, message)
+  return private_chat_result("statusMessage", player, message)
+end
+
+BMF.timers = {}
+BMF.timers.after = function(ms, callback)
+  if type(callback) ~= "function" then
+    return nil
+  end
+  local id = state.next_timer_id
+  state.next_timer_id = state.next_timer_id + 1
+  state.timers[id] = { cancelled = false }
+
+  local function wrapped()
+    if state.timers[id] and not state.timers[id].cancelled then
+      pcall(callback)
+    end
+    state.timers[id] = nil
+  end
+
+  if type(ExecuteWithDelay) == "function" then
+    ExecuteWithDelay(tonumber(ms) or 0, wrapped)
+  elseif type(ExecuteInGameThreadWithDelay) == "function" then
+    ExecuteInGameThreadWithDelay(tonumber(ms) or 0, wrapped)
+  else
+    state.timers[id] = nil
+    return nil
+  end
+
+  return id
+end
+
+BMF.timers.every = function(ms, callback)
+  if type(callback) ~= "function" then
+    return nil
+  end
+  local id = state.next_timer_id
+  state.next_timer_id = state.next_timer_id + 1
+  local interval = tonumber(ms) or 0
+  state.timers[id] = { cancelled = false, interval = interval, count = 0 }
+
+  local function schedule()
+    if type(ExecuteWithDelay) == "function" then
+      ExecuteWithDelay(interval, function()
+        local timer = state.timers[id]
+        if not timer or timer.cancelled then
+          state.timers[id] = nil
+          return
+        end
+        timer.count = timer.count + 1
+        local ok, err = pcall(callback, id, timer.count)
+        if not ok then
+          log("error", "timer callback failed: " .. tostring(err))
+          state.timers[id] = nil
+          return
+        end
+        timer = state.timers[id]
+        if timer and not timer.cancelled then
+          schedule()
+        else
+          state.timers[id] = nil
+        end
+      end)
+      return true
+    end
+    if type(ExecuteInGameThreadWithDelay) == "function" then
+      ExecuteInGameThreadWithDelay(interval, function()
+        local timer = state.timers[id]
+        if not timer or timer.cancelled then
+          state.timers[id] = nil
+          return
+        end
+        timer.count = timer.count + 1
+        local ok, err = pcall(callback, id, timer.count)
+        if not ok then
+          log("error", "timer callback failed: " .. tostring(err))
+          state.timers[id] = nil
+          return
+        end
+        timer = state.timers[id]
+        if timer and not timer.cancelled then
+          schedule()
+        else
+          state.timers[id] = nil
+        end
+      end)
+      return true
+    end
+    return false
+  end
+
+  if not schedule() then
+    state.timers[id] = nil
+    return nil
+  end
+
+  return id
+end
+
+BMF.timers.cancel = function(id)
+  if state.timers[id] then
+    state.timers[id].cancelled = true
+    return true
+  end
+  return false
+end
+
+BMF.timers.activeCount = function()
+  local count = 0
+  for _ in pairs(state.timers) do
+    count = count + 1
+  end
+  return count
+end
+
+local function list_command_request_files()
+  local command_dir = COMMAND_DIR:gsub("/", "\\")
+  os.execute('if not exist "' .. command_dir .. '" mkdir "' .. command_dir .. '"')
+
+  local handle = io.popen('dir /b /a-d "' .. command_dir .. '\\*.request.txt" 2>nul')
+  if not handle then
+    return {}
+  end
+
+  local files = {}
+  for line in handle:lines() do
+    if line and line:match("%.request%.txt$") then
+      files[#files + 1] = line
+    end
+  end
+  handle:close()
+  table.sort(files)
+  return files
+end
+
+local function process_command_request(file_name)
+  local request_id = tostring(file_name or ""):match("^(.*)%.request%.txt$")
+  if not request_id or request_id == "" then
+    return
+  end
+
+  local request_path = COMMAND_DIR .. "/" .. file_name
+  local response_path = COMMAND_DIR .. "/" .. request_id .. ".response.txt"
+  local command_text = trim_string(read_file(request_path) or "")
+  os.remove(request_path)
+
+  local lines = {}
+  local output_device = {
+    Log = function(_, line)
+      lines[#lines + 1] = tostring(line or "")
+    end,
+  }
+
+  local command_name, args = command_text:match("^(%S+)%s*(.*)$")
+  local ok = false
+  local detail = ""
+  if not command_name or command_name == "" then
+    detail = "command name is required"
+  else
+    local dispatch_ok, handled_or_error = pcall(BMF.commands.dispatch, command_name, args or "", output_device)
+    ok = dispatch_ok and handled_or_error and true or false
+    if not dispatch_ok then
+      detail = "dispatch crashed: " .. tostring(handled_or_error)
+      lines[#lines + 1] = "BMF " .. tostring(command_name) .. " ERROR " .. detail
+    elseif not handled_or_error then
+      detail = "command was not handled"
+    else
+      detail = "ok"
+    end
+  end
+
+  local response = {
+    "ok=" .. tostring(ok),
+    "detail=" .. tostring(detail),
+    "command=" .. tostring(command_text),
+  }
+  for _, line in ipairs(lines) do
+    response[#response + 1] = tostring(line)
+  end
+  write_file(response_path, table.concat(response, "\n") .. "\n")
+end
+
+local function poll_command_requests()
+  for _, file_name in ipairs(list_command_request_files()) do
+    local ok, err = pcall(process_command_request, file_name)
+    if not ok then
+      log("error", "command worker failed for " .. tostring(file_name) .. ": " .. tostring(err))
+    end
+  end
+
+  if state.command_worker_started then
+    BMF.timers.after(250, poll_command_requests)
+  end
+end
+
+local function start_command_worker()
+  if state.command_worker_started then
+    return
+  end
+  state.command_worker_started = true
+  log("info", "command worker started path=" .. COMMAND_DIR)
+  BMF.timers.after(250, poll_command_requests)
+end
+
+local function sorted_loaded_plugin_names()
+  local names = {}
+  for name in pairs(state.plugins) do
+    names[#names + 1] = name
+  end
+  table.sort(names)
+  return names
+end
+
+local function loaded_plugin_with_tick_count()
+  local count = 0
+  for name, plugin in pairs(state.plugins) do
+    if type(plugin) == "table" and type(plugin.onTick) == "function" and not plugin_watchdog_isolated(name) then
+      count = count + 1
+    end
+  end
+  return count
+end
+
+local function dispatch_server_ready_hooks(data)
+  local ready_data = copy_table(data or state.server_ready_data or {})
+  for _, name in ipairs(sorted_loaded_plugin_names()) do
+    run_plugin_hook(name, state.plugins[name], "onServerReady", ready_data)
+  end
+end
+
+local function ensure_plugin_tick_worker()
+  if state.plugin_tick_timer_id ~= nil then
+    return
+  end
+  if loaded_plugin_with_tick_count() == 0 then
+    return
+  end
+
+  local timer_id = BMF.timers.every(state.plugin_tick_interval_ms, function(id, count)
+    if loaded_plugin_with_tick_count() == 0 then
+      state.plugin_tick_timer_id = nil
+      BMF.timers.cancel(id)
+      write_status()
+      return
+    end
+
+    state.plugin_tick_count = tonumber(count) or (state.plugin_tick_count + 1)
+    local tick_data = {
+      tick = state.plugin_tick_count,
+      intervalMs = state.plugin_tick_interval_ms,
+      serverReady = state.server_ready and true or false,
+    }
+    for _, name in ipairs(sorted_loaded_plugin_names()) do
+      run_plugin_hook(name, state.plugins[name], "onTick", tick_data)
+    end
+  end)
+
+  if timer_id then
+    state.plugin_tick_timer_id = timer_id
+    log("info", "plugin tick worker started interval_ms=" .. tostring(state.plugin_tick_interval_ms))
+    write_status()
+  end
+end
+
+local function mark_server_ready(data)
+  state.server_ready = true
+  state.server_ready_data = copy_table(data or {})
+  BMF.events.emit("serverReady", state.server_ready_data)
+  dispatch_server_ready_hooks(state.server_ready_data)
+  write_status()
+end
+
+local function list_plugin_dirs()
+  local command = 'dir /b /ad "' .. PLUGINS_DIR:gsub("/", "\\") .. '" 2>nul'
+  local handle = io.popen(command)
+  if not handle then
+    return {}
+  end
+  local names = {}
+  for line in handle:lines() do
+    if line and line ~= "" then
+      names[#names + 1] = line
+    end
+  end
+  handle:close()
+  table.sort(names)
+  return names
+end
+
+local function parse_json_string_field(raw, field)
+  if type(raw) ~= "string" then
+    return nil
+  end
+  local pattern = '"' .. field .. '"%s*:%s*"([^"]*)"'
+  return raw:match(pattern)
+end
+
+local function parse_json_string_array_field(raw, field)
+  if type(raw) ~= "string" then
+    return {}
+  end
+  local body = raw:match('"' .. field .. '"%s*:%s*%[(.-)%]')
+  local values = {}
+  if not body then
+    return values
+  end
+  for value in body:gmatch('"([^"]*)"') do
+    values[#values + 1] = value
+  end
+  return values
+end
+
+local function parse_json_boolean_field(raw, field)
+  if type(raw) ~= "string" then
+    return nil
+  end
+  local token = raw:match('"' .. field .. '"%s*:%s*([A-Za-z]+)')
+  if not token then
+    return nil
+  end
+  token = token:lower()
+  if token == "true" then
+    return true
+  end
+  if token == "false" then
+    return false
+  end
+  return nil
+end
+
+local function parse_json_number_field(raw, field)
+  if type(raw) ~= "string" then
+    return nil
+  end
+  local token = raw:match('"' .. field .. '"%s*:%s*([%-%.%d]+)')
+  if not token then
+    return nil
+  end
+  return tonumber(token)
+end
+
+local function read_framework_config()
+  local raw = read_file(CONFIG_PATH) or ""
+  local jsonl_logs = parse_json_boolean_field(raw, "jsonlLogs")
+  if jsonl_logs == nil then
+    jsonl_logs = true
+  end
+  local watchdog_enabled = parse_json_boolean_field(raw, "pluginWatchdogEnabled")
+  if watchdog_enabled == nil then
+    watchdog_enabled = true
+  end
+  local watchdog_max_errors = parse_json_number_field(raw, "pluginWatchdogMaxErrors") or 3
+  if watchdog_max_errors < 1 then
+    watchdog_max_errors = 1
+  end
+  return {
+    path = CONFIG_PATH,
+    allowPluginServerExec = parse_json_boolean_field(raw, "allowPluginServerExec") == true,
+    allowPluginServerShutdown = parse_json_boolean_field(raw, "allowPluginServerShutdown") == true,
+    jsonlLogs = jsonl_logs,
+    pluginWatchdogEnabled = watchdog_enabled,
+    pluginWatchdogMaxErrors = math.floor(watchdog_max_errors),
+    allowPluginUnsafeGlobals = parse_json_boolean_field(raw, "allowPluginUnsafeGlobals") == true,
+    allowUnsafeApplicatorLuaHook = parse_json_boolean_field(raw, "allowUnsafeApplicatorLuaHook") == true,
+    brickadiaSavedDir = parse_json_string_field(raw, "brickadiaSavedDir") or "",
+  }
+end
+
+local function read_plugin_manifest(name)
+  local path = PLUGINS_DIR .. "/" .. name .. "/bmf.json"
+  local raw = read_file(path)
+  if not raw then
+    return {
+      path = path,
+      raw = "",
+      capabilities = {},
+    }
+  end
+  return {
+    path = path,
+    raw = raw,
+    name = parse_json_string_field(raw, "name"),
+    version = parse_json_string_field(raw, "version"),
+    author = parse_json_string_field(raw, "author"),
+    description = parse_json_string_field(raw, "description"),
+    capabilities = parse_json_string_array_field(raw, "capabilities"),
+  }
+end
+
+local function has_manifest_capability(manifest, capability)
+  local capabilities = {}
+  if type(manifest) == "table" and type(manifest.capabilities) == "table" then
+    capabilities = manifest.capabilities
+  end
+  for _, item in ipairs(capabilities) do
+    if item == capability or item == "*" then
+      return true
+    end
+    if capability == "server.exec" and item == "server.exec.restricted" then
+      return true
+    end
+  end
+  return false
+end
+
+local function plugin_can_access_unsafe_global(plugin_name, manifest, key)
+  local global_name = tostring(key or "")
+  if not UNSAFE_PLUGIN_GLOBALS[global_name] then
+    return true
+  end
+  if state.config.allowPluginUnsafeGlobals == true and has_manifest_capability(manifest, "unsafe.globals") then
+    return true
+  end
+
+  local denial_key = tostring(plugin_name or "") .. "|" .. global_name
+  local now = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  local denial = state.plugin_unsafe_global_denials[denial_key]
+  if type(denial) ~= "table" then
+    denial = {
+      plugin = tostring(plugin_name or ""),
+      global = global_name,
+      count = 0,
+      firstAt = now,
+      lastAt = now,
+    }
+    state.plugin_unsafe_global_denials[denial_key] = denial
+    audit_record("plugin.unsafe_global_denied", {
+      plugin = denial.plugin,
+      global = global_name,
+      requiredCapability = "unsafe.globals",
+      config = "allowPluginUnsafeGlobals",
+    }, {
+      source = "plugin",
+      plugin = denial.plugin,
+      severity = "warn",
+      ok = false,
+      code = "UNSAFE_GLOBAL_DENIED",
+    })
+    log("warn", "plugin " .. denial.plugin .. " denied unsafe global " .. global_name)
+  end
+  denial.count = (tonumber(denial.count) or 0) + 1
+  denial.lastAt = now
+  write_status()
+  return false
+end
+
+local function plugin_global_lookup(plugin_name, manifest, key)
+  if not plugin_can_access_unsafe_global(plugin_name, manifest, key) then
+    return nil
+  end
+  return _G[key]
+end
+
+local function capability_denied(plugin_name, capability, manifest)
+  audit_record("capability.denied", {
+    plugin = plugin_name,
+    capability = capability,
+    declared = copy_table((manifest and manifest.capabilities) or {}),
+  }, {
+    source = "plugin",
+    plugin = plugin_name,
+    severity = "warn",
+    ok = false,
+    code = "CAPABILITY_REQUIRED",
+  })
+  return result(false, "CAPABILITY_REQUIRED", "Plugin capability is required: " .. tostring(capability), {
+    plugin = plugin_name,
+    capability = capability,
+    declared = copy_table((manifest and manifest.capabilities) or {}),
+  })
+end
+
+local function config_opt_in_denied(plugin_name, option)
+  audit_record("config.opt_in_denied", {
+    plugin = plugin_name,
+    option = option,
+    configPath = CONFIG_PATH,
+  }, {
+    source = "plugin",
+    plugin = plugin_name,
+    severity = "warn",
+    ok = false,
+    code = "CONFIG_OPT_IN_REQUIRED",
+  })
+  return result(false, "CONFIG_OPT_IN_REQUIRED", "BMF config option is required: " .. tostring(option), {
+    plugin = plugin_name,
+    option = option,
+    configPath = CONFIG_PATH,
+  })
+end
+
+local function require_capability(plugin_name, manifest, capability, callback)
+  if not has_manifest_capability(manifest, capability) then
+    return capability_denied(plugin_name, capability, manifest)
+  end
+  return callback()
+end
+
+local function plugin_storage_args(plugin_name, a, b, c)
+  if c ~= nil then
+    return tostring(a or ""), b, c
+  end
+  return plugin_name, a, b
+end
+
+local function create_plugin_api(plugin_name, manifest)
+  local api = {}
+  for key, value in pairs(BMF) do
+    api[key] = value
+  end
+  local function run_plugin_action(callback)
+    return with_rate_limit_context({
+      source = "plugin",
+      plugin = plugin_name,
+      subject = "plugin:" .. tostring(plugin_name),
+    }, callback)
+  end
+  api.log = function(a, b, c)
+    local level, message, data = normalize_log_args("info", a, b, c)
+    log_plugin(plugin_name, level, message, data)
+  end
+  api.logInfo = function(message, data)
+    log_plugin(plugin_name, "info", message, data)
+  end
+  api.logWarn = function(message, data)
+    log_plugin(plugin_name, "warn", message, data)
+  end
+  api.logError = function(message, data)
+    log_plugin(plugin_name, "error", message, data)
+  end
+  api.logger = {
+    debug = function(message, data)
+      log_plugin(plugin_name, "debug", message, data)
+    end,
+    info = function(message, data)
+      log_plugin(plugin_name, "info", message, data)
+    end,
+    warn = function(message, data)
+      log_plugin(plugin_name, "warn", message, data)
+    end,
+    error = function(message, data)
+      log_plugin(plugin_name, "error", message, data)
+    end,
+  }
+
+  api.audit = {
+    path = AUDIT_LOG_PATH,
+    record = function(action, data)
+      return audit_record(action, data, {
+        source = "plugin",
+        plugin = plugin_name,
+      })
+    end,
+    recent = function(limit)
+      return BMF.audit.recent(limit)
+    end,
+  }
+
+  api.rateLimits = {}
+  for key, value in pairs(BMF.rateLimits) do
+    api.rateLimits[key] = value
+  end
+  api.rateLimits.check = function(action, options)
+    return run_plugin_action(function()
+      return BMF.rateLimits.check(action, options)
+    end)
+  end
+
+  api.events = {}
+  for key, value in pairs(BMF.events) do
+    api.events[key] = value
+  end
+  api.events.on = function(name, handler)
+    return register_event_handler(name, handler, plugin_name)
+  end
+
+  api.commands = {}
+  for key, value in pairs(BMF.commands) do
+    api.commands[key] = value
+  end
+  api.commands.register = function(name, description, handler)
+    return register_command(name, description, handler, plugin_name)
+  end
+
+  api.tools = {}
+  for key, value in pairs(BMF.tools) do
+    api.tools[key] = value
+  end
+  api.tools.applicator = {}
+  for key, value in pairs(BMF.tools.applicator) do
+    api.tools.applicator[key] = value
+  end
+  api.tools.onApplicatorComponentApply = function(handler, options)
+    return require_capability(plugin_name, manifest, "tools.applicator", function()
+      local opts = type(options) == "table" and copy_table(options) or {}
+      opts.owner = plugin_name
+      return BMF.tools.onApplicatorComponentApply(handler, opts)
+    end)
+  end
+
+  api.server = {}
+  for key, value in pairs(BMF.server) do
+    api.server[key] = value
+  end
+  api.server.exec = function(command)
+    return require_capability(plugin_name, manifest, "server.exec", function()
+      if not state.config.allowPluginServerExec then
+        return config_opt_in_denied(plugin_name, "allowPluginServerExec")
+      end
+      return run_plugin_action(function()
+        return BMF.server.exec(command)
+      end)
+    end)
+  end
+  api.server.save = function(options)
+    return require_capability(plugin_name, manifest, "server.save", function()
+      return run_plugin_action(function()
+        return BMF.server.save(options)
+      end)
+    end)
+  end
+  api.server.shutdown = function(options)
+    return require_capability(plugin_name, manifest, "server.shutdown", function()
+      if not state.config.allowPluginServerShutdown then
+        return config_opt_in_denied(plugin_name, "allowPluginServerShutdown")
+      end
+      return run_plugin_action(function()
+        return BMF.server.shutdown(options)
+      end)
+    end)
+  end
+
+  api.chat = {}
+  for key, value in pairs(BMF.chat) do
+    api.chat[key] = value
+  end
+  api.chat.broadcast = function(message)
+    return require_capability(plugin_name, manifest, "chat.broadcast", function()
+      return run_plugin_action(function()
+        return BMF.chat.broadcast(message)
+      end)
+    end)
+  end
+  api.chat.whisper = function(player, message)
+    return require_capability(plugin_name, manifest, "chat.whisper", function()
+      return run_plugin_action(function()
+        return BMF.chat.whisper(player, message)
+      end)
+    end)
+  end
+  api.chat.statusMessage = function(player, message)
+    return require_capability(plugin_name, manifest, "chat.statusMessage", function()
+      return run_plugin_action(function()
+        return BMF.chat.statusMessage(player, message)
+      end)
+    end)
+  end
+
+  api.players = {}
+  for key, value in pairs(BMF.players) do
+    api.players[key] = value
+  end
+
+  api.world = {}
+  for key, value in pairs(BMF.world) do
+    api.world[key] = value
+  end
+  api.world.loadAdditive = function(options)
+    return require_capability(plugin_name, manifest, "world.loadAdditive", function()
+      return run_plugin_action(function()
+        return BMF.world.loadAdditive(options)
+      end)
+    end)
+  end
+  api.world.saveAs = function(name)
+    return require_capability(plugin_name, manifest, "world.saveAs", function()
+      return run_plugin_action(function()
+        return BMF.world.saveAs(name)
+      end)
+    end)
+  end
+
+  api.prefabs = {}
+  for key, value in pairs(BMF.prefabs) do
+    api.prefabs[key] = value
+  end
+  api.prefabs.loadBrdb = function(options)
+    return require_capability(plugin_name, manifest, "prefabs.loadBrdb", function()
+      return run_plugin_action(function()
+        return BMF.prefabs.loadBrdb(options)
+      end)
+    end)
+  end
+  api.prefabs.loadBrz = function(options)
+    return require_capability(plugin_name, manifest, "prefabs.loadBrz", function()
+      return run_plugin_action(function()
+        return BMF.prefabs.loadBrz(options)
+      end)
+    end)
+  end
+
+  api.vehicles = {}
+  for key, value in pairs(BMF.vehicles) do
+    api.vehicles[key] = value
+  end
+  api.vehicles.spawnSet = function(options)
+    return require_capability(plugin_name, manifest, "vehicles.spawnSet", function()
+      return run_plugin_action(function()
+        return BMF.vehicles.spawnSet(options)
+      end)
+    end)
+  end
+
+  api.storage = {}
+  for key, value in pairs(BMF.storage) do
+    api.storage[key] = value
+  end
+  api.storage.readText = function(a, b)
+    local scoped_plugin = plugin_name
+    local relative = a
+    if b ~= nil then
+      scoped_plugin = tostring(a or "")
+      relative = b
+    end
+    if scoped_plugin ~= plugin_name then
+      return capability_denied(plugin_name, "plugins.storage", manifest)
+    end
+    return require_capability(plugin_name, manifest, "plugins.storage", function()
+      return BMF.storage.readText(scoped_plugin, relative)
+    end)
+  end
+  api.storage.writeText = function(a, b, c)
+    local scoped_plugin, relative, text = plugin_storage_args(plugin_name, a, b, c)
+    if scoped_plugin ~= plugin_name then
+      return capability_denied(plugin_name, "plugins.storage", manifest)
+    end
+    return require_capability(plugin_name, manifest, "plugins.storage", function()
+      return BMF.storage.writeText(scoped_plugin, relative, text)
+    end)
+  end
+  api.storage.readJson = function(a, b)
+    local scoped_plugin = plugin_name
+    local relative = a
+    if b ~= nil then
+      scoped_plugin = tostring(a or "")
+      relative = b
+    end
+    if scoped_plugin ~= plugin_name then
+      return capability_denied(plugin_name, "plugins.storage", manifest)
+    end
+    return require_capability(plugin_name, manifest, "plugins.storage", function()
+      return BMF.storage.readJson(scoped_plugin, relative)
+    end)
+  end
+  api.storage.writeJson = function(a, b, c)
+    local scoped_plugin, relative, value = plugin_storage_args(plugin_name, a, b, c)
+    if scoped_plugin ~= plugin_name then
+      return capability_denied(plugin_name, "plugins.storage", manifest)
+    end
+    return require_capability(plugin_name, manifest, "plugins.storage", function()
+      return BMF.storage.writeJson(scoped_plugin, relative, value)
+    end)
+  end
+  api.storage.appendText = function(a, b, c)
+    local scoped_plugin, relative, text = plugin_storage_args(plugin_name, a, b, c)
+    if scoped_plugin ~= plugin_name then
+      return capability_denied(plugin_name, "plugins.storage", manifest)
+    end
+    return require_capability(plugin_name, manifest, "plugins.storage", function()
+      return BMF.storage.appendText(scoped_plugin, relative, text)
+    end)
+  end
+  api.storage.readConfigText = function(a)
+    local scoped_plugin = a or plugin_name
+    if scoped_plugin ~= plugin_name then
+      return capability_denied(plugin_name, "plugins.storage", manifest)
+    end
+    return require_capability(plugin_name, manifest, "plugins.storage", function()
+      return BMF.storage.readConfigText(scoped_plugin)
+    end)
+  end
+  api.storage.writeConfigText = function(a, b)
+    local scoped_plugin = plugin_name
+    local text = a
+    if b ~= nil then
+      scoped_plugin = tostring(a or "")
+      text = b
+    end
+    if scoped_plugin ~= plugin_name then
+      return capability_denied(plugin_name, "plugins.storage", manifest)
+    end
+    return require_capability(plugin_name, manifest, "plugins.storage", function()
+      return BMF.storage.writeConfigText(scoped_plugin, text)
+    end)
+  end
+  api.storage.readConfig = function(a)
+    local scoped_plugin = a or plugin_name
+    if scoped_plugin ~= plugin_name then
+      return capability_denied(plugin_name, "plugins.storage", manifest)
+    end
+    return require_capability(plugin_name, manifest, "plugins.storage", function()
+      return BMF.storage.readConfig(scoped_plugin)
+    end)
+  end
+  api.storage.writeConfig = function(a, b)
+    local scoped_plugin = plugin_name
+    local value = a
+    if b ~= nil then
+      scoped_plugin = tostring(a or "")
+      value = b
+    end
+    if scoped_plugin ~= plugin_name then
+      return capability_denied(plugin_name, "plugins.storage", manifest)
+    end
+    return require_capability(plugin_name, manifest, "plugins.storage", function()
+      return BMF.storage.writeConfig(scoped_plugin, value)
+    end)
+  end
+
+  api.capabilities = {
+    has = function(capability)
+      return has_manifest_capability(manifest, capability)
+    end,
+    require = function(capability)
+      if has_manifest_capability(manifest, capability) then
+        return result(true, "OK", "Capability is declared", {
+          plugin = plugin_name,
+          capability = capability,
+        })
+      end
+      return capability_denied(plugin_name, capability, manifest)
+    end,
+    list = function()
+      return result(true, "OK", "Capabilities listed", {
+        plugin = plugin_name,
+        capabilities = copy_table((manifest and manifest.capabilities) or {}),
+      })
+    end,
+  }
+
+  return api
+end
+
+local function unload_plugin(name, plugin, reason)
+  if type(plugin) == "table" and type(plugin.onUnload) == "function" then
+    local api = plugin.bmf_api or BMF
+    local ok, err = pcall(plugin.onUnload, api, reason or "unload")
+    if not ok then
+      record_plugin_error(name, "onUnload", err, { reason = reason or "unload" }, plugin)
+      remove_event_handlers_for_owner(name)
+      remove_commands_for_owner(name)
+      remove_tool_handlers_for_owner(name)
+      return false, err
+    end
+  end
+  BMF.events.emit("pluginUnloaded", {
+    name = name,
+    reason = reason or "unload",
+  })
+  local removed_handlers = remove_event_handlers_for_owner(name)
+  local removed_commands = remove_commands_for_owner(name)
+  local removed_tool_handlers = remove_tool_handlers_for_owner(name)
+  audit_record("plugin.unloaded", {
+    plugin = name,
+    reason = reason or "unload",
+    eventHandlersRemoved = removed_handlers,
+    commandsRemoved = removed_commands,
+    toolHandlersRemoved = removed_tool_handlers,
+  }, {
+    source = "framework",
+    plugin = name,
+    severity = "info",
+    ok = true,
+    code = "OK",
+  })
+  log(
+    "info",
+    "unloaded plugin " .. name ..
+      " event_handlers_removed=" .. tostring(removed_handlers) ..
+      " commands_removed=" .. tostring(removed_commands) ..
+      " tool_handlers_removed=" .. tostring(removed_tool_handlers)
+  )
+  return true, nil
+end
+
+local function load_plugin(name)
+  local plugin_path = PLUGINS_DIR .. "/" .. name .. "/main.lua"
+  local manifest = read_plugin_manifest(name)
+  local plugin_api = create_plugin_api(name, manifest)
+  state.plugin_watchdog[name] = nil
+  plugin_watchdog_state(name)
+  local plugin_env = {
+    BMF = plugin_api,
+    print = print,
+    tostring = tostring,
+    tonumber = tonumber,
+    type = type,
+    pairs = pairs,
+    ipairs = ipairs,
+    pcall = pcall,
+    string = string,
+    table = table,
+    math = math,
+    os = os,
+  }
+  plugin_env._G = plugin_env
+  setmetatable(plugin_env, {
+    __index = function(_, key)
+      return plugin_global_lookup(name, manifest, key)
+    end,
+  })
+
+  local chunk, load_error = loadfile(plugin_path, "t", plugin_env)
+  if not chunk then
+    return false, load_error
+  end
+
+  local ok, plugin_or_error = pcall(chunk)
+  if not ok then
+    return false, plugin_or_error
+  end
+
+  local plugin = plugin_or_error
+  if type(plugin) ~= "table" then
+    plugin = plugin_env.Plugin or {}
+  end
+  plugin.name = plugin.name or manifest.name or name
+  plugin.manifest = manifest
+  plugin.path = PLUGINS_DIR .. "/" .. name
+  plugin.bmf_api = plugin_api
+
+  local load_ok, load_error = run_plugin_hook(name, plugin, "onLoad", {
+    reason = "load",
+    serverReady = state.server_ready and true or false,
+  })
+  if not load_ok then
+    return false, {
+      error = tostring(load_error),
+      hook = "onLoad",
+      recorded = true,
+    }
+  end
+
+  state.plugins[name] = plugin
+  audit_record("plugin.loaded", {
+    plugin = name,
+    version = manifest.version or "",
+    capabilities = copy_table(manifest.capabilities or {}),
+  }, {
+    source = "framework",
+    plugin = name,
+    severity = "info",
+    ok = true,
+    code = "OK",
+  })
+  BMF.events.emit("pluginLoaded", {
+    name = name,
+    version = manifest.version or "",
+  })
+
+  return true, plugin
+end
+
+function BMF.unloadPlugins(reason)
+  local names = {}
+  for name in pairs(state.plugins) do
+    names[#names + 1] = name
+  end
+  table.sort(names)
+
+  local unloaded = 0
+  local unload_errors = 0
+  for _, name in ipairs(names) do
+    local ok = unload_plugin(name, state.plugins[name], reason or "unload")
+    if ok then
+      unloaded = unloaded + 1
+    else
+      unload_errors = unload_errors + 1
+    end
+  end
+  state.plugins = {}
+  write_status()
+  return result(true, "OK", "Plugins unloaded", {
+    plugins_unloaded = unloaded,
+    unload_errors = unload_errors,
+  })
+end
+
+function BMF.loadPlugins()
+  for _, name in ipairs(list_plugin_dirs()) do
+    local ok, value = load_plugin(name)
+    if ok then
+      log("info", "loaded plugin " .. name)
+    else
+      local error_text = tostring(value)
+      if type(value) == "table" then
+        error_text = tostring(value.error or value.message or value)
+      end
+      if type(value) ~= "table" or value.recorded ~= true then
+        state.plugin_errors[#state.plugin_errors + 1] = { name = name, error = error_text }
+      end
+      log("error", "failed to load plugin " .. name .. ": " .. error_text)
+    end
+  end
+  if state.server_ready then
+    dispatch_server_ready_hooks(state.server_ready_data)
+  end
+  ensure_plugin_tick_worker()
+  write_status()
+  return BMF.health()
+end
+
+_G.BMF = BMF
+
+state.config = read_framework_config()
+register_builtin_commands()
+log("info", "BMF loaded version=" .. VERSION)
+audit_record("framework.loaded", {
+  version = VERSION,
+  commandsRegistered = #command_names(),
+}, {
+  source = "framework",
+  severity = "info",
+  ok = true,
+  code = "OK",
+})
+write_status()
+BMF.loadPlugins()
+start_command_worker()
+mark_server_ready({
+  version = VERSION,
+  pluginsLoaded = plugin_count(),
+  commandsRegistered = #command_names(),
+})

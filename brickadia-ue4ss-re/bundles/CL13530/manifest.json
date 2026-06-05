@@ -1,0 +1,19 @@
+{
+  "brickadia_cl": "13530",
+  "brickadia_version_string": "Brickadia EA2 (PC-Shipping-CL13530)",
+  "ue_baseline": "5.5",
+  "ue4ss_commit": "01e0a584",
+  "validated": false,
+  "validation_timestamp": null,
+  "files": {
+    "VTableLayout.ini": "dd349aab0d655f9db4309fd94e14f23369cbb6c48bc85dc4a03fe1c6a3c9550a",
+    "CustomGameConfigs/Brickadia/UE4SS-settings.ini": "92a5253b0a203b31f86d061a1a72478fbc82918a3382f8d231c8f9aa2d3b8211",
+    "CustomGameConfigs/Brickadia/UE4SS_Signatures/CallFunctionByNameWithArguments.lua": "d85a9cf2fa1440016ecce32e365dd9a1130907d20fdbb54c4b665fc78aedc74a",
+    "CustomGameConfigs/Brickadia/UE4SS_Signatures/FName_ToString.lua": "eaf37ef65d1b5d0ccffd85b0528aa298111c946665aa522a74295e969f25ea7f",
+    "CustomGameConfigs/Brickadia/UE4SS_Signatures/GNatives.lua": "b3bb8474b4436e0c1131755ea0edfd2c15087299cae8027ca8bb78f5e4a784cc",
+    "CustomGameConfigs/Brickadia/UE4SS_Signatures/GUObjectArray.lua": "aff687081356d614f8b7e8c832505cf2e93fe8ced66540768feb99b7e627cabe",
+    "CustomGameConfigs/Brickadia/UE4SS_Signatures/GUObjectHashTables.lua": "de5f48f031088d2db79792e89da7f1773e36bd2c093070e0b1de3f0a74c6ff52",
+    "validation-report.json": "2b3132581dd715ab405683f47595b11447301e63191af84781d9c58d9c681a61",
+    "validation-report.md": "41a7468a0e65e23b5e70ee90a775438ab91f4ad3b7e6a83e3288fdf2cd4c3a8d"
+  }
+}

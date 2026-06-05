@@ -1,0 +1,337 @@
+﻿INFO  Using log config file: jar:file:/C:/Users/tycox/Tools/reverse-engineering/ghidra_12.0.4_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: C:\Users\tycox\AppData\Roaming\ghidra\ghidra_12.0.4_PUBLIC\application.log (LoggingInitialization)  
+INFO  Loading user preferences: C:\Users\tycox\AppData\Roaming\ghidra\ghidra_12.0.4_PUBLIC\preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (569 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (1555 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 58 extension points (18 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Jython\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\brickadia-ue4ss-re\scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: C:\Users\tycox\Tools\reverse-engineering\ghidra-projects\BrickadiaCL12960 (HeadlessAnalyzer)  
+INFO  Opening project: C:\Users\tycox\Tools\reverse-engineering\ghidra-projects\BrickadiaCL12960 (HeadlessProject)  
+INFO  REPORT: Processing project file: /BrickadiaServer-Win64-Shipping.exe (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: GhidraDecompileFunction.java '14423b660'  (HeadlessAnalyzer)  
+INFO  SCRIPT: C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\brickadia-ue4ss-re\scripts\GhidraDecompileFunction.java (HeadlessAnalyzer)  
+INFO  Function: FUN_14423b660 @ 14423b660
+ (GhidraScript)  
+INFO  
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_14423b660(undefined8 param_1,undefined4 param_2,undefined4 *param_3,undefined1 param_4)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  undefined1 auStack_168 [32];
+  undefined4 local_148 [2];
+  undefined4 local_140;
+  undefined1 local_13c;
+  longlong local_138;
+  undefined1 local_130;
+  longlong local_128;
+  undefined8 local_120;
+  undefined4 local_118;
+  longlong local_110;
+  undefined8 uStack_108;
+  undefined4 uStack_100;
+  undefined4 uStack_fc;
+  undefined8 uStack_f8;
+  undefined8 uStack_f0;
+  undefined8 uStack_e8;
+  undefined4 uStack_e0;
+  undefined4 local_dc;
+  undefined4 uStack_d8;
+  undefined4 uStack_d4;
+  undefined4 uStack_d0;
+  undefined4 uStack_cc;
+  undefined4 uStack_c8;
+  undefined4 uStack_c4;
+  undefined4 uStack_c0;
+  undefined4 local_bc;
+  undefined4 uStack_b8;
+  undefined4 uStack_b4;
+  undefined4 uStack_b0;
+  undefined4 uStack_ac;
+  undefined4 uStack_a8;
+  undefined4 uStack_a4;
+  undefined4 uStack_a0;
+  undefined4 local_9c;
+  undefined4 uStack_98;
+  undefined4 uStack_94;
+  undefined4 uStack_90;
+  undefined4 local_8c;
+  undefined4 uStack_88;
+  undefined4 uStack_84;
+  undefined4 uStack_80;
+  undefined4 uStack_7c;
+  ulonglong uStack_78;
+  undefined8 uStack_70;
+  undefined8 uStack_68;
+  undefined8 uStack_60;
+  longlong local_58;
+  undefined5 local_50;
+  undefined3 uStack_4b;
+  undefined4 local_48;
+  undefined1 local_44;
+  undefined1 local_40;
+  undefined1 local_38;
+  ulonglong local_30;
+  
+  local_30 = DAT_147538640 ^ (ulonglong)auStack_168;
+  local_138 = 0;
+  local_130 = 0;
+  local_128 = 0;
+  local_120 = DAT_1476bed58;
+  local_118 = DAT_1476bed60;
+  local_110 = 0;
+  uStack_108 = 0;
+  uStack_100 = 0;
+  uStack_fc = 0;
+  uStack_f8 = SUB128(ZEXT812(0),4);
+  uStack_f0 = 0;
+  uStack_e8 = 0;
+  uStack_e0 = 0;
+  local_dc = (undefined4)_DAT_146b96fc0;
+  uStack_d8 = (undefined4)((ulonglong)_DAT_146b96fc0 >> 0x20);
+  uStack_d4 = (undefined4)_UNK_146b96fc8;
+  uStack_d0 = (undefined4)((ulonglong)_UNK_146b96fc8 >> 0x20);
+  uStack_cc = (undefined4)_UNK_146b96fd0;
+  uStack_c8 = (undefined4)((ulonglong)_UNK_146b96fd0 >> 0x20);
+  uStack_c4 = (undefined4)_UNK_146b96fd8;
+  uStack_c0 = (undefined4)((ulonglong)_UNK_146b96fd8 >> 0x20);
+  local_bc = (undefined4)_DAT_146b96fe0;
+  uStack_b8 = (undefined4)((ulonglong)_DAT_146b96fe0 >> 0x20);
+  uStack_b4 = (undefined4)_UNK_146b96fe8;
+  uStack_b0 = (undefined4)((ulonglong)_UNK_146b96fe8 >> 0x20);
+  uStack_ac = (undefined4)_UNK_146b96ff0;
+  uStack_a8 = (undefined4)((ulonglong)_UNK_146b96ff0 >> 0x20);
+  uStack_a4 = (undefined4)_UNK_146b96ff8;
+  uStack_a0 = (undefined4)((ulonglong)_UNK_146b96ff8 >> 0x20);
+  local_9c = (undefined4)_DAT_146b97000;
+  uStack_98 = (undefined4)((ulonglong)_DAT_146b97000 >> 0x20);
+  uStack_94 = (undefined4)_UNK_146b97008;
+  uStack_90 = (undefined4)((ulonglong)_UNK_146b97008 >> 0x20);
+  local_8c = 5;
+  uStack_88 = 0;
+  uStack_84 = (undefined4)DAT_1476bed58;
+  uStack_80 = (undefined4)((ulonglong)DAT_1476bed58 >> 0x20);
+  uStack_7c = DAT_1476bed60;
+  uStack_78 = uStack_78 & 0xffffffffffffff00;
+  local_58 = 0;
+  local_50 = (undefined5)DAT_1476bed58;
+  uStack_4b = (undefined3)((ulonglong)DAT_1476bed58 >> 0x28);
+  local_48 = DAT_1476bed60;
+  local_44 = 0x10;
+  local_40 = 0;
+  local_13c = *(undefined1 *)(param_3 + 1);
+  local_140 = *param_3;
+  local_148[0] = param_2;
+  if (DAT_1476744a0 == '\0') {
+    local_130 = *(undefined1 *)(param_3 + 4);
+    lVar1 = *(longlong *)(param_3 + 6);
+    local_138 = *(longlong *)(param_3 + 2);
+LAB_14423b8a0:
+    local_118 = param_3[10];
+    local_120 = *(undefined8 *)(param_3 + 8);
+    lVar2 = *(longlong *)(param_3 + 0xc);
+    local_128 = lVar1;
+LAB_14423b8b7:
+    uStack_68 = *(undefined8 *)(param_3 + 0x36);
+    uStack_60 = *(undefined8 *)(param_3 + 0x38);
+    uStack_78 = *(ulonglong *)(param_3 + 0x32);
+    uStack_70 = *(undefined8 *)(param_3 + 0x34);
+    uStack_88 = (undefined4)*(undefined8 *)(param_3 + 0x2e);
+    uStack_84 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x2e) >> 0x20);
+    uStack_80 = (undefined4)*(undefined8 *)(param_3 + 0x30);
+    uStack_7c = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x30) >> 0x20);
+    uStack_108 = *(undefined8 *)(param_3 + 0xe);
+    uStack_f8 = *(undefined8 *)(param_3 + 0x12);
+    uStack_f0 = *(undefined8 *)(param_3 + 0x14);
+    uStack_e8 = *(undefined8 *)(param_3 + 0x16);
+    uStack_a8 = (undefined4)*(undefined8 *)(param_3 + 0x26);
+    uStack_a4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x26) >> 0x20);
+    uStack_a0 = (undefined4)*(undefined8 *)(param_3 + 0x28);
+    local_9c = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x28) >> 0x20);
+    uStack_98 = (undefined4)*(undefined8 *)(param_3 + 0x2a);
+    uStack_94 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x2a) >> 0x20);
+    uStack_90 = (undefined4)*(undefined8 *)(param_3 + 0x2c);
+    local_8c = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x2c) >> 0x20);
+    uStack_c8 = (undefined4)*(undefined8 *)(param_3 + 0x1e);
+    uStack_c4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x1e) >> 0x20);
+    uStack_c0 = (undefined4)*(undefined8 *)(param_3 + 0x20);
+    local_bc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x20) >> 0x20);
+    uStack_b8 = (undefined4)*(undefined8 *)(param_3 + 0x22);
+    uStack_b4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x22) >> 0x20);
+    uStack_b0 = (undefined4)*(undefined8 *)(param_3 + 0x24);
+    uStack_ac = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x24) >> 0x20);
+    uStack_e0 = (undefined4)*(undefined8 *)(param_3 + 0x18);
+    local_dc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x18) >> 0x20);
+    uStack_d8 = (undefined4)*(undefined8 *)(param_3 + 0x1a);
+    uStack_d4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x1a) >> 0x20);
+    uStack_d0 = (undefined4)*(undefined8 *)(param_3 + 0x1c);
+    uStack_cc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x1c) >> 0x20);
+    uStack_100 = (undefined4)*(undefined8 *)(param_3 + 0x10);
+    uStack_fc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x10) >> 0x20);
+    lVar1 = *(longlong *)(param_3 + 0x3a);
+    local_110 = lVar2;
+  }
+  else {
+    if (*(longlong *)(param_3 + 2) == 0) {
+      local_138 = 0;
+      local_130 = *(undefined1 *)(param_3 + 4);
+      if (*(longlong *)(param_3 + 6) != 0) goto LAB_14423b7ba;
+LAB_14423b9ae:
+      local_128 = 0;
+      local_118 = param_3[10];
+      local_120 = *(undefined8 *)(param_3 + 8);
+      if (*(longlong *)(param_3 + 0xc) == 0) goto LAB_14423b9d2;
+LAB_14423b7f6:
+      thunk_FUN_1403d4d10();
+      local_110 = *(longlong *)(param_3 + 0xc);
+      uStack_68 = *(undefined8 *)(param_3 + 0x36);
+      uStack_60 = *(undefined8 *)(param_3 + 0x38);
+      uStack_78 = *(ulonglong *)(param_3 + 0x32);
+      uStack_70 = *(undefined8 *)(param_3 + 0x34);
+      uStack_88 = (undefined4)*(undefined8 *)(param_3 + 0x2e);
+      uStack_84 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x2e) >> 0x20);
+      uStack_80 = (undefined4)*(undefined8 *)(param_3 + 0x30);
+      uStack_7c = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x30) >> 0x20);
+      uStack_108 = *(undefined8 *)(param_3 + 0xe);
+      uStack_f8 = *(undefined8 *)(param_3 + 0x12);
+      uStack_f0 = *(undefined8 *)(param_3 + 0x14);
+      uStack_e8 = *(undefined8 *)(param_3 + 0x16);
+      uStack_a8 = (undefined4)*(undefined8 *)(param_3 + 0x26);
+      uStack_a4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x26) >> 0x20);
+      uStack_a0 = (undefined4)*(undefined8 *)(param_3 + 0x28);
+      local_9c = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x28) >> 0x20);
+      uStack_98 = (undefined4)*(undefined8 *)(param_3 + 0x2a);
+      uStack_94 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x2a) >> 0x20);
+      uStack_90 = (undefined4)*(undefined8 *)(param_3 + 0x2c);
+      local_8c = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x2c) >> 0x20);
+      uStack_c8 = (undefined4)*(undefined8 *)(param_3 + 0x1e);
+      uStack_c4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x1e) >> 0x20);
+      uStack_c0 = (undefined4)*(undefined8 *)(param_3 + 0x20);
+      local_bc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x20) >> 0x20);
+      uStack_b8 = (undefined4)*(undefined8 *)(param_3 + 0x22);
+      uStack_b4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x22) >> 0x20);
+      uStack_b0 = (undefined4)*(undefined8 *)(param_3 + 0x24);
+      uStack_ac = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x24) >> 0x20);
+      uStack_e0 = (undefined4)*(undefined8 *)(param_3 + 0x18);
+      local_dc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x18) >> 0x20);
+      uStack_d8 = (undefined4)*(undefined8 *)(param_3 + 0x1a);
+      uStack_d4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x1a) >> 0x20);
+      uStack_d0 = (undefined4)*(undefined8 *)(param_3 + 0x1c);
+      uStack_cc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x1c) >> 0x20);
+      uStack_100 = (undefined4)*(undefined8 *)(param_3 + 0x10);
+      uStack_fc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x10) >> 0x20);
+      lVar1 = *(longlong *)(param_3 + 0x3a);
+      if (DAT_1476744a0 != '\x01') goto LAB_14423b91d;
+    }
+    else {
+      thunk_FUN_1403d4d10();
+      local_138 = *(longlong *)(param_3 + 2);
+      local_130 = *(undefined1 *)(param_3 + 4);
+      lVar1 = *(longlong *)(param_3 + 6);
+      if (DAT_1476744a0 == '\0') goto LAB_14423b8a0;
+      if (lVar1 == 0) goto LAB_14423b9ae;
+LAB_14423b7ba:
+      thunk_FUN_1403d4d10();
+      local_128 = *(longlong *)(param_3 + 6);
+      local_118 = param_3[10];
+      local_120 = *(undefined8 *)(param_3 + 8);
+      lVar2 = *(longlong *)(param_3 + 0xc);
+      if (DAT_1476744a0 != '\x01') goto LAB_14423b8b7;
+      if (lVar2 != 0) goto LAB_14423b7f6;
+LAB_14423b9d2:
+      local_110 = 0;
+      uStack_68 = *(undefined8 *)(param_3 + 0x36);
+      uStack_60 = *(undefined8 *)(param_3 + 0x38);
+      uStack_78 = *(ulonglong *)(param_3 + 0x32);
+      uStack_70 = *(undefined8 *)(param_3 + 0x34);
+      uStack_88 = (undefined4)*(undefined8 *)(param_3 + 0x2e);
+      uStack_84 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x2e) >> 0x20);
+      uStack_80 = (undefined4)*(undefined8 *)(param_3 + 0x30);
+      uStack_7c = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x30) >> 0x20);
+      uStack_108 = *(undefined8 *)(param_3 + 0xe);
+      uStack_f8 = *(undefined8 *)(param_3 + 0x12);
+      uStack_f0 = *(undefined8 *)(param_3 + 0x14);
+      uStack_e8 = *(undefined8 *)(param_3 + 0x16);
+      uStack_a8 = (undefined4)*(undefined8 *)(param_3 + 0x26);
+      uStack_a4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x26) >> 0x20);
+      uStack_a0 = (undefined4)*(undefined8 *)(param_3 + 0x28);
+      local_9c = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x28) >> 0x20);
+      uStack_98 = (undefined4)*(undefined8 *)(param_3 + 0x2a);
+      uStack_94 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x2a) >> 0x20);
+      uStack_90 = (undefined4)*(undefined8 *)(param_3 + 0x2c);
+      local_8c = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x2c) >> 0x20);
+      uStack_c8 = (undefined4)*(undefined8 *)(param_3 + 0x1e);
+      uStack_c4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x1e) >> 0x20);
+      uStack_c0 = (undefined4)*(undefined8 *)(param_3 + 0x20);
+      local_bc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x20) >> 0x20);
+      uStack_b8 = (undefined4)*(undefined8 *)(param_3 + 0x22);
+      uStack_b4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x22) >> 0x20);
+      uStack_b0 = (undefined4)*(undefined8 *)(param_3 + 0x24);
+      uStack_ac = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x24) >> 0x20);
+      uStack_e0 = (undefined4)*(undefined8 *)(param_3 + 0x18);
+      local_dc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x18) >> 0x20);
+      uStack_d8 = (undefined4)*(undefined8 *)(param_3 + 0x1a);
+      uStack_d4 = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x1a) >> 0x20);
+      uStack_d0 = (undefined4)*(undefined8 *)(param_3 + 0x1c);
+      uStack_cc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x1c) >> 0x20);
+      uStack_100 = (undefined4)*(undefined8 *)(param_3 + 0x10);
+      uStack_fc = (undefined4)((ulonglong)*(undefined8 *)(param_3 + 0x10) >> 0x20);
+      lVar1 = *(longlong *)(param_3 + 0x3a);
+    }
+    if (lVar1 == 0) {
+      lVar1 = 0;
+    }
+    else {
+      thunk_FUN_1403d4d10();
+      lVar1 = *(longlong *)(param_3 + 0x3a);
+    }
+  }
+LAB_14423b91d:
+  local_48 = (undefined4)((ulonglong)*(undefined8 *)((longlong)param_3 + 0xf5) >> 0x18);
+  local_44 = (undefined1)((ulonglong)*(undefined8 *)((longlong)param_3 + 0xf5) >> 0x38);
+  local_50 = (undefined5)*(undefined8 *)(param_3 + 0x3c);
+  uStack_4b = (undefined3)((ulonglong)*(undefined8 *)(param_3 + 0x3c) >> 0x28);
+  local_40 = *(undefined1 *)(param_3 + 0x40);
+  local_58 = lVar1;
+  local_38 = param_4;
+  FUN_140510400(param_1,local_148);
+  if (DAT_147538640 == (local_30 ^ (ulonglong)auStack_168)) {
+    return;
+  }
+}
+
+ (GhidraScript)  
+INFO  REPORT: Save succeeded for processed file: /BrickadiaServer-Win64-Shipping.exe (HeadlessAnalyzer)  

@@ -1,0 +1,23 @@
+﻿{
+    "mod_name":  "WorldStateLiveSampler",
+    "started_at":  "2026-03-25T17:39:13.2390261-04:00",
+    "pid":  58680,
+    "parser_pid":  null,
+    "selected_port":  7799,
+    "map":  "Plate",
+    "interval_ms":  750,
+    "region_center":  "0,0,0",
+    "region_extent":  "100,100,100",
+    "connect_host":  "127.0.0.1",
+    "connect_address":  "127.0.0.1:7799",
+    "verified":  true,
+    "verify_reason":  "observed native sampler ready trace and snapshot output",
+    "snapshot_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json",
+    "history_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\history.jsonl",
+    "trace_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\mod.log",
+    "ue4ss_log":  "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\UE4SS.log",
+    "brickadia_log":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\Saved\\Logs\\Brickadia.log",
+    "runtime_mod":  "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\Mods\\WorldStateLiveSampler",
+    "candidate_classes":  "GameModeBase,GameStateBase,GameSession,PlayerController,BP_PlayerController_C,BP_PlayerState_C,Tool_Selector_C,BP_ToolPreviewActor_C,BrickGrid,BrickGridActor,BrickGridComponent,BrickGridDynamicActor,Entity_DynamicBrickGrid,BrickBuildingTemplate,BrickGridPreviewActor,BrickGridPreviewActor_C,BP_BrickGrid_C,BRWorldManager,BRWorldSerializer,BrickPrefabs,BRBundleArchive,BRChatCommandWorldSubsystem,BRBundleTransferComponent,BRGizmoManagerComponent,BRPrefabCache,BRPrefabCacheInMemoryPrefab,BRPrefabHashAndMetadata,BRPrefabDetachedPasteInfo",
+    "native_calls":  "BRWorldManager:GetPendingWorldBundle,BRBundleTransferComponent:GetPendingWorldBundle,BRWorldManager:GetCurrentBundleState,BRBundleTransferComponent:GetCurrentBundleState,BRWorldManager:GetGlobalBrickGrid,BRWorldManager:GetGlobalBrickGridActor,BrickGridActor:GetBrickCount,BrickGridActor:GetBrickGrid,BrickGridComponent:GetBrickCount,BrickGridComponent:GetBrickGrid,BrickGridDynamicActor:GetBrickCount,BrickGridDynamicActor:GetBrickGrid,BRBundleArchive:GetBrickCount,BRBundleArchive:CountBricksAndComponents,Tool_Selector_C:HasSelection,Tool_Selector_C:HasSelectionBox,Tool_Selector_C:GetCurrentSelectionState,Tool_Selector_C:GetSelectionLayers,BP_ToolPreviewActor_C:GetPlaceable"
+}

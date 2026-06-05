@@ -1,0 +1,160 @@
+{
+  "bundle_id": "CL12960",
+  "brickadia_cl": "12960",
+  "brickadia_version_string": "Brickadia EA2 (PC-Shipping-CL12960)",
+  "validated": false,
+  "updated_at": "2026-03-23T16:05:00-04:00",
+  "stages": {
+    "stage1_static": {
+      "status": "passed",
+      "notes": [
+        "Bundle structure created in the dedicated RE workspace.",
+        "Manifest and hash validation are enforced by scripts.",
+        "Repeatable evidence collection is implemented in scripts/collect-cl12960-evidence.py.",
+        "Hook foundation static coverage now passes for all four tracked targets.",
+        "UObject::ProcessEvent and UEngine::LoadMap have explicit Brickadia custom-layout entries.",
+        "AGameModeBase::InitGameState and AActor::BeginPlay currently rely on stock UE 5.5 generated defaults, but the Discord seed note says Brickadia only adds extra vfuncs in UObject and UEngine, so those defaults are currently accepted as static coverage."
+      ]
+    },
+    "stage2_ue4ss_startup": {
+      "status": "passed",
+      "notes": [
+        "UE4SS startup no longer hard-stops on GUObjectHashTables.lua or GNatives.lua returning nil on CL12960.",
+        "GNatives now resolves through the staged Brickadia Lua override by deriving the table address from the live script VM dispatch path.",
+        "GUObjectHashTables.lua remains non-fatal during startup even though FUObjectHashTables::Get() is still unresolved.",
+        "The old FName_Constructor.lua override is intentionally disabled for CL12960 because it destabilizes the second-pass Lua scan before the real unresolved blockers are surfaced.",
+        "patternsleuth already resolves FName::FName(wchar_t*) correctly on this build, so the CL12960 bundle should rely on the PS resolver for that symbol instead of the legacy Lua override.",
+        "UE4SS reaches the startup scan flow without a fatal startup line on CL12960.",
+        "Runtime hook-address lines for ProcessEvent, LoadMap, InitGameState, and BeginPlay are present in the live UE4SS log.",
+        "The live UE4SS log now reports GNatives from Lua Script at 0x7ff76304d760.",
+        "FUObjectHashTables::Get() remains tracked under Resolver Coverage rather than being double-counted as a startup failure.",
+        "Clean proof-mod-only sessions still emit a callback-garbage-collector cleanup line after successful probes, but startup reaches hook installation cleanly and that line is tracked separately under callback stability."
+      ]
+    },
+    "stage3_object_resolution": {
+      "status": "passed",
+      "notes": [
+        "GNatives now resolves in the live runtime, so stage 3 could be validated directly against live object access instead of resolver theory alone.",
+        "A clean proof session now unwraps the InitGameState RemoteUnrealParam to a valid UObject wrapper without crashing.",
+        "A clean proof session now resolves GameEngine through FindFirstOf without tripping UClass::StaticClass or the old FindXOf crash path.",
+        "A clean proof session now resolves /Script/CoreUObject.Default__Object through StaticFindObject using the no-ToString long-name path.",
+        "Patternsleuth still fails for StaticFindObjectFast, UObjectSkipFunction, GNativesPatterns, GNativesViaSkipFunction, and FFrameStep-family helpers on CL12960, but those are currently deferred heuristics rather than active object-resolution blockers."
+      ]
+    },
+    "stage4_dumper": {
+      "status": "blocked",
+      "notes": [
+        "Object-resolution correctness is now proven by the baseline proof ladder, but the dumper itself has not been rerun and validated yet."
+      ]
+    },
+    "stage5_omegga_reentry": {
+      "status": "blocked",
+      "notes": [
+        "Omegga stays degraded for Windows object-dependent features until stages 1-4 pass."
+      ]
+    }
+  },
+  "resolved_symbols": {
+    "FName::FName(wchar_t*)": {
+      "address": "0x140237e50",
+      "method": "patternsleuth FNameCtorWchar",
+      "confirmed": true
+    },
+    "FName::ToString": {
+      "address": "0x1402d5d70",
+      "method": "patternsleuth FNameToString",
+      "confirmed": true
+    },
+    "StaticConstructObject_Internal": {
+      "address": "0x140505310",
+      "method": "patternsleuth StaticConstructObjectInternal",
+      "confirmed": true
+    },
+    "ConsoleManagerSingleton": {
+      "address": "0x140064bb0",
+      "method": "patternsleuth ConsoleManagerSingleton",
+      "confirmed": true
+    },
+    "UGameEngine::Tick": {
+      "address": "0x1422c3bd0",
+      "method": "patternsleuth UGameEngineTick",
+      "confirmed": true
+    },
+    "GUObjectArray": {
+      "address": "0x14768f038",
+      "method": "patternsleuth GUObjectArray",
+      "confirmed": true
+    },
+    "FUObjectArray::AllocateUObjectIndex": {
+      "address": "0x1404f7cb0",
+      "method": "patternsleuth FUObjectArrayAllocateUObjectIndex",
+      "confirmed": true
+    },
+    "FUObjectArray::FreeUObjectIndex": {
+      "address": "0x1404f8020",
+      "method": "patternsleuth FUObjectArrayFreeUObjectIndex",
+      "confirmed": true
+    },
+    "GNatives": {
+      "address": "0x14768d760",
+      "method": "Brickadia GNatives.lua via live script VM dispatch LEA",
+      "confirmed": true
+    }
+  },
+  "blocked_symbols": [
+    "FUObjectHashTables::Get()",
+    "StaticFindObjectFast",
+    "UObject::SkipFunction",
+    "FFrame::Step"
+  ],
+  "blocked_apis": [],
+  "hook_foundation": {
+    "ue_baseline_suffix": "5_05",
+    "startup_fatal_line": null,
+    "targets": {
+      "UObject::ProcessEvent": {
+        "custom_layout_explicit_override": true,
+        "custom_layout_ordinal": 72,
+        "generated_ue5_5_default_offset": "0x278",
+        "runtime_confirmed": true
+      },
+      "UEngine::LoadMap": {
+        "custom_layout_explicit_override": true,
+        "custom_layout_ordinal": 70,
+        "generated_ue5_5_default_offset": "0x4e0",
+        "runtime_confirmed": true
+      },
+      "AGameModeBase::InitGameState": {
+        "custom_layout_explicit_override": false,
+        "custom_layout_ordinal": null,
+        "generated_ue5_5_default_offset": "0x790",
+        "runtime_confirmed": true
+      },
+      "AActor::BeginPlay": {
+        "custom_layout_explicit_override": false,
+        "custom_layout_ordinal": null,
+        "generated_ue5_5_default_offset": "0x3a0",
+        "runtime_confirmed": true
+      }
+    }
+  },
+  "evidence": {
+    "current_live_binary": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+    "seed_vtable_layout": "C:\\Users\\tycox\\OneDrive\\Documents\\Downloads\\older data from discord server\\VTableLayout.ini",
+    "seed_usmap": "C:\\Users\\tycox\\OneDrive\\Documents\\Downloads\\older data from discord server\\5.5.4-0+UE5-Brickadia.usmap",
+    "seed_pdb": "C:\\Users\\tycox\\OneDrive\\Documents\\Downloads\\older data from discord server\\BrickadiaSteam-Win64-Shipping.pdb",
+    "utf16_anchors": {
+      "StaticFindObjectFast": "0x145d372c0",
+      "FUObjectHashTables": "0x145d3eeae",
+      "HashOuter": "0x145d3ed64"
+    },
+    "old_pdb_public_hints": [
+      "StaticFindObjectFastSafe",
+      "StaticFindObjectChecked",
+      "StaticFindObjectSafe",
+      "FUObjectHashTables::~FUObjectHashTables",
+      "UObject::ProcessConsoleExec"
+    ],
+    "latest_collector_output": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\cl12960-evidence-latest.json"
+  }
+}

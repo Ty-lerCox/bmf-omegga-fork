@@ -1,0 +1,183 @@
+{
+  "bundle_id": "CL13530",
+  "workspace_root": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re",
+  "bundle_root": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\bundles\\CL13530",
+  "evidence_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\cl13530-chat-evidence-latest.json",
+  "summary": {
+    "total": 19,
+    "passed": 16,
+    "failed": 0,
+    "blocked": 3
+  },
+  "sections": [
+    {
+      "id": "chat-probe-foundation",
+      "name": "Chat Probe Foundation",
+      "summary": {
+        "total": 7,
+        "passed": 6,
+        "failed": 0,
+        "blocked": 1
+      },
+      "tests": [
+        {
+          "id": "chat-proof-output-exists",
+          "name": "BaselineChatProof wrote an output report",
+          "status": "passed",
+          "details": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-output-parses",
+          "name": "BaselineChatProof output parses as JSONL",
+          "status": "passed",
+          "details": "All chat proof lines parsed successfully.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-startup",
+          "name": "BaselineChatProof startup marker was recorded",
+          "status": "passed",
+          "details": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-game-thread-scheduler",
+          "name": "A game-thread scheduler is available for chat probes",
+          "status": "passed",
+          "details": "ExecuteInGameThread=True; ExecuteInGameThreadWithDelay=True; ExecuteInGameThreadAfterFrames=True",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-helper-capabilities",
+          "name": "The minimum chat helper surface is available",
+          "status": "passed",
+          "details": "HasCachedCommandContext=True; ExecuteKismetConsoleCommand=True; ExecuteCachedEngineExec=True; ExecuteCachedConsoleExec=True",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-initgamestate-hook",
+          "name": "InitGameState fired during the chat proof session",
+          "status": "passed",
+          "details": "Observed 1 InitGameState hook event(s).",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-beginplay-hook",
+          "name": "BeginPlay fired during the chat proof session",
+          "status": "blocked",
+          "details": "RegisterBeginPlayPostHook did not fire during the short headless proof session, so this remains characterization only rather than a chat blocker.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        }
+      ]
+    },
+    {
+      "id": "console-broadcast-canaries",
+      "name": "Console Broadcast Canaries",
+      "summary": {
+        "total": 8,
+        "passed": 6,
+        "failed": 0,
+        "blocked": 2
+      },
+      "tests": [
+        {
+          "id": "chat-proof-cached-command-context",
+          "name": "A cached command context becomes available during the chat proof",
+          "status": "passed",
+          "details": "Observed cached command context in 4 context snapshot(s).",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-nonchat-console-probe",
+          "name": "A non-chat console command succeeds through the managed helpers",
+          "status": "passed",
+          "details": "Successful executor(s): cached_console_exec, kismet_console_command",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-broadcast-console-canary",
+          "name": "At least one console broadcast canary succeeds",
+          "status": "passed",
+          "details": "Successful executor(s): kismet_console_command",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-broadcast-repeat-canary",
+          "name": "Two console broadcast canaries succeed in one session",
+          "status": "passed",
+          "details": "Successful broadcast commands: Chat.Broadcast Hello from BaselineChatProof #1, Chat.Broadcast Hello from BaselineChatProof #2",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-processconsoleexec-intercept",
+          "name": "The current chat broadcast path is observable via ProcessConsoleExec hooks",
+          "status": "blocked",
+          "details": "A broadcast succeeded, and the live counter demo confirms the visible path is now typed/native, so bypassing ProcessConsoleExec is treated as expected characterization.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-native-broadcast-canary",
+          "name": "A native typed-chat broadcast canary is ready to run",
+          "status": "passed",
+          "details": "Stage 3 object-resolution validation is passing, so the direct typed-chat canary can become active.",
+          "evidence": "validation-report.json"
+        },
+        {
+          "id": "chat-player-intercept-live-stimulus",
+          "name": "A live player-chat stimulus was present to test interception",
+          "status": "blocked",
+          "details": "The standalone chat proof session does not inject a real player chat message yet, so player-chat interception remains a later canary.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        },
+        {
+          "id": "chat-proof-broadcast-rounds-finished",
+          "name": "The scheduled chat broadcast rounds completed",
+          "status": "passed",
+          "details": "Completed round(s): 1, 2",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL13530\\output\\baseline-chat-proof.jsonl"
+        }
+      ]
+    },
+    {
+      "id": "native-broadcast-demo",
+      "name": "Native Broadcast Demo",
+      "summary": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "blocked": 0
+      },
+      "tests": [
+        {
+          "id": "chat-demo-live-evidence-exists",
+          "name": "CounterBroadcastDemo captured live native chat evidence",
+          "status": "passed",
+          "details": "mod.log=C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\mod.log; chat-trace.log=C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\chat-trace.log",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\chat-trace.log"
+        },
+        {
+          "id": "chat-native-visible-delivery-canary",
+          "name": "A live native typed-chat delivery path was observed",
+          "status": "passed",
+          "details": "Observed typed/native delivery via PushChatMessage; latest route=PushChatMessage",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\chat-trace.log"
+        },
+        {
+          "id": "chat-native-broadcast-all-clients",
+          "name": "The current native chat path is server-wide across connected players",
+          "status": "passed",
+          "details": "Observed server-wide chat function(s): PushChatMessage",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\chat-trace.log"
+        },
+        {
+          "id": "chat-demo-live-session-metadata",
+          "name": "CounterBroadcastDemo recorded live session metadata",
+          "status": "passed",
+          "details": "connect_address=127.0.0.1:7777; verified=True",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\counter-broadcast-demo-live.json"
+        }
+      ]
+    }
+  ]
+}

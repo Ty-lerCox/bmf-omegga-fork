@@ -1,0 +1,307 @@
+{
+  "ok": true,
+  "build": "CL13530",
+  "exe": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+  "image_base": "0x140000000",
+  "method_block": {
+    "va": "0x146C79D50",
+    "slots": [
+      {
+        "offset": "0x0",
+        "va": "0x146C79D50",
+        "actual": "0x140024180",
+        "expected": "0x140024180",
+        "ok": true
+      },
+      {
+        "offset": "0x8",
+        "va": "0x146C79D58",
+        "actual": "0x14420FE90",
+        "expected": "0x14420FE90",
+        "ok": true
+      },
+      {
+        "offset": "0x10",
+        "va": "0x146C79D60",
+        "actual": "0x140001000",
+        "expected": "0x140001000",
+        "ok": true
+      },
+      {
+        "offset": "0x18",
+        "va": "0x146C79D68",
+        "actual": "0x1443DC230",
+        "expected": "0x1443DC230",
+        "ok": true
+      },
+      {
+        "offset": "0x20",
+        "va": "0x146C79D70",
+        "actual": "0x140013CB0",
+        "expected": "0x140013CB0",
+        "ok": true
+      },
+      {
+        "offset": "0x28",
+        "va": "0x146C79D78",
+        "actual": "0x0",
+        "expected": "0x0",
+        "ok": true
+      },
+      {
+        "offset": "0x30",
+        "va": "0x146C79D80",
+        "actual": "0x140045B60",
+        "expected": "0x140045B60",
+        "ok": true
+      },
+      {
+        "offset": "0x38",
+        "va": "0x146C79D88",
+        "actual": "0x144211FF0",
+        "expected": "0x144211FF0",
+        "ok": true
+      },
+      {
+        "offset": "0x40",
+        "va": "0x146C79D90",
+        "actual": "0x144214800",
+        "expected": "0x144214800",
+        "ok": true
+      },
+      {
+        "offset": "0x48",
+        "va": "0x146C79D98",
+        "actual": "0x144214850",
+        "expected": "0x144214850",
+        "ok": true
+      }
+    ]
+  },
+  "descriptor_refs": [
+    {
+      "instruction_va": 5437998657,
+      "instruction_va_hex": "0x144214641",
+      "op": "lea",
+      "bytes": "488D050857A602"
+    },
+    {
+      "instruction_va": 5437998708,
+      "instruction_va_hex": "0x144214674",
+      "op": "lea",
+      "bytes": "488D05D556A602"
+    },
+    {
+      "instruction_va": 5444819108,
+      "instruction_va_hex": "0x1448958A4",
+      "op": "lea",
+      "bytes": "488D05A5443E02"
+    },
+    {
+      "instruction_va": 5444820187,
+      "instruction_va_hex": "0x144895CDB",
+      "op": "lea",
+      "bytes": "4C8D3D6E403E02"
+    },
+    {
+      "instruction_va": 5444888681,
+      "instruction_va_hex": "0x1448A6869",
+      "op": "lea",
+      "bytes": "488D05E0343D02"
+    }
+  ],
+  "thin_submitter": {
+    "function_start": "0x1448A5880",
+    "function_end": "0x1448A69F8",
+    "pdata_function": {
+      "begin": "0x1448A5880",
+      "end": "0x1448A69F8",
+      "unwind": "0x1474B3CF0"
+    },
+    "descriptor_write": "0x1448A6869",
+    "submit_call": "0x1448A68BE",
+    "submit_target": "0x1443DF4F0",
+    "direct_submit_callers": [
+      "0x144210D08",
+      "0x1448076F1",
+      "0x144808107",
+      "0x144860736",
+      "0x1448619F5",
+      "0x1448626A9",
+      "0x144862F84",
+      "0x144863230",
+      "0x14486385C",
+      "0x144863FBB",
+      "0x1448644AE",
+      "0x14486496E",
+      "0x144864C57",
+      "0x144864F37",
+      "0x1448711B0",
+      "0x1448714C8",
+      "0x144872C14",
+      "0x14487B440",
+      "0x14487B9E5",
+      "0x144885124",
+      "0x144885F2A",
+      "0x144887028",
+      "0x14488A699",
+      "0x14488AFD5",
+      "0x14488B53E",
+      "0x144893167",
+      "0x144894A5A",
+      "0x14489641D",
+      "0x144899AF3",
+      "0x1448A3C1C",
+      "0x1448A68BE",
+      "0x1448A8381",
+      "0x1448A875C"
+    ]
+  },
+  "submit_chain": [
+    {
+      "label": "queue/context setup to submit stage",
+      "callsite": "0x1448A68BE",
+      "actual_target": "0x1443DF4F0",
+      "expected_target": "0x1443DF4F0",
+      "ok": true
+    },
+    {
+      "label": "submit stage to owner/context bridge",
+      "callsite": "0x1443DF734",
+      "actual_target": "0x1443DF7E0",
+      "expected_target": "0x1443DF7E0",
+      "ok": true
+    },
+    {
+      "label": "owner/context bridge to dispatcher",
+      "callsite": "0x1443DF8F8",
+      "actual_target": "0x1443E05D0",
+      "expected_target": "0x1443E05D0",
+      "ok": true
+    },
+    {
+      "label": "state submit wrapper to generic record submit",
+      "callsite": "0x1443E0B4E",
+      "actual_target": "0x144210120",
+      "expected_target": "0x144210120",
+      "ok": true
+    }
+  ],
+  "assertions": [
+    {
+      "name": "image base matches CL13530",
+      "ok": true,
+      "detail": "0x140000000 expected 0x140000000"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x0",
+      "ok": true,
+      "detail": "0x140024180 expected 0x140024180"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x8",
+      "ok": true,
+      "detail": "0x14420FE90 expected 0x14420FE90"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x10",
+      "ok": true,
+      "detail": "0x140001000 expected 0x140001000"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x18",
+      "ok": true,
+      "detail": "0x1443DC230 expected 0x1443DC230"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x20",
+      "ok": true,
+      "detail": "0x140013CB0 expected 0x140013CB0"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x28",
+      "ok": true,
+      "detail": "0x0 expected 0x0"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x30",
+      "ok": true,
+      "detail": "0x140045B60 expected 0x140045B60"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x38",
+      "ok": true,
+      "detail": "0x144211FF0 expected 0x144211FF0"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x40",
+      "ok": true,
+      "detail": "0x144214800 expected 0x144214800"
+    },
+    {
+      "name": "BrickAction_PlacePrefab method slot +0x48",
+      "ok": true,
+      "detail": "0x144214850 expected 0x144214850"
+    },
+    {
+      "name": "descriptor ref 0x144214641 exists",
+      "ok": true,
+      "detail": "refs=0x144214641,0x144214674,0x1448958A4,0x144895CDB,0x1448A6869"
+    },
+    {
+      "name": "descriptor ref 0x144214674 exists",
+      "ok": true,
+      "detail": "refs=0x144214641,0x144214674,0x1448958A4,0x144895CDB,0x1448A6869"
+    },
+    {
+      "name": "descriptor ref 0x1448958A4 exists",
+      "ok": true,
+      "detail": "refs=0x144214641,0x144214674,0x1448958A4,0x144895CDB,0x1448A6869"
+    },
+    {
+      "name": "descriptor ref 0x144895CDB exists",
+      "ok": true,
+      "detail": "refs=0x144214641,0x144214674,0x1448958A4,0x144895CDB,0x1448A6869"
+    },
+    {
+      "name": "descriptor ref 0x1448A6869 exists",
+      "ok": true,
+      "detail": "refs=0x144214641,0x144214674,0x1448958A4,0x144895CDB,0x1448A6869"
+    },
+    {
+      "name": "call queue/context setup to submit stage",
+      "ok": true,
+      "detail": "0x1448A68BE -> 0x1443DF4F0 expected 0x1443DF4F0"
+    },
+    {
+      "name": "call submit stage to owner/context bridge",
+      "ok": true,
+      "detail": "0x1443DF734 -> 0x1443DF7E0 expected 0x1443DF7E0"
+    },
+    {
+      "name": "call owner/context bridge to dispatcher",
+      "ok": true,
+      "detail": "0x1443DF8F8 -> 0x1443E05D0 expected 0x1443E05D0"
+    },
+    {
+      "name": "call state submit wrapper to generic record submit",
+      "ok": true,
+      "detail": "0x1443E0B4E -> 0x144210120 expected 0x144210120"
+    },
+    {
+      "name": "thin submitter pdata start",
+      "ok": true,
+      "detail": "0x1448A5880-0x1448A69F8 expected 0x1448A5880-0x1448A69F8"
+    },
+    {
+      "name": "thin submitter pdata end",
+      "ok": true,
+      "detail": "0x1448A5880-0x1448A69F8 expected 0x1448A5880-0x1448A69F8"
+    },
+    {
+      "name": "thin submitter calls shared submit target",
+      "ok": true,
+      "detail": "callers=0x144210D08,0x1448076F1,0x144808107,0x144860736,0x1448619F5,0x1448626A9,0x144862F84,0x144863230,0x14486385C,0x144863FBB,0x1448644AE,0x14486496E,0x144864C57,0x144864F37,0x1448711B0,0x1448714C8,0x144872C14,0x14487B440,0x14487B9E5,0x144885124,0x144885F2A,0x144887028,0x14488A699,0x14488AFD5,0x14488B53E,0x144893167,0x144894A5A,0x14489641D,0x144899AF3,0x1448A3C1C,0x1448A68BE,0x1448A8381,0x1448A875C"
+    }
+  ]
+}

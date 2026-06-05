@@ -1,0 +1,409 @@
+﻿INFO  Using log config file: jar:file:/C:/Users/tycox/Tools/reverse-engineering/ghidra_12.0.4_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: C:\Users\tycox\AppData\Roaming\ghidra\ghidra_12.0.4_PUBLIC\application.log (LoggingInitialization)  
+INFO  Loading user preferences: C:\Users\tycox\AppData\Roaming\ghidra\ghidra_12.0.4_PUBLIC\preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (613 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (1646 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 58 extension points (18 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Jython\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\brickadia-ue4ss-re\scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: C:\Users\tycox\Tools\reverse-engineering\ghidra-projects\BrickadiaCL12960 (HeadlessAnalyzer)  
+INFO  Opening project: C:\Users\tycox\Tools\reverse-engineering\ghidra-projects\BrickadiaCL12960 (HeadlessProject)  
+INFO  REPORT: Processing project file: /BrickadiaServer-Win64-Shipping.exe (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: GhidraDecompileFunction.java '144232420'  (HeadlessAnalyzer)  
+INFO  SCRIPT: C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\brickadia-ue4ss-re\scripts\GhidraDecompileFunction.java (HeadlessAnalyzer)  
+INFO  Function: FUN_144232420 @ 144232420
+ (GhidraScript)  
+INFO  
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_144232420(void)
+
+{
+  char cVar1;
+  undefined1 auStack_88 [32];
+  undefined1 local_68 [16];
+  undefined8 local_58;
+  undefined1 local_48 [4];
+  undefined1 local_44 [4];
+  wchar_t *local_40;
+  undefined4 local_38;
+  ulonglong local_30;
+  
+  local_30 = DAT_147538640 ^ (ulonglong)auStack_88;
+  FUN_14002e8e0(&local_40,"5E33C861-2B87-4B58-A4B4-741C3E064881");
+  cVar1 = FUN_1401d11b0(&local_40,&DAT_147870200);
+  if (cVar1 == '\0') {
+    _DAT_147870200 = ZEXT812(0);
+    register0x0000120c = 0;
+  }
+  if (local_40 != (wchar_t *)0x0) {
+    FUN_14008a1e0();
+  }
+  FUN_140246c80(&DAT_147870210,&DAT_145ddc9a6,1);
+  FUN_140237e50(&DAT_147870218,L"ClientBatchUpdateSelectedEntities",1);
+  local_68._0_12_ = ZEXT812(0);
+  local_68._12_4_ = 0;
+  local_58 = 0;
+  FUN_1404faab0(L"/Script/Brickadia",&PTR_FUN_146c62000,1,0);
+  local_40 = L"Old";
+  local_38 = 3;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870248,local_48,local_44,&DAT_145da34fe);
+  atexit(FUN_14422b410);
+  local_40 = L"New";
+  local_38 = 3;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870258,local_48,local_44,&DAT_145da3506);
+  atexit(FUN_14422b430);
+  local_40 = L"Changed";
+  local_38 = 7;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870268,local_48,local_44,L"Changed");
+  atexit(FUN_14422b450);
+  local_40 = L"OnAttached";
+  local_38 = 10;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870278,local_48,local_44,L"On Attached");
+  atexit(FUN_14422b470);
+  local_40 = L"OnDetached";
+  local_38 = 10;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870288,local_48,local_44,L"On Detached");
+  atexit(FUN_14422b490);
+  local_40 = L"OnBrickTypeChanged";
+  local_38 = 0x12;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870298,local_48,local_44,L"On Brick Type Changed");
+  atexit(FUN_14422b4b0);
+  local_40 = L"OnPositionChanged";
+  local_38 = 0x11;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478702a8,local_48,local_44,L"On Position Changed");
+  atexit(FUN_14422b4d0);
+  local_40 = L"OnMaterialIndexChanged";
+  local_38 = 0x16;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478702b8,local_48,local_44,L"On Material Index Changed");
+  atexit(FUN_14422b4f0);
+  local_40 = L"OnMaterialAlphaChanged";
+  local_38 = 0x16;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478702c8,local_48,local_44,L"On Material Alpha Changed");
+  atexit(FUN_14422b510);
+  local_40 = L"OnOrientationChanged";
+  local_38 = 0x14;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478702d8,local_48,local_44,L"On Orientation Changed");
+  atexit(FUN_14422b530);
+  local_40 = L"OnColorChanged";
+  local_38 = 0xe;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478702e8,local_48,local_44,L"On Color Changed");
+  atexit(FUN_14422b550);
+  local_40 = L"OnOwnerChanged";
+  local_38 = 0xe;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478702f8,local_48,local_44,L"On Owner Changed");
+  atexit(FUN_14422b570);
+  local_40 = L"OnCollisionChanged";
+  local_38 = 0x12;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870308,local_48,local_44,L"On Collision Changed");
+  atexit(FUN_14422b590);
+  local_40 = L"OnVisibilityChanged";
+  local_38 = 0x13;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870318,local_48,local_44,L"On Visibility Changed");
+  atexit(FUN_14422b5b0);
+  local_40 = L"OnSelectionLayersChanged";
+  local_38 = 0x18;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870328,local_48,local_44,L"On Selection Layers Changed");
+  atexit(FUN_14422b5d0);
+  local_40 = L"OnInteractPress";
+  local_38 = 0xf;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870338,local_48,local_44,L"On Interact Press");
+  atexit(FUN_14422b5f0);
+  local_40 = L"OnInteractRelease";
+  local_38 = 0x11;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870348,local_48,local_44,L"On Interact Release");
+  atexit(FUN_14422b610);
+  local_40 = L"OnTick";
+  local_38 = 6;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870358,local_48,local_44,L"On Tick");
+  atexit(FUN_14422b630);
+  local_40 = L"OnTakeDamage";
+  local_38 = 0xc;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870368,local_48,local_44,L"On Take Damage");
+  atexit(FUN_14422b650);
+  local_40 = L"OnCharacterBeginTouch";
+  local_38 = 0x15;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870378,local_48,local_44,L"On Character Begin Touch");
+  atexit(FUN_14422b670);
+  local_40 = L"OnCharacterEndTouch";
+  local_38 = 0x13;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870388,local_48,local_44,L"On Character End Touch");
+  atexit(FUN_14422b690);
+  local_40 = L"OnGamemodeRoundStarted";
+  local_38 = 0x16;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870398,local_48,local_44,L"On Gamemode Round Started");
+  atexit(FUN_14422b6b0);
+  local_40 = L"OnGamemodeRoundEnded";
+  local_38 = 0x14;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478703a8,local_48,local_44,L"On Gamemode Round Ended");
+  atexit(FUN_14422b6d0);
+  local_40 = L"OnGamemodeCharacterRestarted";
+  local_38 = 0x1c;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478703b8,local_48,local_44,L"On Gamemode Character Restarted");
+  atexit(FUN_14422b6f0);
+  local_40 = L"OnGamemodeCharacterDied";
+  local_38 = 0x17;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478703c8,local_48,local_44,L"On Gamemode Character Died");
+  atexit(FUN_14422b710);
+  local_40 = L"OnGamemodeJoined";
+  local_38 = 0x10;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478703d8,local_48,local_44,L"On Gamemode Joined");
+  atexit(FUN_14422b730);
+  local_40 = L"OnGamemodeLeft";
+  local_38 = 0xe;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478703e8,local_48,local_44,L"On Gamemode Left");
+  atexit(FUN_14422b750);
+  local_40 = L"AttachReason";
+  local_38 = 0xc;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_1478703f8,local_48,local_44,L"Attach Reason");
+  atexit(FUN_14422b770);
+  local_40 = L"DetachReason";
+  local_38 = 0xc;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870408,local_48,local_44,L"Detach Reason");
+  atexit(FUN_14422b790);
+  local_40 = L"Character";
+  local_38 = 9;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870418,local_48,local_44,L"Character");
+  atexit(FUN_14422b7b0);
+  local_40 = L"Instigator";
+  local_38 = 10;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870428,local_48,local_44,L"Instigator");
+  atexit(FUN_14422b7d0);
+  local_40 = L"Controller";
+  local_38 = 10;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870438,local_48,local_44,L"Controller");
+  atexit(FUN_14422b7f0);
+  local_40 = L"RoundNumber";
+  local_38 = 0xb;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870448,local_48,local_44,L"Round Number");
+  atexit(FUN_14422b810);
+  local_40 = L"DeltaTime";
+  local_38 = 9;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870458,local_48,local_44,L"Delta Time");
+  atexit(FUN_14422b830);
+  local_40 = L"Damage";
+  local_38 = 6;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870468,local_48,local_44,L"Damage");
+  atexit(FUN_14422b850);
+  local_40 = L"DamageType";
+  local_38 = 10;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870478,local_48,local_44,L"Damage Type");
+  atexit(FUN_14422b870);
+  local_40 = L"IsOutput";
+  local_38 = 8;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870488,local_48,local_44,L"Is Output");
+  atexit(FUN_14422b890);
+  local_40 = L"IsNearbyInteraction";
+  local_38 = 0x13;
+  FUN_140106b30(local_44,&local_40);
+  local_40 = L"BCSNativeEvents";
+  local_38 = 0xf;
+  FUN_140106b30(local_48,&local_40);
+  FUN_1400e2d60(&DAT_147870498,local_48,local_44,L"Is Nearby Interaction");
+  atexit(FUN_14422b8b0);
+  local_58 = 0;
+  local_68 = ZEXT816(1);
+  FUN_1404faab0(L"/Script/Brickadia",&PTR_FUN_146c62230,1,&PTR_FUN_146c62200);
+  register0x00001204 = DAT_145d9f790;
+  _DAT_1478704e0 = DAT_145d9f790;
+  register0x00001208 = DAT_145d9f790;
+  register0x0000120c = DAT_145d9f790;
+  register0x00001244 = DAT_145c561e0;
+  _DAT_1478704f0 = DAT_145c561e0;
+  register0x00001248 = DAT_145c561e0;
+  register0x0000124c = DAT_145c561e0;
+  _DAT_147870500 = _DAT_145de31a0;
+  uRam0000000147870508 = _UNK_145de31a8;
+  _DAT_147870510 = _DAT_145de31b0;
+  uRam0000000147870518 = _UNK_145de31b8;
+  local_58 = 3;
+  local_68._8_8_ = &PTR_FUN_146c69450;
+  local_68._0_8_ = 0x28;
+  _DAT_147870520 = _DAT_1478704e0;
+  _DAT_147870530 = _DAT_1478704f0;
+  FUN_1404faab0(L"/Script/Brickadia",&PTR_FUN_146c69af0,3,&PTR_FUN_146c694b0);
+  if (DAT_147538640 == (local_30 ^ (ulonglong)auStack_88)) {
+    return;
+  }
+}
+
+ (GhidraScript)  
+INFO  REPORT: Save succeeded for processed file: /BrickadiaServer-Win64-Shipping.exe (HeadlessAnalyzer)  

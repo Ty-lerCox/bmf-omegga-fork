@@ -1,0 +1,670 @@
+﻿{
+  "target": {
+    "exe": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+    "pdb_seed": "C:\\Users\\tycox\\OneDrive\\Documents\\Downloads\\older data from discord server\\BrickadiaSteam-Win64-Shipping.pdb"
+  },
+  "patternsleuth_success": {
+    "command": [
+      "C:\\Users\\tycox\\Tools\\reverse-engineering\\patternsleuth\\target\\release\\patternsleuth.exe",
+      "scan",
+      "--path",
+      "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+      "--resolver",
+      "FNameCtorWchar",
+      "--resolver",
+      "FNameToString",
+      "--resolver",
+      "StaticConstructObjectInternal",
+      "--resolver",
+      "ConsoleManagerSingleton",
+      "--resolver",
+      "UGameEngineTick",
+      "--resolver",
+      "GUObjectArray",
+      "--resolver",
+      "FUObjectArrayAllocateUObjectIndex",
+      "--resolver",
+      "FUObjectArrayFreeUObjectIndex",
+      "--summary"
+    ],
+    "exit_code": 0,
+    "stdout": "\"BrickadiaServer-Win64-Shipping.exe\" \"C:\\\\Users\\\\tycox\\\\AppData\\\\Roaming\\\\omegga\\\\steam_installs\\\\main\\\\Brickadia\\\\Binaries\\\\Win64\\\\BrickadiaServer-Win64-Shipping.exe\"\n+-----------------------------------+------------------------------------+\n| sig                               | offline scan                       |\n+===================================+====================================+\n| FNameCtorWchar                    | FNameCtorWchar(                    |\n|                                   |     0x140237e50,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| FNameToString                     | FNameToString(                     |\n|                                   |     0x1402d5d70,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| StaticConstructObjectInternal     | StaticConstructObjectInternal(     |\n|                                   |     0x140505310,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| ConsoleManagerSingleton           | ConsoleManagerSingleton(           |\n|                                   |     0x140064bb0,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| UGameEngineTick                   | UGameEngineTick(                   |\n|                                   |     0x1422c3bd0,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| GUObjectArray                     | GUObjectArray(                     |\n|                                   |     0x14768f038,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| FUObjectArrayAllocateUObjectIndex | FUObjectArrayAllocateUObjectIndex( |\n|                                   |     0x1404f7cb0,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n| FUObjectArrayFreeUObjectIndex     | FUObjectArrayFreeUObjectIndex(     |\n|                                   |     0x1404f8020,                   |\n|                                   | )                                  |\n+-----------------------------------+------------------------------------+\n\n+------------------------------------+------------------+---------------------------+--------------------------+------------------------------------------+------------------------------------+----------------------------+--------------------------+----------------------------------------------+------------------------------------------+\n|                                    | unqiue addresses | FNameCtorWchar            | FNameToString            | StaticConstructObjectInternal            | ConsoleManagerSingleton            | UGameEngineTick            | GUObjectArray            | FUObjectArrayAllocateUObjectIndex            | FUObjectArrayFreeUObjectIndex            |\n+====================================+==================+===========================+==========================+==========================================+====================================+============================+==========================+==============================================+==========================================+\n| BrickadiaServer-Win64-Shipping.exe | unique=0         | FNameCtorWchar(140237e50) | FNameToString(1402d5d70) | StaticConstructObjectInternal(140505310) | ConsoleManagerSingleton(140064bb0) | UGameEngineTick(1422c3bd0) | GUObjectArray(14768f038) | FUObjectArrayAllocateUObjectIndex(1404f7cb0) | FUObjectArrayFreeUObjectIndex(1404f8020) |\n+------------------------------------+------------------+---------------------------+--------------------------+------------------------------------------+------------------------------------+----------------------------+--------------------------+----------------------------------------------+------------------------------------------+\n| total=1                            | 0=1 1=0 >1=0     | Ok=1/1 (100.00%)          | Ok=1/1 (100.00%)         | Ok=1/1 (100.00%)                         | Ok=1/1 (100.00%)                   | Ok=1/1 (100.00%)           | Ok=1/1 (100.00%)         | Ok=1/1 (100.00%)                             | Ok=1/1 (100.00%)                         |\n+------------------------------------+------------------+---------------------------+--------------------------+------------------------------------------+------------------------------------+----------------------------+--------------------------+----------------------------------------------+------------------------------------------+\n\n",
+    "stderr": ""
+  },
+  "patternsleuth_blocked": {
+    "command": [
+      "C:\\Users\\tycox\\Tools\\reverse-engineering\\patternsleuth\\target\\release\\patternsleuth.exe",
+      "scan",
+      "--path",
+      "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+      "--resolver",
+      "FUObjectHashTablesGet",
+      "--resolver",
+      "StaticFindObjectFast",
+      "--resolver",
+      "GNatives",
+      "--resolver",
+      "UObjectSkipFunction",
+      "--resolver",
+      "GNativesViaSkipFunction",
+      "--resolver",
+      "GNativesPatterns",
+      "--resolver",
+      "FFrameStep",
+      "--resolver",
+      "FFrameStepExplicitProperty",
+      "--resolver",
+      "FFrameStepViaExec",
+      "--summary"
+    ],
+    "exit_code": 0,
+    "stdout": "\"BrickadiaServer-Win64-Shipping.exe\" \"C:\\\\Users\\\\tycox\\\\AppData\\\\Roaming\\\\omegga\\\\steam_installs\\\\main\\\\Brickadia\\\\Binaries\\\\Win64\\\\BrickadiaServer-Win64-Shipping.exe\"\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| sig                        | offline scan                                                                                                           |\n+============================+========================================================================================================================+\n| FUObjectHashTablesGet      | ResolveError { context: [\"FUObjectHashTablesGet\"], type: Msg(\"expected at least one value\") }                          |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| StaticFindObjectFast       | ResolveError { context: [\"StaticFindObjectFast\"], type: Msg(\"expected at least one value\") }                           |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| GNatives                   | ResolveError { context: [\"GNatives\"], type: Msg(\"expected at least one value\") }                                       |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| UObjectSkipFunction        | ResolveError { context: [\"UObjectSkipFunction\"], type: Msg(\"expected at least one value\") }                            |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| GNativesViaSkipFunction    | ResolveError { context: [\"UObjectSkipFunction\", \"GNativesViaSkipFunction\"], type: Msg(\"expected at least one value\") } |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| GNativesPatterns           | ResolveError { context: [\"GNativesPatterns\"], type: Msg(\"expected at least one value\") }                               |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| FFrameStep                 | ResolveError { context: [\"FFrameStep\"], type: Msg(\"expected at least one value\") }                                     |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| FFrameStepExplicitProperty | ResolveError { context: [\"FFrameStepExplicitProperty\"], type: Msg(\"expected at least one value\") }                     |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n| FFrameStepViaExec          | ResolveError { context: [\"FFrameStepViaExec\"], type: Msg(\"expected at least one value\") }                              |\n+----------------------------+------------------------------------------------------------------------------------------------------------------------+\n\n+------------------------------------+------------------+-----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------+\n|                                    | unqiue addresses | FUObjectHashTablesGet                                                                         | StaticFindObjectFast                                                                         | GNatives                                                                         | UObjectSkipFunction                                                                         | GNativesViaSkipFunction                                                                                                | GNativesPatterns                                                                         | FFrameStep                                                                         | FFrameStepExplicitProperty                                                                         | FFrameStepViaExec                                                                         |\n+====================================+==================+===============================================================================================+==============================================================================================+==================================================================================+=============================================================================================+========================================================================================================================+==========================================================================================+====================================================================================+====================================================================================================+===========================================================================================+\n| BrickadiaServer-Win64-Shipping.exe | unique=0         | ResolveError { context: [\"FUObjectHashTablesGet\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"StaticFindObjectFast\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"GNatives\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"UObjectSkipFunction\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"UObjectSkipFunction\", \"GNativesViaSkipFunction\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"GNativesPatterns\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"FFrameStep\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"FFrameStepExplicitProperty\"], type: Msg(\"expected at least one value\") } | ResolveError { context: [\"FFrameStepViaExec\"], type: Msg(\"expected at least one value\") } |\n+------------------------------------+------------------+-----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------+\n| total=1                            | 0=1 1=0 >1=0     | Ok=0/1 (0.00%)                                                                                | Ok=0/1 (0.00%)                                                                               | Ok=0/1 (0.00%)                                                                   | Ok=0/1 (0.00%)                                                                              | Ok=0/1 (0.00%)                                                                                                         | Ok=0/1 (0.00%)                                                                           | Ok=0/1 (0.00%)                                                                     | Ok=0/1 (0.00%)                                                                                     | Ok=0/1 (0.00%)                                                                            |\n+------------------------------------+------------------+-----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------+\n\n",
+    "stderr": ""
+  },
+  "utf16_anchors": [
+    {
+      "text": "StaticFindObjectFast",
+      "match": {
+        "section": ".rdata",
+        "file_offset": "0x5d364c0",
+        "rva": "0x5d372c0",
+        "va": "0x145d372c0"
+      }
+    },
+    {
+      "text": "FUObjectHashTables",
+      "match": {
+        "section": ".rdata",
+        "file_offset": "0x5d3e0ae",
+        "rva": "0x5d3eeae",
+        "va": "0x145d3eeae"
+      }
+    },
+    {
+      "text": "HashOuter",
+      "match": {
+        "section": ".rdata",
+        "file_offset": "0x5d3df64",
+        "rva": "0x5d3ed64",
+        "va": "0x145d3ed64"
+      }
+    }
+  ],
+  "old_pdb_publics": {
+    "command": [
+      "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\Llvm\\x64\\bin\\llvm-pdbutil.exe",
+      "dump",
+      "--publics",
+      "--public-extras",
+      "C:\\Users\\tycox\\OneDrive\\Documents\\Downloads\\older data from discord server\\BrickadiaSteam-Win64-Shipping.pdb"
+    ],
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "",
+    "records": [
+      "163220 | S_PUB32 [size = 44] `UObject::ProcessConsoleExec`",
+      "257208 | S_PUB32 [size = 40] `StaticFindObjectFastSafe`",
+      "257248 | S_PUB32 [size = 40] `StaticFindObjectChecked`",
+      "257288 | S_PUB32 [size = 36] `StaticFindObjectSafe`",
+      "261756 | S_PUB32 [size = 56] `FUObjectHashTables::~FUObjectHashTables`"
+    ]
+  },
+  "hook_foundation": {
+    "ue_baseline_suffix": "5_05",
+    "custom_vtable_layout": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\bundles\\CL12960\\VTableLayout.ini",
+    "seed_vtable_variance_note": {
+      "path": "C:\\Users\\tycox\\OneDrive\\Documents\\Downloads\\older data from discord server\\Resources Convos.txt",
+      "line": 291,
+      "text": "it turns out that Brickadia only has one extra vfunc in UObject and two in UEngine, and i have been trolled by a UE4SS oversight/bug where because i wasn't also including the default layout defs of UObjectBase & UObjectBaseUtility in the custom VTableLayout.ini file, UE4SS forgot about their virtual functions entirely",
+      "supports_stock_defaults_outside_uobject_uengine": true
+    },
+    "runtime_log": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\UE4SS.log",
+    "startup_fatal_line": null,
+    "callback_gc_invalid_line": "[2026-03-23 12:07:15.8166398] [Lua] [BaselineObjectProof] wrote result kind=hook_initgamestate_context[2026-03-23 12:07:15.8229068] [Lua] [BaselineObjectProof] wrote result kind=lookup_staticfindobject[2026-03-23 12:07:18.7078721] [FCallbackGarbageCollector] Freed invalid callbacks!",
+    "targets": {
+      "UObject::ProcessEvent": {
+        "class": "UObject",
+        "function": "ProcessEvent",
+        "custom_layout_section_present": true,
+        "custom_layout_explicit_override": true,
+        "custom_layout_ordinal": 72,
+        "generated_ue5_5_default": {
+          "generated_file": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\generated_include\\FunctionBodies\\5_05_VTableOffsets_UObject_FunctionBody.cpp",
+          "offset": "0x278"
+        },
+        "seed_note_supports_stock_default": false,
+        "runtime_log_address": "0x7ff75b9d3db0",
+        "runtime_log_line": "[2026-03-23 12:07:15.7056587] ProcessEvent address 0x7ff75b9d3db0",
+        "status": "runtime_confirmed"
+      },
+      "UEngine::LoadMap": {
+        "class": "UEngine",
+        "function": "LoadMap",
+        "custom_layout_section_present": true,
+        "custom_layout_explicit_override": true,
+        "custom_layout_ordinal": 70,
+        "generated_ue5_5_default": {
+          "generated_file": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\generated_include\\FunctionBodies\\5_05_VTableOffsets_UEngine_FunctionBody.cpp",
+          "offset": "0x4e0"
+        },
+        "seed_note_supports_stock_default": false,
+        "runtime_log_address": "0x7ff75e3804d0",
+        "runtime_log_line": "[2026-03-23 12:07:15.7052114] GameEngine::LoadMap address 0x7ff75e3804d0",
+        "status": "runtime_confirmed"
+      },
+      "AGameModeBase::InitGameState": {
+        "class": "AGameModeBase",
+        "function": "InitGameState",
+        "custom_layout_section_present": false,
+        "custom_layout_explicit_override": false,
+        "custom_layout_ordinal": null,
+        "generated_ue5_5_default": {
+          "generated_file": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\generated_include\\FunctionBodies\\5_05_VTableOffsets_AGameModeBase_FunctionBody.cpp",
+          "offset": "0x790"
+        },
+        "seed_note_supports_stock_default": true,
+        "runtime_log_address": "0x7ff75dcabcd0",
+        "runtime_log_line": "[2026-03-23 12:07:15.7056123] GameModeBase::InitGameState address 0x7ff75dcabcd0",
+        "status": "runtime_confirmed"
+      },
+      "AActor::BeginPlay": {
+        "class": "AActor",
+        "function": "BeginPlay",
+        "custom_layout_section_present": false,
+        "custom_layout_explicit_override": false,
+        "custom_layout_ordinal": null,
+        "generated_ue5_5_default": {
+          "generated_file": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\generated_include\\FunctionBodies\\5_05_VTableOffsets_AActor_FunctionBody.cpp",
+          "offset": "0x3a0"
+        },
+        "seed_note_supports_stock_default": true,
+        "runtime_log_address": "0x7ff75d8041c0",
+        "runtime_log_line": "[2026-03-23 12:07:15.7056227] AActor::BeginPlay address 0x7ff75d8041c0",
+        "status": "runtime_confirmed"
+      }
+    }
+  },
+  "lua_scan_addresses": {
+    "FNameToString": {
+      "address": "0x7ff75bc95d70",
+      "line": "[2026-03-23 12:07:15.5598338] FName::ToString address: 0x7ff75bc95d70 <- Lua Script",
+      "source": "Lua Script"
+    },
+    "GNatives": {
+      "address": "0x7ff76304d760",
+      "line": "[2026-03-23 12:07:15.5693298] GNatives address: 0x7ff76304d760 <- Lua Script",
+      "source": "Lua Script"
+    },
+    "GUObjectArray": {
+      "address": "0x7ff76304f038",
+      "line": "[2026-03-23 12:07:15.5717956] GUObjectArray address: 0x7ff76304f038 <- Lua Script",
+      "source": "Lua Script"
+    }
+  },
+  "runtime_mods": {
+    "mods_txt": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\Mods\\mods.txt",
+    "enabled": [
+      "OmeggaBridge"
+    ]
+  },
+  "baseline_object_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "lookup_probe_set": "none",
+        "success": true,
+        "lookup_delay_ms": 1500,
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof.jsonl",
+        "unwrap_params": "false",
+        "engine_tick_available": "true",
+        "process_event_available": "true",
+        "timestamp": "2026-03-23T16:05:30Z"
+      },
+      {
+        "kind": "hook_initgamestate_context",
+        "candidate_ue_type_ok": true,
+        "candidate_ue_type": "RemoteUnrealParam",
+        "source": "RegisterInitGameStatePostHook",
+        "candidate_lua_type": "userdata",
+        "success": true,
+        "object_resolution_blocked": true,
+        "unwrap_enabled": false,
+        "object_resolution_attempted": false,
+        "timestamp": "2026-03-23T16:05:30Z"
+      },
+      {
+        "kind": "lookup_probes_skipped",
+        "lookup_probe_set": "none",
+        "success": true,
+        "source": "initgamestate",
+        "timestamp": "2026-03-23T16:05:30Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "baseline_object_unwrap_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-unwrap.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "engine_tick_available": "true",
+        "lookup_probe_set": "none",
+        "process_event_available": "true",
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-unwrap.jsonl",
+        "success": true,
+        "unwrap_params": "true",
+        "lookup_delay_ms": 1500,
+        "timestamp": "2026-03-23T16:06:05Z"
+      },
+      {
+        "kind": "hook_initgamestate_context_unwrap_attempt",
+        "unwrap_enabled": true,
+        "candidate_ue_type_ok": true,
+        "candidate_ue_type": "RemoteUnrealParam",
+        "source": "RegisterInitGameStatePostHook",
+        "candidate_lua_type": "userdata",
+        "object_resolution_attempted": true,
+        "timestamp": "2026-03-23T16:06:05Z"
+      },
+      {
+        "kind": "hook_initgamestate_context",
+        "get_full_name_ok": false,
+        "object_ue_type_ok": true,
+        "candidate_ue_type_ok": true,
+        "object_lua_type": "userdata",
+        "success": true,
+        "full_name_error": "skipped to keep the unwrap canary focused on object validity",
+        "object_resolution_attempted": true,
+        "unwrap_enabled": true,
+        "resolver": "param_get",
+        "is_valid_call_ok": true,
+        "object_ue_type": "AActor",
+        "candidate_ue_type": "RemoteUnrealParam",
+        "source": "RegisterInitGameStatePostHook",
+        "is_valid": "true",
+        "candidate_lua_type": "userdata",
+        "timestamp": "2026-03-23T16:06:05Z"
+      },
+      {
+        "kind": "lookup_probes_skipped",
+        "source": "initgamestate",
+        "lookup_probe_set": "none",
+        "success": true,
+        "timestamp": "2026-03-23T16:06:05Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "baseline_findfirstof_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-findfirstof.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "process_event_available": "true",
+        "engine_tick_available": "true",
+        "unwrap_params": "false",
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-findfirstof.jsonl",
+        "lookup_delay_ms": 0,
+        "lookup_probe_set": "findfirstof",
+        "success": true,
+        "timestamp": "2026-03-23T16:06:40Z"
+      },
+      {
+        "kind": "hook_initgamestate_context",
+        "success": true,
+        "object_resolution_blocked": true,
+        "candidate_ue_type": "RemoteUnrealParam",
+        "candidate_ue_type_ok": true,
+        "source": "RegisterInitGameStatePostHook",
+        "unwrap_enabled": false,
+        "object_resolution_attempted": false,
+        "candidate_lua_type": "userdata",
+        "timestamp": "2026-03-23T16:06:40Z"
+      },
+      {
+        "kind": "lookup_findfirstof",
+        "success": true,
+        "object_resolution_blocked": true,
+        "candidate_ue_type": "UObject",
+        "candidate_ue_type_ok": true,
+        "source": "initgamestate",
+        "unwrap_enabled": false,
+        "object_resolution_attempted": false,
+        "candidate_lua_type": "userdata",
+        "timestamp": "2026-03-23T16:06:40Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "baseline_staticfindobject_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-staticfindobject.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "unwrap_params": "false",
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-proof-staticfindobject.jsonl",
+        "process_event_available": "true",
+        "engine_tick_available": "true",
+        "lookup_delay_ms": 0,
+        "lookup_probe_set": "staticfindobject",
+        "success": true,
+        "timestamp": "2026-03-23T16:07:15Z"
+      },
+      {
+        "kind": "hook_initgamestate_context",
+        "success": true,
+        "object_resolution_blocked": true,
+        "object_resolution_attempted": false,
+        "unwrap_enabled": false,
+        "candidate_ue_type": "RemoteUnrealParam",
+        "candidate_lua_type": "userdata",
+        "source": "RegisterInitGameStatePostHook",
+        "candidate_ue_type_ok": true,
+        "timestamp": "2026-03-23T16:07:15Z"
+      },
+      {
+        "kind": "lookup_staticfindobject",
+        "success": true,
+        "object_resolution_blocked": true,
+        "object_resolution_attempted": false,
+        "unwrap_enabled": false,
+        "candidate_ue_type": "UObject",
+        "candidate_lua_type": "userdata",
+        "source": "initgamestate",
+        "candidate_ue_type_ok": true,
+        "timestamp": "2026-03-23T16:07:15Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "chat_proof": {
+    "path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-chat-proof.jsonl",
+    "exists": true,
+    "entries": [
+      {
+        "kind": "startup",
+        "success": true,
+        "out_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\baseline-chat-proof.jsonl",
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "scheduler_capabilities",
+        "execute_in_game_thread_after_frames": true,
+        "execute_with_delay": true,
+        "execute_in_game_thread_with_delay": true,
+        "execute_in_game_thread": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "helper_capabilities",
+        "omegga_get_cached_world": true,
+        "omegga_describe_cached_command_context": true,
+        "omegga_has_cached_command_context": true,
+        "omegga_describe_cached_world": true,
+        "register_process_console_exec_post_hook": true,
+        "omegga_execute_cached_console_exec": true,
+        "omegga_execute_cached_engine_exec": true,
+        "register_process_console_exec_pre_hook": true,
+        "omegga_execute_kismet_console_command": true,
+        "omegga_has_cached_engine_exec_context": true,
+        "omegga_get_cached_command_context": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "hook_registration",
+        "hook": "RegisterProcessConsoleExecPreHook",
+        "error": "nil",
+        "success": true,
+        "phase": "pre",
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "hook_registration",
+        "hook": "RegisterProcessConsoleExecPostHook",
+        "error": "nil",
+        "success": true,
+        "phase": "post",
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "hook_event",
+        "hook": "RegisterInitGameStatePostHook",
+        "success": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "scheduled_probe",
+        "delay_ms": 500,
+        "label": "initgamestate_context_snapshot",
+        "frames": 5,
+        "success": true,
+        "scheduler": "ExecuteInGameThreadAfterFrames",
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "scheduled_probe",
+        "delay_ms": 1500,
+        "label": "initgamestate_nonchat_probe",
+        "frames": 15,
+        "success": true,
+        "scheduler": "ExecuteInGameThreadAfterFrames",
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "scheduled_probe",
+        "delay_ms": 3000,
+        "label": "initgamestate_broadcast_round_1",
+        "frames": 30,
+        "success": true,
+        "scheduler": "ExecuteInGameThreadAfterFrames",
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "scheduled_probe",
+        "delay_ms": 6000,
+        "label": "initgamestate_broadcast_round_2",
+        "frames": 60,
+        "success": true,
+        "scheduler": "ExecuteInGameThreadAfterFrames",
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "context_snapshot",
+        "has_cached_command_context": true,
+        "has_cached_command_context_call_ok": true,
+        "trigger": "initgamestate_scheduled",
+        "has_cached_engine_exec_context_call_ok": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "context_snapshot",
+        "has_cached_command_context": true,
+        "has_cached_command_context_call_ok": true,
+        "trigger": "initgamestate_nonchat",
+        "has_cached_engine_exec_context_call_ok": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "command_attempt",
+        "success": false,
+        "executor": "cached_engine_exec",
+        "label": "server_status_engine_exec",
+        "error": "OmeggaExecuteCachedEngineExec: GameEngine::Exec is not available\nstack traceback:\n\t[C]: in function 'OmeggaExecuteCachedEngineExec'\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:214: in upvalue 'attempt_command'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:238: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:235>\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:66: in upvalue 'once'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:235: in upvalue 'attempt_nonchat_console_probe'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:407: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:406>\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:66: in upvalue 'once'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:326: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:325>",
+        "call_ok": false,
+        "trigger": "initgamestate",
+        "command": "Server.Status",
+        "available": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "command_attempt",
+        "success": true,
+        "executor": "cached_console_exec",
+        "label": "server_status_cached_console_exec",
+        "output": "",
+        "call_ok": true,
+        "trigger": "initgamestate",
+        "command": "Server.Status",
+        "available": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "command_attempt",
+        "success": true,
+        "executor": "kismet_console_command",
+        "label": "server_status_kismet_console_command",
+        "output": "",
+        "call_ok": true,
+        "trigger": "initgamestate",
+        "command": "Server.Status",
+        "available": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "context_snapshot",
+        "has_cached_command_context": true,
+        "has_cached_command_context_call_ok": true,
+        "trigger": "initgamestate_broadcast_1",
+        "has_cached_engine_exec_context_call_ok": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "success": false,
+        "executor": "cached_engine_exec",
+        "label": "broadcast_engine_exec_1",
+        "error": "OmeggaExecuteCachedEngineExec: GameEngine::Exec is not available\nstack traceback:\n\t[C]: in function 'OmeggaExecuteCachedEngineExec'\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:214: in upvalue 'attempt_command'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:269: in upvalue 'attempt_broadcast_sequence'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:411: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:410>\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:66: in upvalue 'once'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:326: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:325>",
+        "call_ok": false,
+        "trigger": "initgamestate",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #1",
+        "available": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "success": false,
+        "executor": "cached_console_exec",
+        "label": "broadcast_cached_console_exec_1",
+        "error": "skipped because ProcessConsoleExec crashes on Chat.* for this Brickadia build",
+        "trigger": "initgamestate",
+        "skipped": true,
+        "command": "Chat.Broadcast Hello from BaselineChatProof #1",
+        "available": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "success": true,
+        "executor": "kismet_console_command",
+        "label": "broadcast_kismet_console_command_1",
+        "output": "",
+        "call_ok": true,
+        "trigger": "initgamestate",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #1",
+        "available": true,
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "broadcast_round_complete",
+        "success": true,
+        "sequence": 1,
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T15:05:17Z"
+      },
+      {
+        "kind": "context_snapshot",
+        "has_cached_command_context": true,
+        "has_cached_command_context_call_ok": true,
+        "trigger": "initgamestate_broadcast_2",
+        "has_cached_engine_exec_context_call_ok": true,
+        "timestamp": "2026-03-23T15:05:18Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "success": false,
+        "executor": "cached_engine_exec",
+        "label": "broadcast_engine_exec_2",
+        "error": "OmeggaExecuteCachedEngineExec: GameEngine::Exec is not available\nstack traceback:\n\t[C]: in function 'OmeggaExecuteCachedEngineExec'\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:214: in upvalue 'attempt_command'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:269: in upvalue 'attempt_broadcast_sequence'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:414: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:413>\n\t[C]: in function 'pcall'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:66: in upvalue 'once'\n\t...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:326: in function <...Win64\\ue4ss\\main\\Mods\\BaselineChatProof\\Scripts\\main.lua:325>",
+        "call_ok": false,
+        "trigger": "initgamestate",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #2",
+        "available": true,
+        "timestamp": "2026-03-23T15:05:18Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "success": false,
+        "executor": "cached_console_exec",
+        "label": "broadcast_cached_console_exec_2",
+        "error": "skipped because ProcessConsoleExec crashes on Chat.* for this Brickadia build",
+        "trigger": "initgamestate",
+        "skipped": true,
+        "command": "Chat.Broadcast Hello from BaselineChatProof #2",
+        "available": true,
+        "timestamp": "2026-03-23T15:05:18Z"
+      },
+      {
+        "kind": "broadcast_attempt",
+        "success": true,
+        "executor": "kismet_console_command",
+        "label": "broadcast_kismet_console_command_2",
+        "output": "",
+        "call_ok": true,
+        "trigger": "initgamestate",
+        "command": "Chat.Broadcast Hello from BaselineChatProof #2",
+        "available": true,
+        "timestamp": "2026-03-23T15:05:18Z"
+      },
+      {
+        "kind": "broadcast_round_complete",
+        "success": true,
+        "sequence": 2,
+        "trigger": "initgamestate",
+        "timestamp": "2026-03-23T15:05:18Z"
+      }
+    ],
+    "parse_errors": []
+  },
+  "manual_re_findings": {
+    "hash_tables_anchor_function": "FUN_14053a860 @ 14053a860 (GhidraScript)",
+    "hash_tables_singleton_ref_count": 66,
+    "hash_tables_direct_global_access": true,
+    "sources": {
+      "anchor_xrefs": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\ghidra-anchor-xrefs-latest.txt",
+      "address_xrefs": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\ghidra-address-xrefs-latest.txt",
+      "hashouter_decompile": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\notes\\ghidra-decompile-14053c060.txt"
+    }
+  },
+  "patched_runtime_findings": {
+    "fuobject_hash_tables_get_scan_config_present": true,
+    "fuobject_hash_tables_get_result_field_present": true,
+    "fuobject_hash_tables_get_runtime_assignment_present": false,
+    "fuobject_hash_tables_get_override_hook_present": true,
+    "gnatives_runtime_assignment_present": true,
+    "static_find_object_fast_runtime_reference_present": false,
+    "uobject_skip_function_runtime_reference_present": false,
+    "fframe_step_runtime_source_impl_present": true,
+    "fframe_step_runtime_binary_reference_present": true,
+    "sources": {
+      "unreal_initializer_cpp": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\src\\UnrealInitializer.cpp",
+      "signatures_cpp": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\src\\Signatures.cpp",
+      "unreal_source_root": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal",
+      "fframe_cpp": "C:\\Users\\tycox\\Tools\\reverse-engineering\\RE-UE4SS\\deps\\first\\Unreal\\src\\FFrame.cpp"
+    }
+  },
+  "resolved_addresses": {
+    "FNameCtorWchar": "0x140237e50",
+    "FNameToString": "0x1402d5d70",
+    "StaticConstructObjectInternal": "0x140505310",
+    "ConsoleManagerSingleton": "0x140064bb0",
+    "UGameEngineTick": "0x1422c3bd0",
+    "GUObjectArray": "0x14768f038",
+    "FUObjectArrayAllocateUObjectIndex": "0x1404f7cb0",
+    "FUObjectArrayFreeUObjectIndex": "0x1404f8020"
+  }
+}

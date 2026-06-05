@@ -1,0 +1,315 @@
+{
+  "bundle_id": "CL12960",
+  "workspace_root": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re",
+  "bundle_root": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\bundles\\CL12960",
+  "proof_output": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl",
+  "server_exe": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe",
+  "summary": {
+    "total": 36,
+    "passed": 30,
+    "failed": 0,
+    "blocked": 6
+  },
+  "sections": [
+    {
+      "id": "context-resolution",
+      "name": "Context Resolution",
+      "summary": {
+        "total": 12,
+        "passed": 11,
+        "failed": 0,
+        "blocked": 1
+      },
+      "tests": [
+        {
+          "id": "world-export-output-exists",
+          "name": "WorldExportContextProof wrote an output report",
+          "status": "passed",
+          "details": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-output-parses",
+          "name": "WorldExportContextProof output parses as JSONL",
+          "status": "passed",
+          "details": "All world-export proof lines parsed successfully.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-startup",
+          "name": "WorldExportContextProof startup marker was recorded",
+          "status": "passed",
+          "details": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-scheduler",
+          "name": "A delayed game-thread scheduler is available for the export canary",
+          "status": "passed",
+          "details": "ExecuteInGameThreadWithDelay=True; ExecuteInGameThreadAfterFrames=True",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-initgamestate-hook",
+          "name": "InitGameState fired during the world-export proof session",
+          "status": "passed",
+          "details": "Observed RegisterInitGameStatePostHook.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-world-resolved",
+          "name": "The live UWorld can be resolved",
+          "status": "passed",
+          "details": " .@0x1F60ADF5000",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-persistent_level-resolved",
+          "name": "The persistent level can be resolved",
+          "status": "passed",
+          "details": " .:@0x1F60BCADF80",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-game_mode-resolved",
+          "name": "The live game mode can be resolved",
+          "status": "passed",
+          "details": " .:.@0x1F609CE8E00",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-game_state-resolved",
+          "name": "The live game state can be resolved",
+          "status": "passed",
+          "details": " .:.@0x24ADDAE0000",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-game_session-resolved",
+          "name": "The live game session can be resolved",
+          "status": "passed",
+          "details": " .:.@0x1F609CE9880",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-game_instance-resolved",
+          "name": "The live game instance can be resolved",
+          "status": "passed",
+          "details": " .:@0x1F609CC4800",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-runtime-brick-count",
+          "name": "A runtime brick count is readable from the live server state",
+          "status": "blocked",
+          "details": "No NumBricks/BrickCount property was readable in the current proof session.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        }
+      ]
+    },
+    {
+      "id": "discovery-leads",
+      "name": "Discovery Leads",
+      "summary": {
+        "total": 6,
+        "passed": 5,
+        "failed": 0,
+        "blocked": 1
+      },
+      "tests": [
+        {
+          "id": "world-export-property-keyword-scan",
+          "name": "Keyword property scans ran against the core world objects",
+          "status": "passed",
+          "details": "Observed 8 property keyword scan record(s).",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-function-keyword-scan",
+          "name": "Keyword function scans ran against the core world objects",
+          "status": "passed",
+          "details": "Observed 8 function keyword scan record(s).",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-named-property-probe",
+          "name": "Explicit build/export property probes ran against the core world objects",
+          "status": "passed",
+          "details": "Observed 8 named property probe record(s).",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-property-keyword-leads",
+          "name": "The core world objects expose build/export-related leads",
+          "status": "blocked",
+          "details": "No property, function, or named-property build/export leads were found on the scanned world objects yet. Closest runtime candidates: BRChatCommandWorldSubsystem=1 (FindFirstOf), BrickGridActor=1 (FindFirstOf), BrickGridComponent=1 (FindFirstOf), BRWorldManager=1 (FindFirstOf), BP_BrickGrid_C=0 (FindFirstOf), BP_ChatCommandWorldSubsystem_C=0 (FindFirstOf).",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-candidate-class-scan",
+          "name": "Candidate runtime classes were scanned with FindAllOf",
+          "status": "passed",
+          "details": "Observed 54 candidate class scan record(s).",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-live-candidates",
+          "name": "At least one live runtime candidate relevant to export work was found",
+          "status": "passed",
+          "details": "Live candidates: BRChatCommandWorldSubsystem=1 (FindFirstOf), BrickGridActor=1 (FindFirstOf), BrickGridComponent=1 (FindFirstOf), BRWorldManager=1 (FindFirstOf), BP_BrickGrid_C=0 (FindFirstOf), BP_ChatCommandWorldSubsystem_C=0 (FindFirstOf), BRBundleArchive=0 (FindFirstOf), BRBundleTransferComponent=0 (FindFirstOf), BRGizmoManagerComponent=0 (FindFirstOf), BrickBuildingTemplate=0 (FindFirstOf)",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        }
+      ]
+    },
+    {
+      "id": "prefab-native-leads",
+      "name": "Prefab Native Leads",
+      "summary": {
+        "total": 6,
+        "passed": 5,
+        "failed": 0,
+        "blocked": 1
+      },
+      "tests": [
+        {
+          "id": "world-export-brworldmanager-live",
+          "name": "The live BRWorldManager object resolves during the proof session",
+          "status": "passed",
+          "details": "BRWorldManager=1",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-runtime-grid-surface",
+          "name": "The runtime brick-grid surface is present without using commands",
+          "status": "passed",
+          "details": "BrickGridActor=1, BrickGridComponent=1, BrickGridDynamicActor=0, Entity_DynamicBrickGrid=0",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-selector-surface",
+          "name": "Selector/template runtime objects are discoverable when a player selection exists",
+          "status": "blocked",
+          "details": "Tool_Selector_C=0, BrickBuildingTemplate=0",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\probes\\CL12960\\output\\world-export-context-proof.jsonl"
+        },
+        {
+          "id": "world-export-prefab-binary-leads",
+          "name": "The server binary exposes prefab/world-manager native leads for future call-by-name work",
+          "status": "passed",
+          "details": "BRWorldManager, BRWorldSerializer, BrickPrefabs, BRBundleArchive, PrefabArchive, PendingWorldBundle, CachedWorldBundle, SavedWorldBundle, RequestLoadWorldAdditive, ClientLoadWorldAccepted, ClientLoadWorldRejected, ServerUploadPrefab, ClientUploadPrefab, BRLoadWorldAdditiveParams, ServerPlaceCurrentPrefab, ServerPastePrefab, PrefabCaptureBricks, PrefabCaptureComponents, PrefabCaptureEntities, PrefabCaptureWires, ApplyPrefabState",
+          "evidence": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe"
+        },
+        {
+          "id": "world-export-prefab-native-call-surface",
+          "name": "The binary exposes candidate native prefab call names",
+          "status": "passed",
+          "details": "ServerPlaceCurrentPrefab, ServerPastePrefab, PrefabCaptureBricks, PrefabCaptureComponents, PrefabCaptureEntities, PrefabCaptureWires, ApplyPrefabState",
+          "evidence": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe"
+        },
+        {
+          "id": "world-export-prefab-replay-binary-surface",
+          "name": "The binary exposes candidate additive-load and prefab replay method names",
+          "status": "passed",
+          "details": "RequestLoadWorldAdditive, ClientLoadWorldAccepted, ClientLoadWorldRejected, ServerUploadPrefab, ClientUploadPrefab, PrefabArchive, BRLoadWorldAdditiveParams",
+          "evidence": "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\BrickadiaServer-Win64-Shipping.exe"
+        }
+      ]
+    },
+    {
+      "id": "live-prefab-runtime",
+      "name": "Live Prefab Runtime",
+      "summary": {
+        "total": 12,
+        "passed": 9,
+        "failed": 0,
+        "blocked": 3
+      },
+      "tests": [
+        {
+          "id": "world-export-live-prefab-sampler-output",
+          "name": "The live prefab sampler produced a parseable snapshot",
+          "status": "passed",
+          "details": "Snapshot updated_at=2026-03-24T18:19:57Z; sampler_started_at=2026-03-24T14:14:27.0909306-04:00",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        },
+        {
+          "id": "world-export-live-prefab-additive-load-trace",
+          "name": "The server log shows the additive prefab load path end-to-end",
+          "status": "passed",
+          "details": "[2026.03.24-18.14.56:729][452]LogBrickPrefabs: Caching prefab from serialized data (Hash=07C8E4AD16AC2B85B7FBE8637C9929AD9326ECA7384219F05937BD0F464BB7AD, DataSize=215204 bytes) | [2026.03.24-18.15.01:994][480]LogBRWorldManager: Loading world additively from bundle. | [2026.03.24-18.15.01:994][480]LogBRWorldSerializer: Loading prefab metadata. | [2026.03.24-18.15.01:994][480]LogBRWorldSerializer: Spawning entities and grid serializers. | [2026.03.24-18.15.02:004][480]LogBRWorldManager: World successfully loaded additively.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\Saved\\Logs\\Brickadia.log"
+        },
+        {
+          "id": "world-export-live-prefab-runtime-surface",
+          "name": "Live runtime prefab/archive objects appear after a player-driven load",
+          "status": "passed",
+          "details": "BRWorldManager=1, BRBundleArchive=1, BrickGridDynamicActor=8, BRBundleTransferComponent=1; BRBundleArchive at 2026-03-24T18:19:57Z, BrickGridDynamicActor at 2026-03-24T18:19:57Z",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        },
+        {
+          "id": "world-export-live-replay-surface-capture",
+          "name": "A safe replay-surface capture is recorded when prefab runtime counts change",
+          "status": "passed",
+          "details": "triggers=BrickGridActor 2->10, BrickGridDynamicActor 0->8; classes=BRBundleArchive props=17 aliased=1, BRBundleTransferComponent props=7 aliased=1, BRWorldManager props=8 aliased=1, BrickGridActor props=5 aliased=0, BrickGridDynamicActor props=23 aliased=1; native=BRBundleArchive->CountBricksAndComponents success=False, BRBundleArchive->GetBrickCount success=False, BRBundleTransferComponent->GetCurrentBundleState success=False, BRBundleTransferComponent->GetPendingWorldBundle success=False, BRWorldManager->GetCurrentBundleState success=False, BRWorldManager->GetGlobalBrickGrid success=False",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        },
+        {
+          "id": "world-export-live-replay-capture-diff",
+          "name": "Replay-surface history can be diffed across multiple prefab loads",
+          "status": "passed",
+          "details": "captures=4; latest_property_aliases=BRBundleArchive.ChunkSizes <-> BRBundleTransferComponent.PendingWorldBundle; repeated_property_aliases=none_yet; stable_replay_properties=0; churning_replay_properties=32",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\history.jsonl"
+        },
+        {
+          "id": "world-export-live-native-call-probes",
+          "name": "Live native call probes ran against the bundle/world-manager replay surface",
+          "status": "passed",
+          "details": "BrickGridActor->GetBrickGrid success=True interpretation=placeholder_null_wrapper; BrickGridComponent->GetBrickCount success=True; BrickGridDynamicActor->GetBrickGrid success=True interpretation=placeholder_null_wrapper; BP_ToolPreviewActor_C->GetPlaceable success=False reason=target object unavailable; BRBundleArchive->CountBricksAndComponents success=False reason=native call returned false; BRBundleArchive->GetBrickCount success=False reason=native call returned false; BRBundleTransferComponent->GetCurrentBundleState success=False reason=native call returned false; BRBundleTransferComponent->GetPendingWorldBundle success=False reason=native call returned false; BRWorldManager->GetCurrentBundleState success=False reason=native call returned false; BRWorldManager->GetGlobalBrickGrid success=False reason=native call returned false; BRWorldManager->GetGlobalBrickGridActor success=False reason=native call returned false; BRWorldManager->GetPendingWorldBundle success=False reason=native call returned false; BrickGridActor->GetBrickCount success=False reason=native call returned false; BrickGridComponent->GetBrickGrid success=False reason=native call returned false; BrickGridDynamicActor->GetBrickCount success=False reason=native call returned false; Tool_Selector_C->GetCurrentSelectionState success=False reason=native call returned false; Tool_Selector_C->GetSelectionLayers success=False reason=native call returned false; Tool_Selector_C->HasSelection success=False reason=native call returned false; Tool_Selector_C->HasSelectionBox success=False reason=native call returned false",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        },
+        {
+          "id": "world-export-live-grid-getter-decoder-status",
+          "name": "Live GetBrickGrid returns a decoded grid object instead of a placeholder wrapper",
+          "status": "blocked",
+          "details": "BrickGridActor->GetBrickGrid success=True interpretation=placeholder_null_wrapper; BrickGridComponent->GetBrickGrid success=False interpretation=unknown reason=native call returned false; BrickGridDynamicActor->GetBrickGrid success=True interpretation=placeholder_null_wrapper",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        },
+        {
+          "id": "world-export-live-replay-native-surface",
+          "name": "Live additive-load replay candidates are being probed on the runtime bundle surface",
+          "status": "blocked",
+          "details": "Unsafe live replay calls are intentionally disabled in the sampler right now because zero-arg probing of upload/accept methods can trip PendingWorldUpload assertions. The replay path is still tracked as a binary/runtime lead, just not invoked blindly.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        },
+        {
+          "id": "world-export-live-surface-scan-status",
+          "name": "Live prefab classes were surface-scanned for reflected property/function leads",
+          "status": "passed",
+          "details": "BRWorldManager property_matches=0 function_matches=0 property_error=...4\\ue4ss\\main\\Mods\\WorldStateLiveSampler\\Scripts\\main.lua:1223: [Lua::call_function] lua_pcall returned LUA_ERRRUN => attempt to call a nil value function_error=...4\\ue4ss\\main\\Mods\\WorldStateLiveSampler\\Scripts\\main.lua:1300: [Lua::call_function] lua_pcall returned LUA_ERRRUN => attempt to call a nil value; BRBundleArchive property_matches=0 function_matches=0; BrickGridDynamicActor property_matches=0 function_matches=0 property_error=...4\\ue4ss\\main\\Mods\\WorldStateLiveSampler\\Scripts\\main.lua:1223: [Lua::call_function] lua_pcall returned LUA_ERRRUN => attempt to call a nil value",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        },
+        {
+          "id": "world-export-live-prefab-property-surface",
+          "name": "The live prefab/archive objects expose the expected chunk and prefab property names",
+          "status": "passed",
+          "details": "BRBundleArchive: BricksInChunk, ChunkOffsets, ChunkSizes, OwnerIndices, PrefabMetadata, RelativePositions; BrickGridDynamicActor: BricksInChunk, ChunkOffsets, ChunkSizes, EntityType, MaterialIndices, Orientations, OwnerIndices, PrefabMetadata, RelativePositions",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        },
+        {
+          "id": "world-export-live-prefab-property-decoder-status",
+          "name": "Expected live prefab property values decode beyond observe-only userdata handles",
+          "status": "blocked",
+          "details": "BRBundleArchive userdata=6/6 placeholder_uobject=6/6; BrickGridDynamicActor userdata=9/9 placeholder_uobject=9/9; BRBundleArchive wrappers=UObject; BrickGridDynamicActor wrappers=UObject. Current blocker: expected prefab fields exist, but they are still resolving as placeholder-style UObject userdata wrappers instead of decoded brick/prefab values.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        },
+        {
+          "id": "world-export-headless-prefab-replay-surface",
+          "name": "The server-side runtime surface for future headless prefab replay is present",
+          "status": "passed",
+          "details": "Sampler verified; additive prefab load recorded; BRWorldManager and BRBundleArchive are both live; native call probes are running. This is a replay target surface, not proof of automatic headless replay yet.",
+          "evidence": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-world-state-live-sampler\\latest-snapshot.json"
+        }
+      ]
+    }
+  ]
+}

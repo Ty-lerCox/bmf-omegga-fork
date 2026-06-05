@@ -1,0 +1,3133 @@
+{
+  "generated_at": "2026-05-31T21:04:28.106Z",
+  "bridge_dir": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-bridge-test-7799",
+  "players": {
+    "count": "0",
+    "response": {
+      "id": 1780261467981260,
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1780261467981260,
+        "method": "players.list",
+        "params": {}
+      },
+      "result": {
+        "accepted": true,
+        "executor": "typed-player-records",
+        "count": "0"
+      },
+      "error": null,
+      "chunks": [],
+      "complete": null,
+      "logs": [
+        {
+          "level": "info",
+          "message": "Handling bridge message players.list id=1780261467981260",
+          "updated_at": "2026-05-31T21:04:28Z"
+        }
+      ],
+      "inbox_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-bridge-test-7799\\inbox.ndjson",
+      "outbox_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-bridge-test-7799\\outbox.ndjson"
+    }
+  },
+  "hooks": {
+    "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+    "response": {
+      "id": 1780261466068432,
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1780261466068432,
+        "method": "console.exec",
+        "params": {
+          "command_raw": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24"
+        },
+        "command_raw": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+        "command": "Omegga.Bridge.DescribePrefabNativeHooks 24"
+      },
+      "result": {
+        "accepted": true,
+        "executor": "emulated-describe-prefab-native-hooks"
+      },
+      "error": null,
+      "chunks": [
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 1,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "UHJlZmFiIG5hdGl2ZSBob29rcw==",
+          "line": "Prefab native hooks"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 2,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZD10cnVl",
+          "line": "registered=true"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 3,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIENsaWVudE5vdGlmeVByZWZhYkNhcHR1cmVDb21wbGV0ZT0vU2NyaXB0L0JyaWNrYWRpYS5CUlBsYXllckNvbnRyb2xsZXI6Q2xpZW50Tm90aWZ5UHJlZmFiQ2FwdHVyZUNvbXBsZXRl",
+          "line": "registered_kind ClientNotifyPrefabCaptureComplete=/Script/Brickadia.BRPlayerController:ClientNotifyPrefabCaptureComplete"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 4,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIENsaWVudE5vdGlmeVByZWZhYkNhcHR1cmVGYWlsZWQ9L1NjcmlwdC9Ccmlja2FkaWEuQlJQbGF5ZXJDb250cm9sbGVyOkNsaWVudE5vdGlmeVByZWZhYkNhcHR1cmVGYWlsZWQ=",
+          "line": "registered_kind ClientNotifyPrefabCaptureFailed=/Script/Brickadia.BRPlayerController:ClientNotifyPrefabCaptureFailed"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 5,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIENsaWVudFVwbG9hZFByZWZhYj0vU2NyaXB0L0JyaWNrYWRpYS5CUlBsYXllckNvbnRyb2xsZXI6Q2xpZW50VXBsb2FkUHJlZmFi",
+          "line": "registered_kind ClientUploadPrefab=/Script/Brickadia.BRPlayerController:ClientUploadPrefab"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 6,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIEhhbmRsZUF0dGFjaGVkUGxhY2VtZW50PS9TY3JpcHQvQnJpY2thZGlhLkJSVG9vbF9QbGFjZXI6SGFuZGxlQXR0YWNoZWRQbGFjZW1lbnQ=",
+          "line": "registered_kind HandleAttachedPlacement=/Script/Brickadia.BRTool_Placer:HandleAttachedPlacement"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 7,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIFNlcnZlck1vZGlmeUVudGl0eT0vU2NyaXB0L0JyaWNrYWRpYS5CUlBsYXllckNvbnRyb2xsZXI6U2VydmVyTW9kaWZ5RW50aXR5",
+          "line": "registered_kind ServerModifyEntity=/Script/Brickadia.BRPlayerController:ServerModifyEntity"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 8,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIFNlcnZlclBhc3RlQnJpY2s9L1NjcmlwdC9Ccmlja2FkaWEuQlJQbGF5ZXJDb250cm9sbGVyOlNlcnZlclBhc3RlQnJpY2s=",
+          "line": "registered_kind ServerPasteBrick=/Script/Brickadia.BRPlayerController:ServerPasteBrick"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 9,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIFNlcnZlclBhc3RlRW50aXR5PS9TY3JpcHQvQnJpY2thZGlhLkJSUGxheWVyQ29udHJvbGxlcjpTZXJ2ZXJQYXN0ZUVudGl0eQ==",
+          "line": "registered_kind ServerPasteEntity=/Script/Brickadia.BRPlayerController:ServerPasteEntity"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 10,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIFNlcnZlclBhc3RlUHJlZmFiPS9TY3JpcHQvQnJpY2thZGlhLkJSUGxheWVyQ29udHJvbGxlcjpTZXJ2ZXJQYXN0ZVByZWZhYg==",
+          "line": "registered_kind ServerPastePrefab=/Script/Brickadia.BRPlayerController:ServerPastePrefab"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 11,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIFNlcnZlclBsYWNlQ3VycmVudFByZWZhYj0vU2NyaXB0L0JyaWNrYWRpYS5CUlRvb2xfUGxhY2VyOlNlcnZlclBsYWNlQ3VycmVudFByZWZhYg==",
+          "line": "registered_kind ServerPlaceCurrentPrefab=/Script/Brickadia.BRTool_Placer:ServerPlaceCurrentPrefab"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 12,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIFNlcnZlclBsYWNlU2ltcGxlRW50aXR5Vm9sdW1lPS9TY3JpcHQvQnJpY2thZGlhLkJSVG9vbF9QbGFjZXI6U2VydmVyUGxhY2VTaW1wbGVFbnRpdHlWb2x1bWU=",
+          "line": "registered_kind ServerPlaceSimpleEntityVolume=/Script/Brickadia.BRTool_Placer:ServerPlaceSimpleEntityVolume"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 13,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIFNlcnZlclVwbG9hZFByZWZhYj0vU2NyaXB0L0JyaWNrYWRpYS5CUlBsYXllckNvbnRyb2xsZXI6U2VydmVyVXBsb2FkUHJlZmFi",
+          "line": "registered_kind ServerUploadPrefab=/Script/Brickadia.BRPlayerController:ServerUploadPrefab"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 14,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIFNldFBsYWNlQXNQaHlzaWNzQXZhaWxhYmxlPS9TY3JpcHQvQnJpY2thZGlhLkJSVG9vbF9QbGFjZXI6U2V0UGxhY2VBc1BoeXNpY3NBdmFpbGFibGU=",
+          "line": "registered_kind SetPlaceAsPhysicsAvailable=/Script/Brickadia.BRTool_Placer:SetPlaceAsPhysicsAvailable"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 15,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0ZXJlZF9raW5kIFNldFBsYWNlQXNQaHlzaWNzRW5hYmxlZD0vU2NyaXB0L0JyaWNrYWRpYS5CUlRvb2xfUGxhY2VyOlNldFBsYWNlQXNQaHlzaWNzRW5hYmxlZA==",
+          "line": "registered_kind SetPlaceAsPhysicsEnabled=/Script/Brickadia.BRTool_Placer:SetPlaceAsPhysicsEnabled"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 16,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uX2V2ZW50cz0xNw==",
+          "line": "registration_events=17"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 17,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzFdIGV2ZW50PXJlZ2lzdGVyZWQga2luZD1TZXJ2ZXJQYXN0ZVByZWZhYiBwYXRoPS9TY3JpcHQvQnJpY2thZGlhLkJSUGxheWVyQ29udHJvbGxlcjpTZXJ2ZXJQYXN0ZVByZWZhYiBzb3VyY2U9Y2xhc3MgcHJlPTEgcG9zdD0yIHRpbWVzdGFtcD0yMDI2LTA1LTMxVDIxOjAzOjU5Wg==",
+          "line": "registration[1] event=registered kind=ServerPastePrefab path=/Script/Brickadia.BRPlayerController:ServerPastePrefab source=class pre=1 post=2 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 18,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzJdIGV2ZW50PXJlZ2lzdGVyZWQga2luZD1TZXJ2ZXJQbGFjZUN1cnJlbnRQcmVmYWIgcGF0aD0vU2NyaXB0L0JyaWNrYWRpYS5CUlRvb2xfUGxhY2VyOlNlcnZlclBsYWNlQ3VycmVudFByZWZhYiBzb3VyY2U9Y2xhc3MgcHJlPTMgcG9zdD00IHRpbWVzdGFtcD0yMDI2LTA1LTMxVDIxOjAzOjU5Wg==",
+          "line": "registration[2] event=registered kind=ServerPlaceCurrentPrefab path=/Script/Brickadia.BRTool_Placer:ServerPlaceCurrentPrefab source=class pre=3 post=4 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 19,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzNdIGV2ZW50PXJlZ2lzdGVyZWQga2luZD1TZXJ2ZXJVcGxvYWRQcmVmYWIgcGF0aD0vU2NyaXB0L0JyaWNrYWRpYS5CUlBsYXllckNvbnRyb2xsZXI6U2VydmVyVXBsb2FkUHJlZmFiIHNvdXJjZT1jbGFzcyBwcmU9NSBwb3N0PTYgdGltZXN0YW1wPTIwMjYtMDUtMzFUMjE6MDM6NTla",
+          "line": "registration[3] event=registered kind=ServerUploadPrefab path=/Script/Brickadia.BRPlayerController:ServerUploadPrefab source=class pre=5 post=6 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 20,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzRdIGV2ZW50PXJlZ2lzdGVyZWQga2luZD1DbGllbnRVcGxvYWRQcmVmYWIgcGF0aD0vU2NyaXB0L0JyaWNrYWRpYS5CUlBsYXllckNvbnRyb2xsZXI6Q2xpZW50VXBsb2FkUHJlZmFiIHNvdXJjZT1jbGFzcyBwcmU9NyBwb3N0PTggdGltZXN0YW1wPTIwMjYtMDUtMzFUMjE6MDM6NTla",
+          "line": "registration[4] event=registered kind=ClientUploadPrefab path=/Script/Brickadia.BRPlayerController:ClientUploadPrefab source=class pre=7 post=8 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 21,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzVdIGV2ZW50PXJlZ2lzdGVyZWQga2luZD1TZXJ2ZXJQYXN0ZUJyaWNrIHBhdGg9L1NjcmlwdC9Ccmlja2FkaWEuQlJQbGF5ZXJDb250cm9sbGVyOlNlcnZlclBhc3RlQnJpY2sgc291cmNlPWNsYXNzIHByZT05IHBvc3Q9MTAgdGltZXN0YW1wPTIwMjYtMDUtMzFUMjE6MDM6NTla",
+          "line": "registration[5] event=registered kind=ServerPasteBrick path=/Script/Brickadia.BRPlayerController:ServerPasteBrick source=class pre=9 post=10 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 22,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzZdIGV2ZW50PXJlZ2lzdGVyZWQga2luZD1TZXJ2ZXJQYXN0ZUVudGl0eSBwYXRoPS9TY3JpcHQvQnJpY2thZGlhLkJSUGxheWVyQ29udHJvbGxlcjpTZXJ2ZXJQYXN0ZUVudGl0eSBzb3VyY2U9Y2xhc3MgcHJlPTExIHBvc3Q9MTIgdGltZXN0YW1wPTIwMjYtMDUtMzFUMjE6MDM6NTla",
+          "line": "registration[6] event=registered kind=ServerPasteEntity path=/Script/Brickadia.BRPlayerController:ServerPasteEntity source=class pre=11 post=12 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 23,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzddIGV2ZW50PW5vdC1yZWdpc3RlcmVkIGtpbmQ9Q29tbWl0UGxhY2VtZW50IHBhdGg9IHNvdXJjZT0gcHJlPSBwb3N0PSB0aW1lc3RhbXA9MjAyNi0wNS0zMVQyMTowMzo1OVo=",
+          "line": "registration[7] event=not-registered kind=CommitPlacement path= source= pre= post= timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 24,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzhdIGV2ZW50PW5vdC1yZWdpc3RlcmVkIGtpbmQ9UHJldmlld1BsYWNlbWVudCBwYXRoPSBzb3VyY2U9IHByZT0gcG9zdD0gdGltZXN0YW1wPTIwMjYtMDUtMzFUMjE6MDM6NTla",
+          "line": "registration[8] event=not-registered kind=PreviewPlacement path= source= pre= post= timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 25,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzldIGV2ZW50PW5vdC1yZWdpc3RlcmVkIGtpbmQ9QXBwbHlQcmVmYWJTdGF0ZSBwYXRoPSBzb3VyY2U9IHByZT0gcG9zdD0gdGltZXN0YW1wPTIwMjYtMDUtMzFUMjE6MDM6NTla",
+          "line": "registration[9] event=not-registered kind=ApplyPrefabState path= source= pre= post= timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 26,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzEwXSBldmVudD1yZWdpc3RlcmVkIGtpbmQ9SGFuZGxlQXR0YWNoZWRQbGFjZW1lbnQgcGF0aD0vU2NyaXB0L0JyaWNrYWRpYS5CUlRvb2xfUGxhY2VyOkhhbmRsZUF0dGFjaGVkUGxhY2VtZW50IHNvdXJjZT1jbGFzcyBwcmU9MTMgcG9zdD0xNCB0aW1lc3RhbXA9MjAyNi0wNS0zMVQyMTowMzo1OVo=",
+          "line": "registration[10] event=registered kind=HandleAttachedPlacement path=/Script/Brickadia.BRTool_Placer:HandleAttachedPlacement source=class pre=13 post=14 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 27,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzExXSBldmVudD1yZWdpc3RlcmVkIGtpbmQ9U2V0UGxhY2VBc1BoeXNpY3NBdmFpbGFibGUgcGF0aD0vU2NyaXB0L0JyaWNrYWRpYS5CUlRvb2xfUGxhY2VyOlNldFBsYWNlQXNQaHlzaWNzQXZhaWxhYmxlIHNvdXJjZT1jbGFzcyBwcmU9MTUgcG9zdD0xNSB0aW1lc3RhbXA9MjAyNi0wNS0zMVQyMTowMzo1OVo=",
+          "line": "registration[11] event=registered kind=SetPlaceAsPhysicsAvailable path=/Script/Brickadia.BRTool_Placer:SetPlaceAsPhysicsAvailable source=class pre=15 post=15 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 28,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzEyXSBldmVudD1yZWdpc3RlcmVkIGtpbmQ9U2V0UGxhY2VBc1BoeXNpY3NFbmFibGVkIHBhdGg9L1NjcmlwdC9Ccmlja2FkaWEuQlJUb29sX1BsYWNlcjpTZXRQbGFjZUFzUGh5c2ljc0VuYWJsZWQgc291cmNlPWNsYXNzIHByZT0xNiBwb3N0PTE2IHRpbWVzdGFtcD0yMDI2LTA1LTMxVDIxOjAzOjU5Wg==",
+          "line": "registration[12] event=registered kind=SetPlaceAsPhysicsEnabled path=/Script/Brickadia.BRTool_Placer:SetPlaceAsPhysicsEnabled source=class pre=16 post=16 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 29,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzEzXSBldmVudD1yZWdpc3RlcmVkIGtpbmQ9U2VydmVyTW9kaWZ5RW50aXR5IHBhdGg9L1NjcmlwdC9Ccmlja2FkaWEuQlJQbGF5ZXJDb250cm9sbGVyOlNlcnZlck1vZGlmeUVudGl0eSBzb3VyY2U9Y2xhc3MgcHJlPTE3IHBvc3Q9MTggdGltZXN0YW1wPTIwMjYtMDUtMzFUMjE6MDM6NTla",
+          "line": "registration[13] event=registered kind=ServerModifyEntity path=/Script/Brickadia.BRPlayerController:ServerModifyEntity source=class pre=17 post=18 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 30,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzE0XSBldmVudD1yZWdpc3RlcmVkIGtpbmQ9U2VydmVyUGxhY2VTaW1wbGVFbnRpdHlWb2x1bWUgcGF0aD0vU2NyaXB0L0JyaWNrYWRpYS5CUlRvb2xfUGxhY2VyOlNlcnZlclBsYWNlU2ltcGxlRW50aXR5Vm9sdW1lIHNvdXJjZT1jbGFzcyBwcmU9MTkgcG9zdD0yMCB0aW1lc3RhbXA9MjAyNi0wNS0zMVQyMTowMzo1OVo=",
+          "line": "registration[14] event=registered kind=ServerPlaceSimpleEntityVolume path=/Script/Brickadia.BRTool_Placer:ServerPlaceSimpleEntityVolume source=class pre=19 post=20 timestamp=2026-05-31T21:03:59Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 31,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzE1XSBldmVudD1ub3QtcmVnaXN0ZXJlZCBraW5kPUNhcHR1cmVQcmVmYWIgcGF0aD0gc291cmNlPSBwcmU9IHBvc3Q9IHRpbWVzdGFtcD0yMDI2LTA1LTMxVDIxOjA0OjAwWg==",
+          "line": "registration[15] event=not-registered kind=CapturePrefab path= source= pre= post= timestamp=2026-05-31T21:04:00Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 32,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzE2XSBldmVudD1yZWdpc3RlcmVkIGtpbmQ9Q2xpZW50Tm90aWZ5UHJlZmFiQ2FwdHVyZUNvbXBsZXRlIHBhdGg9L1NjcmlwdC9Ccmlja2FkaWEuQlJQbGF5ZXJDb250cm9sbGVyOkNsaWVudE5vdGlmeVByZWZhYkNhcHR1cmVDb21wbGV0ZSBzb3VyY2U9Y2xhc3MgcHJlPTIxIHBvc3Q9MjIgdGltZXN0YW1wPTIwMjYtMDUtMzFUMjE6MDQ6MDBa",
+          "line": "registration[16] event=registered kind=ClientNotifyPrefabCaptureComplete path=/Script/Brickadia.BRPlayerController:ClientNotifyPrefabCaptureComplete source=class pre=21 post=22 timestamp=2026-05-31T21:04:00Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 33,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "cmVnaXN0cmF0aW9uWzE3XSBldmVudD1yZWdpc3RlcmVkIGtpbmQ9Q2xpZW50Tm90aWZ5UHJlZmFiQ2FwdHVyZUZhaWxlZCBwYXRoPS9TY3JpcHQvQnJpY2thZGlhLkJSUGxheWVyQ29udHJvbGxlcjpDbGllbnROb3RpZnlQcmVmYWJDYXB0dXJlRmFpbGVkIHNvdXJjZT1jbGFzcyBwcmU9MjMgcG9zdD0yNCB0aW1lc3RhbXA9MjAyNi0wNS0zMVQyMTowNDowMFo=",
+          "line": "registration[17] event=registered kind=ClientNotifyPrefabCaptureFailed path=/Script/Brickadia.BRPlayerController:ClientNotifyPrefabCaptureFailed source=class pre=23 post=24 timestamp=2026-05-31T21:04:00Z"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 34,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "Y2FwdHVyZV9ldmVudHM9MA==",
+          "line": "capture_events=0"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 35,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "bGFzdF9jYXB0dXJlPTxub25lPg==",
+          "line": "last_capture=<none>"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 36,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "bGFzdF9jbGllbnRfY2FwdHVyZT08bm9uZT4=",
+          "line": "last_client_capture=<none>"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 37,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "bGFzdF9yZXBsYXlhYmxlX2NsaWVudF9jYXB0dXJlPTxub25lPg==",
+          "line": "last_replayable_client_capture=<none>"
+        },
+        {
+          "request_id": 1780261466068432,
+          "chunk_index": 38,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+          "command": "Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "line_b64": "bGFzdF9yZXBsYXlfY2FwdHVyZT08bm9uZT4=",
+          "line": "last_replay_capture=<none>"
+        }
+      ],
+      "complete": {
+        "request_id": 1780261466068432,
+        "chunk_count": 38,
+        "success": true,
+        "executor": "emulated-describe-prefab-native-hooks",
+        "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZVByZWZhYk5hdGl2ZUhvb2tzIDI0",
+        "command": "Omegga.Bridge.DescribePrefabNativeHooks 24"
+      },
+      "logs": [
+        {
+          "level": "info",
+          "message": "Handling bridge message console.exec id=1780261466068432",
+          "updated_at": "2026-05-31T21:04:26Z"
+        },
+        {
+          "level": "info",
+          "message": "Scheduling command execution via UE4SS (has_cached_context=true, is_game_thread=false, is_async_thread=true)",
+          "updated_at": "2026-05-31T21:04:26Z"
+        },
+        {
+          "level": "info",
+          "message": "Scheduling callback via ExecuteInGameThread EngineTick",
+          "updated_at": "2026-05-31T21:04:26Z"
+        },
+        {
+          "level": "info",
+          "message": "Executed console command via emulated-describe-prefab-native-hooks: Omegga.Bridge.DescribePrefabNativeHooks 24",
+          "updated_at": "2026-05-31T21:04:26Z"
+        }
+      ],
+      "inbox_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-bridge-test-7799\\inbox.ndjson",
+      "outbox_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-bridge-test-7799\\outbox.ndjson"
+    },
+    "lines": [
+      "Prefab native hooks",
+      "registered=true",
+      "registered_kind ClientNotifyPrefabCaptureComplete=/Script/Brickadia.BRPlayerController:ClientNotifyPrefabCaptureComplete",
+      "registered_kind ClientNotifyPrefabCaptureFailed=/Script/Brickadia.BRPlayerController:ClientNotifyPrefabCaptureFailed",
+      "registered_kind ClientUploadPrefab=/Script/Brickadia.BRPlayerController:ClientUploadPrefab",
+      "registered_kind HandleAttachedPlacement=/Script/Brickadia.BRTool_Placer:HandleAttachedPlacement",
+      "registered_kind ServerModifyEntity=/Script/Brickadia.BRPlayerController:ServerModifyEntity",
+      "registered_kind ServerPasteBrick=/Script/Brickadia.BRPlayerController:ServerPasteBrick",
+      "registered_kind ServerPasteEntity=/Script/Brickadia.BRPlayerController:ServerPasteEntity",
+      "registered_kind ServerPastePrefab=/Script/Brickadia.BRPlayerController:ServerPastePrefab",
+      "registered_kind ServerPlaceCurrentPrefab=/Script/Brickadia.BRTool_Placer:ServerPlaceCurrentPrefab",
+      "registered_kind ServerPlaceSimpleEntityVolume=/Script/Brickadia.BRTool_Placer:ServerPlaceSimpleEntityVolume",
+      "registered_kind ServerUploadPrefab=/Script/Brickadia.BRPlayerController:ServerUploadPrefab",
+      "registered_kind SetPlaceAsPhysicsAvailable=/Script/Brickadia.BRTool_Placer:SetPlaceAsPhysicsAvailable",
+      "registered_kind SetPlaceAsPhysicsEnabled=/Script/Brickadia.BRTool_Placer:SetPlaceAsPhysicsEnabled",
+      "registration_events=17",
+      "registration[1] event=registered kind=ServerPastePrefab path=/Script/Brickadia.BRPlayerController:ServerPastePrefab source=class pre=1 post=2 timestamp=2026-05-31T21:03:59Z",
+      "registration[2] event=registered kind=ServerPlaceCurrentPrefab path=/Script/Brickadia.BRTool_Placer:ServerPlaceCurrentPrefab source=class pre=3 post=4 timestamp=2026-05-31T21:03:59Z",
+      "registration[3] event=registered kind=ServerUploadPrefab path=/Script/Brickadia.BRPlayerController:ServerUploadPrefab source=class pre=5 post=6 timestamp=2026-05-31T21:03:59Z",
+      "registration[4] event=registered kind=ClientUploadPrefab path=/Script/Brickadia.BRPlayerController:ClientUploadPrefab source=class pre=7 post=8 timestamp=2026-05-31T21:03:59Z",
+      "registration[5] event=registered kind=ServerPasteBrick path=/Script/Brickadia.BRPlayerController:ServerPasteBrick source=class pre=9 post=10 timestamp=2026-05-31T21:03:59Z",
+      "registration[6] event=registered kind=ServerPasteEntity path=/Script/Brickadia.BRPlayerController:ServerPasteEntity source=class pre=11 post=12 timestamp=2026-05-31T21:03:59Z",
+      "registration[7] event=not-registered kind=CommitPlacement path= source= pre= post= timestamp=2026-05-31T21:03:59Z",
+      "registration[8] event=not-registered kind=PreviewPlacement path= source= pre= post= timestamp=2026-05-31T21:03:59Z",
+      "registration[9] event=not-registered kind=ApplyPrefabState path= source= pre= post= timestamp=2026-05-31T21:03:59Z",
+      "registration[10] event=registered kind=HandleAttachedPlacement path=/Script/Brickadia.BRTool_Placer:HandleAttachedPlacement source=class pre=13 post=14 timestamp=2026-05-31T21:03:59Z",
+      "registration[11] event=registered kind=SetPlaceAsPhysicsAvailable path=/Script/Brickadia.BRTool_Placer:SetPlaceAsPhysicsAvailable source=class pre=15 post=15 timestamp=2026-05-31T21:03:59Z",
+      "registration[12] event=registered kind=SetPlaceAsPhysicsEnabled path=/Script/Brickadia.BRTool_Placer:SetPlaceAsPhysicsEnabled source=class pre=16 post=16 timestamp=2026-05-31T21:03:59Z",
+      "registration[13] event=registered kind=ServerModifyEntity path=/Script/Brickadia.BRPlayerController:ServerModifyEntity source=class pre=17 post=18 timestamp=2026-05-31T21:03:59Z",
+      "registration[14] event=registered kind=ServerPlaceSimpleEntityVolume path=/Script/Brickadia.BRTool_Placer:ServerPlaceSimpleEntityVolume source=class pre=19 post=20 timestamp=2026-05-31T21:03:59Z",
+      "registration[15] event=not-registered kind=CapturePrefab path= source= pre= post= timestamp=2026-05-31T21:04:00Z",
+      "registration[16] event=registered kind=ClientNotifyPrefabCaptureComplete path=/Script/Brickadia.BRPlayerController:ClientNotifyPrefabCaptureComplete source=class pre=21 post=22 timestamp=2026-05-31T21:04:00Z",
+      "registration[17] event=registered kind=ClientNotifyPrefabCaptureFailed path=/Script/Brickadia.BRPlayerController:ClientNotifyPrefabCaptureFailed source=class pre=23 post=24 timestamp=2026-05-31T21:04:00Z",
+      "capture_events=0",
+      "last_capture=<none>",
+      "last_client_capture=<none>",
+      "last_replayable_client_capture=<none>",
+      "last_replay_capture=<none>"
+    ]
+  },
+  "server_paste_schema": {
+    "hits": [
+      {
+        "index": 1,
+        "address": "0x7DF46D78D750",
+        "full": "UFunctionName#67096",
+        "outer": "OuterName#343082",
+        "flags_hex": "0x240CC1",
+        "flags": [
+          "Native",
+          "Net",
+          "NetServer",
+          "Reliable",
+          "Event"
+        ],
+        "num_parms": 4,
+        "parms_size": "0x40",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#944454",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D7727B0>",
+            "offset": "0x0",
+            "size": "0x20",
+            "flags_hex": "0x18001008000082",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D7727B0",
+                "size": "0x20"
+              }
+            ],
+            "fields": []
+          },
+          {
+            "index": 2,
+            "reflected_name": "FName#949313",
+            "reflected_type": "BoolProperty",
+            "offset": "0x20",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          },
+          {
+            "index": 3,
+            "reflected_name": "FName#949308",
+            "reflected_type": "BoolProperty",
+            "offset": "0x21",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          },
+          {
+            "index": 4,
+            "reflected_name": "FName#949302",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D772320>",
+            "offset": "0x28",
+            "size": "0x18",
+            "flags_hex": "0x10001008000082",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D772320",
+                "size": "0x18"
+              },
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#944188",
+                "reflected_type": "ObjectPropertyBase<UStruct@0x7DF46D6A3000>",
+                "offset": "0x0",
+                "size": "0x8",
+                "flags_hex": "0x11C001000000205",
+                "flags": [
+                  "Zero",
+                  "NoDtor"
+                ],
+                "class_cast": "0x4018001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#944182",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+                "offset": "0x8",
+                "size": "0xC",
+                "flags_hex": "0x18001040000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              },
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#944053",
+                "reflected_type": "FieldClassCastFlags=0x1000000008001",
+                "offset": "0x14",
+                "size": "0x1",
+                "flags_hex": "0x18001040000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1000000008001"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "raw_lines": [
+      "Describe function object: ServerPastePrefab",
+      "hits=1",
+      "hit[1] addr=0x7DF46D78D750 full=UFunctionName#67096 outer=OuterName#343082 flags=0x240CC1 [Native|Net|NetServer|Reliable|Event] num_parms=4 parms_size=0x40 return_offset=0xFFFF",
+      "  param[1] FName#944454:StructProperty<UStruct@0x7DF46D7727B0> offset=0x0 size=0x20 flags=0x18001008000082 [Parm|Const|Ref|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D7727B0 size=0x20",
+      "    fields=0",
+      "  param[2] FName#949313:BoolProperty offset=0x20 size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x28001",
+      "  param[3] FName#949308:BoolProperty offset=0x21 size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x28001",
+      "  param[4] FName#949302:StructProperty<UStruct@0x7DF46D772320> offset=0x28 size=0x18 flags=0x10001008000082 [Parm|Const|Ref|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D772320 size=0x18",
+      "    field[1] FName#944188:ObjectPropertyBase<UStruct@0x7DF46D6A3000> offset=0x0 size=0x8 flags=0x11C001000000205 [Zero|NoDtor] class_cast=0x4018001",
+      "    field[2] FName#944182:StructProperty<UStruct@0x7DF46D705EC8> offset=0x8 size=0xC flags=0x18001040000205 [Zero|POD|NoDtor] class_cast=0x108001",
+      "      struct UStruct@0x7DF46D705EC8 size=0xC",
+      "      field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "      field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "      field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#944053:FieldClassCastFlags=0x1000000008001 offset=0x14 size=0x1 flags=0x18001040000205 [Zero|POD|NoDtor] class_cast=0x1000000008001"
+    ]
+  },
+  "server_place_schema": {
+    "hits": [
+      {
+        "index": 1,
+        "address": "0x7DF46DA11B20",
+        "full": "UFunctionName#69636",
+        "outer": "OuterName#382591",
+        "flags_hex": "0xA20CC0",
+        "flags": [
+          "Native",
+          "Net",
+          "NetServer",
+          "Reliable",
+          "Event"
+        ],
+        "num_parms": 11,
+        "parms_size": "0xDF",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#781020",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D840DE0>",
+            "offset": "0x0",
+            "size": "0x80",
+            "flags_hex": "0x10009008000082",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D840DE0",
+                "size": "0x80"
+              },
+              {
+                "label": "UStruct@0x7DF46D707B58",
+                "size": "0x60"
+              },
+              {
+                "label": "UStruct@0x7DF46D705688",
+                "size": "0x20"
+              },
+              {
+                "label": "UStruct@0x7DF46D703338",
+                "size": "0x18"
+              },
+              {
+                "label": "UStruct@0x7DF46D703338",
+                "size": "0x18"
+              },
+              {
+                "label": "UStruct@0x7DF46D773FE0",
+                "size": "0x8"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#41950",
+                "reflected_type": "FieldClassCastFlags=0x1000000008001",
+                "offset": "0x0",
+                "size": "0x1",
+                "flags_hex": "0x18001040000200",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1000000008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#1050090",
+                "reflected_type": "ObjectPropertyBase<UStruct@0x7DF46D6A3400>",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x11C001000080208",
+                "flags": [
+                  "Zero",
+                  "NoDtor"
+                ],
+                "class_cast": "0x4018001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#1050080",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D707B58>",
+                "offset": "0x10",
+                "size": "0x60",
+                "flags_hex": "0x18001040000000",
+                "flags": [
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              },
+              {
+                "index": 1,
+                "reflected_name": "FName#1003",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D705688>",
+                "offset": "0x0",
+                "size": "0x20",
+                "flags_hex": "0x18001041000005",
+                "flags": [
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              },
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x0",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x10",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 4,
+                "reflected_name": "FName#4957",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x18",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#79599",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D703338>",
+                "offset": "0x20",
+                "size": "0x18",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              },
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x0",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x10",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#79606",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D703338>",
+                "offset": "0x40",
+                "size": "0x18",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              },
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x0",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x10",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 4,
+                "reflected_name": "FName#1050071",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D773FE0>",
+                "offset": "0x70",
+                "size": "0x8",
+                "flags_hex": "0x18001000000000",
+                "flags": [
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "reflected_name": "FName#692675",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0x80",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "reflected_name": "FName#1185236",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D703338>",
+            "offset": "0x90",
+            "size": "0x18",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D703338",
+                "size": "0x18"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x0",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x10",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "reflected_name": "FName#672557",
+            "reflected_type": "FieldClassCastFlags=0x1000000008001",
+            "offset": "0xA8",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x1000000008001",
+            "structs": [],
+            "fields": []
+          },
+          {
+            "index": 5,
+            "reflected_name": "FName#1049952",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0xAC",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          },
+          {
+            "index": 6,
+            "reflected_name": "FName#956618",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0xB8",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          },
+          {
+            "index": 7,
+            "reflected_name": "FName#1049946",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0xC4",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          },
+          {
+            "index": 8,
+            "reflected_name": "FName#1049939",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0xD0",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          },
+          {
+            "index": 9,
+            "reflected_name": "FName#1185229",
+            "reflected_type": "BoolProperty",
+            "offset": "0xDC",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          },
+          {
+            "index": 10,
+            "reflected_name": "FName#1185222",
+            "reflected_type": "BoolProperty",
+            "offset": "0xDD",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          },
+          {
+            "index": 11,
+            "reflected_name": "FName#1049182",
+            "reflected_type": "BoolProperty",
+            "offset": "0xDE",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          }
+        ]
+      }
+    ],
+    "raw_lines": [
+      "Describe function object: ServerPlaceCurrentPrefab",
+      "hits=1",
+      "hit[1] addr=0x7DF46DA11B20 full=UFunctionName#69636 outer=OuterName#382591 flags=0xA20CC0 [Native|Net|NetServer|Reliable|Event] num_parms=11 parms_size=0xDF return_offset=0xFFFF",
+      "  param[1] FName#781020:StructProperty<UStruct@0x7DF46D840DE0> offset=0x0 size=0x80 flags=0x10009008000082 [Parm|Const|Ref|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D840DE0 size=0x80",
+      "    field[1] FName#41950:FieldClassCastFlags=0x1000000008001 offset=0x0 size=0x1 flags=0x18001040000200 [Zero|POD|NoDtor] class_cast=0x1000000008001",
+      "    field[2] FName#1050090:ObjectPropertyBase<UStruct@0x7DF46D6A3400> offset=0x8 size=0x8 flags=0x11C001000080208 [Zero|NoDtor] class_cast=0x4018001",
+      "    field[3] FName#1050080:StructProperty<UStruct@0x7DF46D707B58> offset=0x10 size=0x60 flags=0x18001040000000 [POD|NoDtor] class_cast=0x108001",
+      "      struct UStruct@0x7DF46D707B58 size=0x60",
+      "      field[1] FName#1003:StructProperty<UStruct@0x7DF46D705688> offset=0x0 size=0x20 flags=0x18001041000005 [POD|NoDtor] class_cast=0x108001",
+      "        struct UStruct@0x7DF46D705688 size=0x20",
+      "        field[1] FName#4959:FieldClassCastFlags=0x101008001 offset=0x0 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[2] FName#4961:FieldClassCastFlags=0x101008001 offset=0x8 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[3] FName#4963:FieldClassCastFlags=0x101008001 offset=0x10 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[4] FName#4957:FieldClassCastFlags=0x101008001 offset=0x18 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "      field[2] FName#79599:StructProperty<UStruct@0x7DF46D703338> offset=0x20 size=0x18 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x108001",
+      "        struct UStruct@0x7DF46D703338 size=0x18",
+      "        field[1] FName#4959:FieldClassCastFlags=0x101008001 offset=0x0 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[2] FName#4961:FieldClassCastFlags=0x101008001 offset=0x8 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[3] FName#4963:FieldClassCastFlags=0x101008001 offset=0x10 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "      field[3] FName#79606:StructProperty<UStruct@0x7DF46D703338> offset=0x40 size=0x18 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x108001",
+      "        struct UStruct@0x7DF46D703338 size=0x18",
+      "        field[1] FName#4959:FieldClassCastFlags=0x101008001 offset=0x0 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[2] FName#4961:FieldClassCastFlags=0x101008001 offset=0x8 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[3] FName#4963:FieldClassCastFlags=0x101008001 offset=0x10 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "    field[4] FName#1050071:StructProperty<UStruct@0x7DF46D773FE0> offset=0x70 size=0x8 flags=0x18001000000000 [NoDtor] class_cast=0x108001",
+      "      struct UStruct@0x7DF46D773FE0 size=0x8",
+      "      fields=0",
+      "  param[2] FName#692675:StructProperty<UStruct@0x7DF46D705EC8> offset=0x80 size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "  param[3] FName#1185236:StructProperty<UStruct@0x7DF46D703338> offset=0x90 size=0x18 flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D703338 size=0x18",
+      "    field[1] FName#4959:FieldClassCastFlags=0x101008001 offset=0x0 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "    field[2] FName#4961:FieldClassCastFlags=0x101008001 offset=0x8 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "    field[3] FName#4963:FieldClassCastFlags=0x101008001 offset=0x10 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "  param[4] FName#672557:FieldClassCastFlags=0x1000000008001 offset=0xA8 size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x1000000008001",
+      "  param[5] FName#1049952:StructProperty<UStruct@0x7DF46D705EC8> offset=0xAC size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "  param[6] FName#956618:StructProperty<UStruct@0x7DF46D705EC8> offset=0xB8 size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "  param[7] FName#1049946:StructProperty<UStruct@0x7DF46D705EC8> offset=0xC4 size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "  param[8] FName#1049939:StructProperty<UStruct@0x7DF46D705EC8> offset=0xD0 size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "  param[9] FName#1185229:BoolProperty offset=0xDC size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x28001",
+      "  param[10] FName#1185222:BoolProperty offset=0xDD size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x28001",
+      "  param[11] FName#1049182:BoolProperty offset=0xDE size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x28001"
+    ]
+  },
+  "server_place_simple_entity_volume_schema": {
+    "hits": [
+      {
+        "index": 1,
+        "address": "0x7DF46DA11CE0",
+        "full": "UFunctionName#69664",
+        "outer": "OuterName#382591",
+        "flags_hex": "0xA20CC0",
+        "flags": [
+          "Native",
+          "Net",
+          "NetServer",
+          "Reliable",
+          "Event"
+        ],
+        "num_parms": 10,
+        "parms_size": "0xE4",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#781020",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D840DE0>",
+            "offset": "0x0",
+            "size": "0x80",
+            "flags_hex": "0x10009008000082",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D840DE0",
+                "size": "0x80"
+              },
+              {
+                "label": "UStruct@0x7DF46D707B58",
+                "size": "0x60"
+              },
+              {
+                "label": "UStruct@0x7DF46D705688",
+                "size": "0x20"
+              },
+              {
+                "label": "UStruct@0x7DF46D703338",
+                "size": "0x18"
+              },
+              {
+                "label": "UStruct@0x7DF46D703338",
+                "size": "0x18"
+              },
+              {
+                "label": "UStruct@0x7DF46D773FE0",
+                "size": "0x8"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#41950",
+                "reflected_type": "FieldClassCastFlags=0x1000000008001",
+                "offset": "0x0",
+                "size": "0x1",
+                "flags_hex": "0x18001040000200",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1000000008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#1050090",
+                "reflected_type": "ObjectPropertyBase<UStruct@0x7DF46D6A3400>",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x11C001000080208",
+                "flags": [
+                  "Zero",
+                  "NoDtor"
+                ],
+                "class_cast": "0x4018001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#1050080",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D707B58>",
+                "offset": "0x10",
+                "size": "0x60",
+                "flags_hex": "0x18001040000000",
+                "flags": [
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              },
+              {
+                "index": 1,
+                "reflected_name": "FName#1003",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D705688>",
+                "offset": "0x0",
+                "size": "0x20",
+                "flags_hex": "0x18001041000005",
+                "flags": [
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              },
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x0",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x10",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 4,
+                "reflected_name": "FName#4957",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x18",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#79599",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D703338>",
+                "offset": "0x20",
+                "size": "0x18",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              },
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x0",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x10",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#79606",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D703338>",
+                "offset": "0x40",
+                "size": "0x18",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              },
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x0",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x10",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 4,
+                "reflected_name": "FName#1050071",
+                "reflected_type": "StructProperty<UStruct@0x7DF46D773FE0>",
+                "offset": "0x70",
+                "size": "0x8",
+                "flags_hex": "0x18001000000000",
+                "flags": [
+                  "NoDtor"
+                ],
+                "class_cast": "0x108001"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "reflected_name": "FName#944463",
+            "reflected_type": "ObjectPropertyBase<UStruct@0x7DF46D67A600>",
+            "offset": "0x80",
+            "size": "0x8",
+            "flags_hex": "0x18001000000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "NoDtor"
+            ],
+            "class_cast": "0x4018001",
+            "structs": [],
+            "fields": []
+          },
+          {
+            "index": 3,
+            "reflected_name": "FName#1048873",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D703C38>",
+            "offset": "0x88",
+            "size": "0x4",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D703C38",
+                "size": "0x4"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4915",
+                "reflected_type": "ByteProperty",
+                "offset": "0x0",
+                "size": "0x1",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008041"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4925",
+                "reflected_type": "ByteProperty",
+                "offset": "0x1",
+                "size": "0x1",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008041"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4947",
+                "reflected_type": "ByteProperty",
+                "offset": "0x2",
+                "size": "0x1",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008041"
+              },
+              {
+                "index": 4,
+                "reflected_name": "FName#4913",
+                "reflected_type": "ByteProperty",
+                "offset": "0x3",
+                "size": "0x1",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008041"
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "reflected_name": "FName#692675",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0x8C",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          },
+          {
+            "index": 5,
+            "reflected_name": "FName#1185236",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D703338>",
+            "offset": "0x98",
+            "size": "0x18",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D703338",
+                "size": "0x18"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x0",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x8",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "FieldClassCastFlags=0x101008001",
+                "offset": "0x10",
+                "size": "0x8",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x101008001"
+              }
+            ]
+          },
+          {
+            "index": 6,
+            "reflected_name": "FName#672557",
+            "reflected_type": "FieldClassCastFlags=0x1000000008001",
+            "offset": "0xB0",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x1000000008001",
+            "structs": [],
+            "fields": []
+          },
+          {
+            "index": 7,
+            "reflected_name": "FName#1049952",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0xB4",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          },
+          {
+            "index": 8,
+            "reflected_name": "FName#956618",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0xC0",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          },
+          {
+            "index": 9,
+            "reflected_name": "FName#1049946",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0xCC",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          },
+          {
+            "index": 10,
+            "reflected_name": "FName#1049939",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D705EC8>",
+            "offset": "0xD8",
+            "size": "0xC",
+            "flags_hex": "0x18001048000282",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D705EC8",
+                "size": "0xC"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#4959",
+                "reflected_type": "IntProperty",
+                "offset": "0x0",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 2,
+                "reflected_name": "FName#4961",
+                "reflected_type": "IntProperty",
+                "offset": "0x4",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              },
+              {
+                "index": 3,
+                "reflected_name": "FName#4963",
+                "reflected_type": "IntProperty",
+                "offset": "0x8",
+                "size": "0x4",
+                "flags_hex": "0x18001041000205",
+                "flags": [
+                  "Zero",
+                  "POD",
+                  "NoDtor"
+                ],
+                "class_cast": "0x1008081"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "raw_lines": [
+      "Describe function object: ServerPlaceSimpleEntityVolume",
+      "hits=1",
+      "hit[1] addr=0x7DF46DA11CE0 full=UFunctionName#69664 outer=OuterName#382591 flags=0xA20CC0 [Native|Net|NetServer|Reliable|Event] num_parms=10 parms_size=0xE4 return_offset=0xFFFF",
+      "  param[1] FName#781020:StructProperty<UStruct@0x7DF46D840DE0> offset=0x0 size=0x80 flags=0x10009008000082 [Parm|Const|Ref|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D840DE0 size=0x80",
+      "    field[1] FName#41950:FieldClassCastFlags=0x1000000008001 offset=0x0 size=0x1 flags=0x18001040000200 [Zero|POD|NoDtor] class_cast=0x1000000008001",
+      "    field[2] FName#1050090:ObjectPropertyBase<UStruct@0x7DF46D6A3400> offset=0x8 size=0x8 flags=0x11C001000080208 [Zero|NoDtor] class_cast=0x4018001",
+      "    field[3] FName#1050080:StructProperty<UStruct@0x7DF46D707B58> offset=0x10 size=0x60 flags=0x18001040000000 [POD|NoDtor] class_cast=0x108001",
+      "      struct UStruct@0x7DF46D707B58 size=0x60",
+      "      field[1] FName#1003:StructProperty<UStruct@0x7DF46D705688> offset=0x0 size=0x20 flags=0x18001041000005 [POD|NoDtor] class_cast=0x108001",
+      "        struct UStruct@0x7DF46D705688 size=0x20",
+      "        field[1] FName#4959:FieldClassCastFlags=0x101008001 offset=0x0 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[2] FName#4961:FieldClassCastFlags=0x101008001 offset=0x8 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[3] FName#4963:FieldClassCastFlags=0x101008001 offset=0x10 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[4] FName#4957:FieldClassCastFlags=0x101008001 offset=0x18 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "      field[2] FName#79599:StructProperty<UStruct@0x7DF46D703338> offset=0x20 size=0x18 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x108001",
+      "        struct UStruct@0x7DF46D703338 size=0x18",
+      "        field[1] FName#4959:FieldClassCastFlags=0x101008001 offset=0x0 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[2] FName#4961:FieldClassCastFlags=0x101008001 offset=0x8 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[3] FName#4963:FieldClassCastFlags=0x101008001 offset=0x10 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "      field[3] FName#79606:StructProperty<UStruct@0x7DF46D703338> offset=0x40 size=0x18 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x108001",
+      "        struct UStruct@0x7DF46D703338 size=0x18",
+      "        field[1] FName#4959:FieldClassCastFlags=0x101008001 offset=0x0 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[2] FName#4961:FieldClassCastFlags=0x101008001 offset=0x8 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "        field[3] FName#4963:FieldClassCastFlags=0x101008001 offset=0x10 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "    field[4] FName#1050071:StructProperty<UStruct@0x7DF46D773FE0> offset=0x70 size=0x8 flags=0x18001000000000 [NoDtor] class_cast=0x108001",
+      "      struct UStruct@0x7DF46D773FE0 size=0x8",
+      "      fields=0",
+      "  param[2] FName#944463:ObjectPropertyBase<UStruct@0x7DF46D67A600> offset=0x80 size=0x8 flags=0x18001000000280 [Parm|Zero|NoDtor] class_cast=0x4018001",
+      "  param[3] FName#1048873:StructProperty<UStruct@0x7DF46D703C38> offset=0x88 size=0x4 flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D703C38 size=0x4",
+      "    field[1] FName#4915:ByteProperty offset=0x0 size=0x1 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008041",
+      "    field[2] FName#4925:ByteProperty offset=0x1 size=0x1 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008041",
+      "    field[3] FName#4947:ByteProperty offset=0x2 size=0x1 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008041",
+      "    field[4] FName#4913:ByteProperty offset=0x3 size=0x1 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008041",
+      "  param[4] FName#692675:StructProperty<UStruct@0x7DF46D705EC8> offset=0x8C size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "  param[5] FName#1185236:StructProperty<UStruct@0x7DF46D703338> offset=0x98 size=0x18 flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D703338 size=0x18",
+      "    field[1] FName#4959:FieldClassCastFlags=0x101008001 offset=0x0 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "    field[2] FName#4961:FieldClassCastFlags=0x101008001 offset=0x8 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "    field[3] FName#4963:FieldClassCastFlags=0x101008001 offset=0x10 size=0x8 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x101008001",
+      "  param[6] FName#672557:FieldClassCastFlags=0x1000000008001 offset=0xB0 size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x1000000008001",
+      "  param[7] FName#1049952:StructProperty<UStruct@0x7DF46D705EC8> offset=0xB4 size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "  param[8] FName#956618:StructProperty<UStruct@0x7DF46D705EC8> offset=0xC0 size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "  param[9] FName#1049946:StructProperty<UStruct@0x7DF46D705EC8> offset=0xCC size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "  param[10] FName#1049939:StructProperty<UStruct@0x7DF46D705EC8> offset=0xD8 size=0xC flags=0x18001048000282 [Parm|Const|Ref|Zero|POD|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D705EC8 size=0xC",
+      "    field[1] FName#4959:IntProperty offset=0x0 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[2] FName#4961:IntProperty offset=0x4 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081",
+      "    field[3] FName#4963:IntProperty offset=0x8 size=0x4 flags=0x18001041000205 [Zero|POD|NoDtor] class_cast=0x1008081"
+    ]
+  },
+  "server_upload_schema": {
+    "hits": [
+      {
+        "index": 1,
+        "address": "0x7DF46D9CDB80",
+        "full": "UFunctionName#60008",
+        "outer": "OuterName#620996",
+        "flags_hex": "0x240CC1",
+        "flags": [
+          "Native",
+          "Net",
+          "NetServer",
+          "Reliable",
+          "Event"
+        ],
+        "num_parms": 1,
+        "parms_size": "0x20",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#1174531",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D7727B0>",
+            "offset": "0x0",
+            "size": "0x20",
+            "flags_hex": "0x18001008000082",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D7727B0",
+                "size": "0x20"
+              }
+            ],
+            "fields": []
+          }
+        ]
+      }
+    ],
+    "raw_lines": [
+      "Describe function object: ServerUploadPrefab",
+      "hits=1",
+      "hit[1] addr=0x7DF46D9CDB80 full=UFunctionName#60008 outer=OuterName#620996 flags=0x240CC1 [Native|Net|NetServer|Reliable|Event] num_parms=1 parms_size=0x20 return_offset=0xFFFF",
+      "  param[1] FName#1174531:StructProperty<UStruct@0x7DF46D7727B0> offset=0x0 size=0x20 flags=0x18001008000082 [Parm|Const|Ref|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D7727B0 size=0x20",
+      "    fields=0"
+    ]
+  },
+  "client_upload_schema": {
+    "hits": [
+      {
+        "index": 1,
+        "address": "0x7DF46D9CD720",
+        "full": "UFunctionName#59942",
+        "outer": "OuterName#620996",
+        "flags_hex": "0x1040CC1",
+        "flags": [
+          "Native",
+          "Net",
+          "NetClient",
+          "Reliable",
+          "Event"
+        ],
+        "num_parms": 2,
+        "parms_size": "0x21",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#1174531",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D7727B0>",
+            "offset": "0x0",
+            "size": "0x20",
+            "flags_hex": "0x18001008000082",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref",
+              "NoDtor"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D7727B0",
+                "size": "0x20"
+              }
+            ],
+            "fields": []
+          },
+          {
+            "index": 2,
+            "reflected_name": "FName#1174537",
+            "reflected_type": "BoolProperty",
+            "offset": "0x20",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          }
+        ]
+      }
+    ],
+    "raw_lines": [
+      "Describe function object: ClientUploadPrefab",
+      "hits=1",
+      "hit[1] addr=0x7DF46D9CD720 full=UFunctionName#59942 outer=OuterName#620996 flags=0x1040CC1 [Native|Net|NetClient|Reliable|Event] num_parms=2 parms_size=0x21 return_offset=0xFFFF",
+      "  param[1] FName#1174531:StructProperty<UStruct@0x7DF46D7727B0> offset=0x0 size=0x20 flags=0x18001008000082 [Parm|Const|Ref|NoDtor] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D7727B0 size=0x20",
+      "    fields=0",
+      "  param[2] FName#1174537:BoolProperty offset=0x20 size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x28001"
+    ]
+  },
+  "set_place_as_physics_available_schema": {
+    "hits": [
+      {
+        "index": 1,
+        "address": "0x7DF46DA100E0",
+        "full": "UFunctionName#69349",
+        "outer": "OuterName#319752",
+        "flags_hex": "0x8020800",
+        "flags": [
+          "Event",
+          "BlueprintEvent"
+        ],
+        "num_parms": 1,
+        "parms_size": "0x1",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#1185090",
+            "reflected_type": "BoolProperty",
+            "offset": "0x0",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "address": "0x1D0DCDB6D80",
+        "full": "UFunctionName#69349",
+        "outer": "OuterName#573649",
+        "flags_hex": "0x8020800",
+        "flags": [
+          "Event",
+          "BlueprintEvent"
+        ],
+        "num_parms": 1,
+        "parms_size": "0x1",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#1185090",
+            "reflected_type": "BoolProperty",
+            "offset": "0x0",
+            "size": "0x1",
+            "flags_hex": "0x8001040000294",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          }
+        ]
+      }
+    ],
+    "raw_lines": [
+      "Describe function object: SetPlaceAsPhysicsAvailable",
+      "hits=2",
+      "hit[1] addr=0x7DF46DA100E0 full=UFunctionName#69349 outer=OuterName#319752 flags=0x8020800 [Event|BlueprintEvent] num_parms=1 parms_size=0x1 return_offset=0xFFFF",
+      "  param[1] FName#1185090:BoolProperty offset=0x0 size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x28001",
+      "hit[2] addr=0x1D0DCDB6D80 full=UFunctionName#69349 outer=OuterName#573649 flags=0x8020800 [Event|BlueprintEvent] num_parms=1 parms_size=0x1 return_offset=0xFFFF",
+      "  param[1] FName#1185090:BoolProperty offset=0x0 size=0x1 flags=0x8001040000294 [Parm|Zero|POD|NoDtor] class_cast=0x28001"
+    ]
+  },
+  "set_place_as_physics_enabled_schema": {
+    "hits": [
+      {
+        "index": 1,
+        "address": "0x7DF46DA101C0",
+        "full": "UFunctionName#69363",
+        "outer": "OuterName#319752",
+        "flags_hex": "0x8020800",
+        "flags": [
+          "Event",
+          "BlueprintEvent"
+        ],
+        "num_parms": 1,
+        "parms_size": "0x1",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#73046",
+            "reflected_type": "BoolProperty",
+            "offset": "0x0",
+            "size": "0x1",
+            "flags_hex": "0x18001040000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "address": "0x1D0DCDB5F80",
+        "full": "UFunctionName#69363",
+        "outer": "OuterName#573649",
+        "flags_hex": "0x8020800",
+        "flags": [
+          "Event",
+          "BlueprintEvent"
+        ],
+        "num_parms": 1,
+        "parms_size": "0x1",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#73046",
+            "reflected_type": "BoolProperty",
+            "offset": "0x0",
+            "size": "0x1",
+            "flags_hex": "0x8001040000294",
+            "flags": [
+              "Parm",
+              "Zero",
+              "POD",
+              "NoDtor"
+            ],
+            "class_cast": "0x28001",
+            "structs": [],
+            "fields": []
+          }
+        ]
+      }
+    ],
+    "raw_lines": [
+      "Describe function object: SetPlaceAsPhysicsEnabled",
+      "hits=2",
+      "hit[1] addr=0x7DF46DA101C0 full=UFunctionName#69363 outer=OuterName#319752 flags=0x8020800 [Event|BlueprintEvent] num_parms=1 parms_size=0x1 return_offset=0xFFFF",
+      "  param[1] FName#73046:BoolProperty offset=0x0 size=0x1 flags=0x18001040000280 [Parm|Zero|POD|NoDtor] class_cast=0x28001",
+      "hit[2] addr=0x1D0DCDB5F80 full=UFunctionName#69363 outer=OuterName#573649 flags=0x8020800 [Event|BlueprintEvent] num_parms=1 parms_size=0x1 return_offset=0xFFFF",
+      "  param[1] FName#73046:BoolProperty offset=0x0 size=0x1 flags=0x8001040000294 [Parm|Zero|POD|NoDtor] class_cast=0x28001"
+    ]
+  },
+  "server_modify_entity_schema": {
+    "hits": [
+      {
+        "index": 1,
+        "address": "0x7DF46DA0ADC0",
+        "full": "UFunctionName#68653",
+        "outer": "OuterName#350345",
+        "flags_hex": "0x4220CC0",
+        "flags": [
+          "Native",
+          "Net",
+          "NetServer",
+          "Reliable",
+          "Event",
+          "BlueprintCallable"
+        ],
+        "num_parms": 2,
+        "parms_size": "0x18",
+        "return_offset": "0xFFFF",
+        "params": [
+          {
+            "index": 1,
+            "reflected_name": "FName#61559",
+            "reflected_type": "ObjectPropertyBase<UStruct@0x7DF46D52C200>",
+            "offset": "0x0",
+            "size": "0x8",
+            "flags_hex": "0x18001000000280",
+            "flags": [
+              "Parm",
+              "Zero",
+              "NoDtor"
+            ],
+            "class_cast": "0x4018001",
+            "structs": [],
+            "fields": []
+          },
+          {
+            "index": 2,
+            "reflected_name": "FName#959063",
+            "reflected_type": "StructProperty<UStruct@0x7DF46D7BFA78>",
+            "offset": "0x8",
+            "size": "0x10",
+            "flags_hex": "0x10000008000082",
+            "flags": [
+              "Parm",
+              "Const",
+              "Ref"
+            ],
+            "class_cast": "0x108001",
+            "structs": [
+              {
+                "label": "UStruct@0x7DF46D7BFA78",
+                "size": "0x10"
+              }
+            ],
+            "fields": [
+              {
+                "index": 1,
+                "reflected_name": "FName#957919",
+                "reflected_type": "ArrayProperty<StructProperty<UStruct@0x7DF46D7BFB38>>",
+                "offset": "0x0",
+                "size": "0x10",
+                "flags_hex": "0x10000000000205",
+                "flags": [
+                  "Zero"
+                ],
+                "class_cast": "0x208001"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "raw_lines": [
+      "Describe function object: ServerModifyEntity",
+      "hits=1",
+      "hit[1] addr=0x7DF46DA0ADC0 full=UFunctionName#68653 outer=OuterName#350345 flags=0x4220CC0 [Native|Net|NetServer|Reliable|Event|BlueprintCallable] num_parms=2 parms_size=0x18 return_offset=0xFFFF",
+      "  param[1] FName#61559:ObjectPropertyBase<UStruct@0x7DF46D52C200> offset=0x0 size=0x8 flags=0x18001000000280 [Parm|Zero|NoDtor] class_cast=0x4018001",
+      "  param[2] FName#959063:StructProperty<UStruct@0x7DF46D7BFA78> offset=0x8 size=0x10 flags=0x10000008000082 [Parm|Const|Ref] class_cast=0x108001",
+      "    struct UStruct@0x7DF46D7BFA78 size=0x10",
+      "    field[1] FName#957919:ArrayProperty<StructProperty<UStruct@0x7DF46D7BFB38>> offset=0x0 size=0x10 flags=0x10000000000205 [Zero] class_cast=0x208001"
+    ]
+  },
+  "server_paste_replay_contract": {
+    "status": "matches-live-reflection",
+    "source": "Live UE4SS reflection plus static CL12960/CL13530 notes",
+    "function": "ServerPastePrefab",
+    "parms_size": "0x40",
+    "params": [
+      {
+        "index": 1,
+        "name": "Hash",
+        "type": "BRPrefabHash",
+        "offset": "0x0",
+        "size": "0x20"
+      },
+      {
+        "index": 2,
+        "name": "bWithOwnership",
+        "type": "bool",
+        "offset": "0x20",
+        "size": "0x1"
+      },
+      {
+        "index": 3,
+        "name": "bInTemp",
+        "type": "bool",
+        "offset": "0x21",
+        "size": "0x1"
+      },
+      {
+        "index": 4,
+        "name": "PasteInfo",
+        "type": "BRPrefabDetachedPasteInfo",
+        "offset": "0x28",
+        "size": "0x18",
+        "fields": [
+          {
+            "name": "TargetObject",
+            "type": "UObject*",
+            "offset": "0x0",
+            "size": "0x8"
+          },
+          {
+            "name": "GridOffset",
+            "type": "FIntVector",
+            "offset": "0x8",
+            "size": "0xC"
+          },
+          {
+            "name": "PlacementOrientation",
+            "type": "uint8/enum",
+            "offset": "0x14",
+            "size": "0x1"
+          }
+        ]
+      }
+    ]
+  },
+  "server_place_replay_contract": {
+    "status": "matches-live-reflection",
+    "source": "Live UE4SS reflection plus static CL13530 notes",
+    "function": "ServerPlaceCurrentPrefab",
+    "parms_size": "0xDF",
+    "adjusted_grid_params": [
+      "PrimaryGrid",
+      "ExtraGrid5",
+      "ExtraGrid6",
+      "ExtraGrid7",
+      "ExtraGrid8"
+    ],
+    "adjusted_vector_params": [
+      "PlacementState.Transform.Translation",
+      "PlacementVector"
+    ],
+    "params": [
+      {
+        "index": 1,
+        "name": "PlacementState",
+        "type": "placement-state struct",
+        "offset": "0x0",
+        "size": "0x80"
+      },
+      {
+        "index": 2,
+        "name": "PrimaryGrid",
+        "type": "FIntVector",
+        "offset": "0x80",
+        "size": "0xC"
+      },
+      {
+        "index": 3,
+        "name": "PlacementVector",
+        "type": "placement vector struct",
+        "offset": "0x90",
+        "size": "0x18"
+      },
+      {
+        "index": 4,
+        "name": "Orientation",
+        "type": "uint8/enum",
+        "offset": "0xA8",
+        "size": "0x1"
+      },
+      {
+        "index": 5,
+        "name": "ExtraGrid5",
+        "type": "FIntVector",
+        "offset": "0xAC",
+        "size": "0xC"
+      },
+      {
+        "index": 6,
+        "name": "ExtraGrid6",
+        "type": "FIntVector",
+        "offset": "0xB8",
+        "size": "0xC"
+      },
+      {
+        "index": 7,
+        "name": "ExtraGrid7",
+        "type": "FIntVector",
+        "offset": "0xC4",
+        "size": "0xC"
+      },
+      {
+        "index": 8,
+        "name": "ExtraGrid8",
+        "type": "FIntVector",
+        "offset": "0xD0",
+        "size": "0xC"
+      },
+      {
+        "index": 9,
+        "name": "Bool9",
+        "type": "bool",
+        "offset": "0xDC",
+        "size": "0x1"
+      },
+      {
+        "index": 10,
+        "name": "Bool10",
+        "type": "bool",
+        "offset": "0xDD",
+        "size": "0x1"
+      },
+      {
+        "index": 11,
+        "name": "Bool11",
+        "type": "bool",
+        "offset": "0xDE",
+        "size": "0x1"
+      }
+    ],
+    "mismatches": []
+  },
+  "server_place_simple_entity_volume_contract": {
+    "status": "matches-live-reflection",
+    "source": "Live UE4SS reflection plus inferred CL13530 replay layout",
+    "function": "ServerPlaceSimpleEntityVolume",
+    "parms_size": "0xE4",
+    "adjusted_grid_params": [
+      "PrimaryGrid",
+      "ExtraGrid7",
+      "ExtraGrid8",
+      "ExtraGrid9",
+      "ExtraGrid10"
+    ],
+    "adjusted_vector_params": [
+      "PlacementState.Transform.Translation",
+      "PlacementVector"
+    ],
+    "params": [
+      {
+        "index": 1,
+        "name": "PlacementState",
+        "type": "placement-state struct",
+        "offset": "0x0",
+        "size": "0x80"
+      },
+      {
+        "index": 2,
+        "name": "EntityClass",
+        "type": "UObject*",
+        "offset": "0x80",
+        "size": "0x8"
+      },
+      {
+        "index": 3,
+        "name": "OrientationBytes",
+        "type": "4-byte orientation/flags struct",
+        "offset": "0x88",
+        "size": "0x4"
+      },
+      {
+        "index": 4,
+        "name": "PrimaryGrid",
+        "type": "FIntVector",
+        "offset": "0x8C",
+        "size": "0xC"
+      },
+      {
+        "index": 5,
+        "name": "PlacementVector",
+        "type": "placement vector struct",
+        "offset": "0x98",
+        "size": "0x18"
+      },
+      {
+        "index": 6,
+        "name": "BoolLikeParam",
+        "type": "bool",
+        "offset": "0xB0",
+        "size": "0x1"
+      },
+      {
+        "index": 7,
+        "name": "ExtraGrid7",
+        "type": "FIntVector",
+        "offset": "0xB4",
+        "size": "0xC"
+      },
+      {
+        "index": 8,
+        "name": "ExtraGrid8",
+        "type": "FIntVector",
+        "offset": "0xC0",
+        "size": "0xC"
+      },
+      {
+        "index": 9,
+        "name": "ExtraGrid9",
+        "type": "FIntVector",
+        "offset": "0xCC",
+        "size": "0xC"
+      },
+      {
+        "index": 10,
+        "name": "ExtraGrid10",
+        "type": "FIntVector",
+        "offset": "0xD8",
+        "size": "0xC"
+      }
+    ],
+    "mismatches": []
+  },
+  "server_upload_contract": {
+    "status": "matches-live-reflection",
+    "source": "Live UE4SS reflection",
+    "function": "ServerUploadPrefab",
+    "parms_size": "0x20",
+    "params": [
+      {
+        "index": 1,
+        "name": "Hash",
+        "type": "BRPrefabHash",
+        "offset": "0x0",
+        "size": "0x20"
+      }
+    ],
+    "mismatches": []
+  },
+  "client_upload_contract": {
+    "status": "matches-live-reflection",
+    "source": "Live UE4SS reflection",
+    "function": "ClientUploadPrefab",
+    "parms_size": "0x21",
+    "params": [
+      {
+        "index": 1,
+        "name": "Hash",
+        "type": "BRPrefabHash",
+        "offset": "0x0",
+        "size": "0x20"
+      },
+      {
+        "index": 2,
+        "name": "bAllowUpload",
+        "type": "bool",
+        "offset": "0x20",
+        "size": "0x1"
+      }
+    ],
+    "mismatches": []
+  },
+  "set_place_as_physics_available_contract": {
+    "status": "matches-live-reflection",
+    "source": "Live UE4SS reflection",
+    "function": "SetPlaceAsPhysicsAvailable",
+    "parms_size": "0x1",
+    "params": [
+      {
+        "index": 1,
+        "name": "bEnabled",
+        "type": "bool",
+        "offset": "0x0",
+        "size": "0x1"
+      }
+    ],
+    "mismatches": []
+  },
+  "set_place_as_physics_enabled_contract": {
+    "status": "matches-live-reflection",
+    "source": "Live UE4SS reflection",
+    "function": "SetPlaceAsPhysicsEnabled",
+    "parms_size": "0x1",
+    "params": [
+      {
+        "index": 1,
+        "name": "bEnabled",
+        "type": "bool",
+        "offset": "0x0",
+        "size": "0x1"
+      }
+    ],
+    "mismatches": []
+  },
+  "server_modify_entity_contract": {
+    "status": "matches-live-reflection",
+    "source": "Live UE4SS reflection",
+    "function": "ServerModifyEntity",
+    "parms_size": "0x18",
+    "params": [
+      {
+        "index": 1,
+        "name": "Entity",
+        "type": "UObject*",
+        "offset": "0x0",
+        "size": "0x8"
+      },
+      {
+        "index": 2,
+        "name": "ModifyPayload",
+        "type": "struct containing array",
+        "offset": "0x8",
+        "size": "0x10"
+      }
+    ],
+    "mismatches": []
+  },
+  "last_capture": {
+    "command": "Omegga.Bridge.DescribeLastPrefabNativeCapture",
+    "response": {
+      "id": 1780261467839004,
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1780261467839004,
+        "method": "console.exec",
+        "params": {
+          "command_raw": "Omegga.Bridge.DescribeLastPrefabNativeCapture",
+          "command": "Omegga.Bridge.DescribeLastPrefabNativeCapture"
+        },
+        "command_raw": "Omegga.Bridge.DescribeLastPrefabNativeCapture",
+        "command": "Omegga.Bridge.DescribeLastPrefabNativeCapture"
+      },
+      "result": {
+        "accepted": true,
+        "executor": "emulated-describe-prefab-native-capture"
+      },
+      "error": null,
+      "chunks": [
+        {
+          "request_id": 1780261467839004,
+          "chunk_index": 1,
+          "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZUxhc3RQcmVmYWJOYXRpdmVDYXB0dXJl",
+          "command": "Omegga.Bridge.DescribeLastPrefabNativeCapture",
+          "line_b64": "UHJlZmFiIG5hdGl2ZSBjYXB0dXJlOiBub25l",
+          "line": "Prefab native capture: none"
+        }
+      ],
+      "complete": {
+        "request_id": 1780261467839004,
+        "chunk_count": 1,
+        "success": true,
+        "executor": "emulated-describe-prefab-native-capture",
+        "command_b64": "T21lZ2dhLkJyaWRnZS5EZXNjcmliZUxhc3RQcmVmYWJOYXRpdmVDYXB0dXJl",
+        "command": "Omegga.Bridge.DescribeLastPrefabNativeCapture"
+      },
+      "logs": [
+        {
+          "level": "info",
+          "message": "Handling bridge message console.exec id=1780261467839004",
+          "updated_at": "2026-05-31T21:04:27Z"
+        },
+        {
+          "level": "info",
+          "message": "Scheduling command execution via UE4SS (has_cached_context=true, is_game_thread=false, is_async_thread=true)",
+          "updated_at": "2026-05-31T21:04:27Z"
+        },
+        {
+          "level": "info",
+          "message": "Scheduling callback via ExecuteInGameThread EngineTick",
+          "updated_at": "2026-05-31T21:04:27Z"
+        },
+        {
+          "level": "info",
+          "message": "Executed console command via emulated-describe-prefab-native-capture: Omegga.Bridge.DescribeLastPrefabNativeCapture",
+          "updated_at": "2026-05-31T21:04:27Z"
+        }
+      ],
+      "inbox_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-bridge-test-7799\\inbox.ndjson",
+      "outbox_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-bridge-test-7799\\outbox.ndjson"
+    },
+    "lines": [
+      "Prefab native capture: none"
+    ]
+  },
+  "capture_files": {
+    "latest_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-bridge-test-7799\\prefab-native-last.txt",
+    "latest_exists": false,
+    "latest_tail": [],
+    "ndjson_path": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-bridge-test-7799\\prefab-native-captures.ndjson",
+    "ndjson_exists": false,
+    "ndjson_count": 0,
+    "latest_record": null
+  }
+}

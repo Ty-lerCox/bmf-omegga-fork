@@ -1,0 +1,215 @@
+{
+  "gallery_dir": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs",
+  "prefabs": [
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\044a0003-4d2b-4484-b9e6-1b93cbc06b68.brz",
+      "file": "044a0003-4d2b-4484-b9e6-1b93cbc06b68.brz",
+      "name": "Expedition Truck",
+      "bIsPhysicsGrid": true,
+      "brickCount": 419,
+      "componentCount": 41,
+      "entityCount": 10,
+      "wireCount": 29,
+      "entityTypes": [
+        "BP_Entity_Wheel_Muscle2_C",
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 10,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\1a06cb9e-64fe-4a45-bfe5-4abd1f2e1e62.brz",
+      "file": "1a06cb9e-64fe-4a45-bfe5-4abd1f2e1e62.brz",
+      "name": "Strandbeest",
+      "bIsPhysicsGrid": true,
+      "brickCount": 397,
+      "componentCount": 138,
+      "entityCount": 25,
+      "wireCount": 0,
+      "entityTypes": [
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 138,
+      "warnings": [
+        "Entity generic velocity/color tail blob lengths do not match the entity count."
+      ]
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\1cc987e4-e678-466a-a2bd-c1ca75c56a1b.brz",
+      "file": "1cc987e4-e678-466a-a2bd-c1ca75c56a1b.brz",
+      "name": "Ectomobile",
+      "bIsPhysicsGrid": true,
+      "brickCount": 1782,
+      "componentCount": 63,
+      "entityCount": 15,
+      "wireCount": 58,
+      "entityTypes": [
+        "BP_Entity_Wheel_Whitewall1_C",
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 15,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\2d01561f-0e48-4a49-8729-fb43deab81cd.brz",
+      "file": "2d01561f-0e48-4a49-8729-fb43deab81cd.brz",
+      "name": "1990 Ford Crown Victoria Station Wagon",
+      "bIsPhysicsGrid": true,
+      "brickCount": 995,
+      "componentCount": 66,
+      "entityCount": 9,
+      "wireCount": 60,
+      "entityTypes": [
+        "BP_Entity_Wheel_Muscle2_C",
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 9,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\3fb1376e-4aeb-4ae5-852e-86b5eae2c10d.brz",
+      "file": "3fb1376e-4aeb-4ae5-852e-86b5eae2c10d.brz",
+      "name": "1990 Subaru Legacy RS",
+      "bIsPhysicsGrid": true,
+      "brickCount": 2053,
+      "componentCount": 19,
+      "entityCount": 5,
+      "wireCount": 12,
+      "entityTypes": [
+        "BP_Entity_Wheel_Tuner1_C",
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 5,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\795d395f-3c4c-44f8-b9ec-6a7ea57b26d9.brz",
+      "file": "795d395f-3c4c-44f8-b9ec-6a7ea57b26d9.brz",
+      "name": "VW Beetle 1969",
+      "bIsPhysicsGrid": true,
+      "brickCount": 110,
+      "componentCount": 14,
+      "entityCount": 4,
+      "wireCount": 11,
+      "entityTypes": [
+        "BP_Entity_Wheel_Steelie1_C"
+      ],
+      "jointEntityReferences": 4,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\86e67da3-58dd-4af6-8193-f17076cf8227.brz",
+      "file": "86e67da3-58dd-4af6-8193-f17076cf8227.brz",
+      "name": "HL2 Jeep",
+      "bIsPhysicsGrid": false,
+      "brickCount": 566,
+      "componentCount": 13,
+      "entityCount": 4,
+      "wireCount": 8,
+      "entityTypes": [
+        "BP_Entity_Wheel_Offroad2_C",
+        "BP_Entity_Wheel_Whitewall2_C"
+      ],
+      "jointEntityReferences": 4,
+      "warnings": [
+        "Prefab contains dynamic entity/joint data, but Meta/Prefab.json has bIsPhysicsGrid=false."
+      ]
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\8c04e0ee-87b3-4eef-b5de-659c60f1e9ac.brz",
+      "file": "8c04e0ee-87b3-4eef-b5de-659c60f1e9ac.brz",
+      "name": "1986 Toyota Sprinter Trueno AE86",
+      "bIsPhysicsGrid": true,
+      "brickCount": 1959,
+      "componentCount": 158,
+      "entityCount": 11,
+      "wireCount": 147,
+      "entityTypes": [
+        "BP_Entity_Wheel_Deep1_C",
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 11,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\982e471d-1e4b-4636-9803-4b633c66a0b8.brz",
+      "file": "982e471d-1e4b-4636-9803-4b633c66a0b8.brz",
+      "name": "LBM-C Daschund Double Decker Bus",
+      "bIsPhysicsGrid": true,
+      "brickCount": 1832,
+      "componentCount": 219,
+      "entityCount": 14,
+      "wireCount": 136,
+      "entityTypes": [
+        "BP_Entity_Wheel_Truck3_C",
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 14,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\9e060d40-0fad-4133-b75c-b3b56a798cc8.brz",
+      "file": "9e060d40-0fad-4133-b75c-b3b56a798cc8.brz",
+      "name": "Speedkart - Classic Kart",
+      "bIsPhysicsGrid": true,
+      "brickCount": 143,
+      "componentCount": 23,
+      "entityCount": 4,
+      "wireCount": 19,
+      "entityTypes": [
+        "BP_Entity_Wheel_Offroad2_C"
+      ],
+      "jointEntityReferences": 4,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\a7223e46-9f70-47d7-93e0-5bba8eafced5.brz",
+      "file": "a7223e46-9f70-47d7-93e0-5bba8eafced5.brz",
+      "name": "Oldsmobile Super 88 Fordor",
+      "bIsPhysicsGrid": true,
+      "brickCount": 1888,
+      "componentCount": 62,
+      "entityCount": 11,
+      "wireCount": 36,
+      "entityTypes": [
+        "BP_Entity_Wheel_Steelie1_C",
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 11,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\d27f9309-3e2d-43fa-8157-4eff29852619.brz",
+      "file": "d27f9309-3e2d-43fa-8157-4eff29852619.brz",
+      "name": "Subaru Legacy I",
+      "bIsPhysicsGrid": true,
+      "brickCount": 1528,
+      "componentCount": 59,
+      "entityCount": 19,
+      "wireCount": 39,
+      "entityTypes": [
+        "BP_Entity_Wheel_SaladSpinner_C",
+        "BP_Entity_Wheel_SaladSpinnerFlipped_C",
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 19,
+      "warnings": []
+    },
+    {
+      "input": "C:\\Users\\tycox\\AppData\\Local\\Brickadia\\Saved\\GalleryCache\\Prefabs\\fee069d9-f807-4acd-a622-34a712c89668.brz",
+      "file": "fee069d9-f807-4acd-a622-34a712c89668.brz",
+      "name": "1962 Tuxedo Black Chevrolet Corvette",
+      "bIsPhysicsGrid": true,
+      "brickCount": 1107,
+      "componentCount": 21,
+      "entityCount": 5,
+      "wireCount": 17,
+      "entityTypes": [
+        "BP_Entity_Wheel_SaladSpinnerFlipped_C",
+        "BrickGridDynamicActor"
+      ],
+      "jointEntityReferences": 5,
+      "warnings": []
+    }
+  ]
+}

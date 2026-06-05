@@ -1,0 +1,788 @@
+{
+  "input": "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\brickadia-ue4ss-re\\artifacts\\Clipboard.physics-meta.brz",
+  "bundle": {
+    "name": null,
+    "type": null,
+    "id": null,
+    "gameVersion": null
+  },
+  "meta": {
+    "brickCount": 1831,
+    "componentCount": 158,
+    "entityCount": 11,
+    "wireCount": 147,
+    "bIsPhysicsGrid": true,
+    "bFreezePhysicsGrid": false,
+    "addedGlobalGridOffset": {
+      "x": -2,
+      "y": -30,
+      "z": 7
+    },
+    "worldRootTransform": {
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "translation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale3D": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    }
+  },
+  "entity_index": {
+    "NextPersistentIndex": 12,
+    "Chunk3DIndices": [
+      {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      }
+    ],
+    "NumEntities": [
+      11
+    ]
+  },
+  "entity": {
+    "chunk_path": "World/0/Entities/Chunks/0_0_0.mps",
+    "schema_struct_names": [
+      "BP_Entity_Wheel_Deep1_C",
+      "BrickGridDynamicActor",
+      "BRSavedBitFlags",
+      "BRSavedBrickColor",
+      "BRSavedEntityTypeCounter",
+      "Quat4f",
+      "Vector3f",
+      "BRSavedEntityColors",
+      "BRSavedEntityChunkSoA"
+    ],
+    "entity_type_struct_names": [
+      "BP_Entity_Wheel_Deep1_C",
+      "BrickGridDynamicActor"
+    ],
+    "total_entities": 11,
+    "type_counters": [
+      {
+        "TypeIndex": 0,
+        "NumEntities": 7
+      },
+      {
+        "TypeIndex": 1,
+        "NumEntities": 4
+      }
+    ],
+    "persistent_indices": [
+      1,
+      2,
+      0,
+      7,
+      3,
+      4,
+      5,
+      9,
+      11,
+      8,
+      10
+    ],
+    "owner_indices": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "original_owner_indices": [
+      1,
+      1,
+      2,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "location_bounds": {
+      "min": {
+        "X": -76.99980163574219,
+        "Y": -27.676687240600586,
+        "Z": -11.466968536376953
+      },
+      "max": {
+        "X": 62.99018096923828,
+        "Y": 30.000402450561523,
+        "Z": 15.9033842086792
+      }
+    },
+    "inferred_type_ranges": [
+      {
+        "type_index": 0,
+        "count": 7,
+        "persistent_indices": [
+          1,
+          2,
+          0,
+          7,
+          3,
+          4,
+          5
+        ],
+        "location_bounds": {
+          "min": {
+            "X": -76.99980163574219,
+            "Y": -18.999258041381836,
+            "Z": 2.994999647140503
+          },
+          "max": {
+            "X": 62.99018096923828,
+            "Y": 30.000402450561523,
+            "Z": 15.9033842086792
+          }
+        },
+        "sample_locations": [
+          {
+            "X": 62.99018096923828,
+            "Y": -0.00034216532367281616,
+            "Z": 9.870879173278809
+          },
+          {
+            "X": 55.96446990966797,
+            "Y": 0.9989196062088013,
+            "Z": 15.9033842086792
+          },
+          {
+            "X": 0.9998361468315125,
+            "Y": 0.000033604195778025314,
+            "Z": 5.005414962768555
+          },
+          {
+            "X": -2.000007390975952,
+            "Y": 30.000402450561523,
+            "Z": 6.999993801116943
+          },
+          {
+            "X": -55.984188079833984,
+            "Y": -1.00099515914917,
+            "Z": 6.90859317779541
+          },
+          {
+            "X": -76.999755859375,
+            "Y": -18.999258041381836,
+            "Z": 2.994999647140503
+          }
+        ]
+      },
+      {
+        "type_index": 1,
+        "count": 4,
+        "persistent_indices": [
+          9,
+          11,
+          8,
+          10
+        ],
+        "location_bounds": {
+          "min": {
+            "X": -50.00029373168945,
+            "Y": -27.676687240600586,
+            "Z": -11.466968536376953
+          },
+          "max": {
+            "X": 43.9996337890625,
+            "Y": 27.67771339416504,
+            "Z": -11.324462890625
+          }
+        },
+        "sample_locations": [
+          {
+            "X": 43.9996337890625,
+            "Y": 27.67771339416504,
+            "Z": -11.324462890625
+          },
+          {
+            "X": 43.99957275390625,
+            "Y": -27.676687240600586,
+            "Z": -11.328271865844727
+          },
+          {
+            "X": -50.0002326965332,
+            "Y": 27.677234649658203,
+            "Z": -11.46315860748291
+          },
+          {
+            "X": -50.00029373168945,
+            "Y": -27.67633819580078,
+            "Z": -11.466968536376953
+          }
+        ]
+      }
+    ],
+    "tail": {
+      "decoded_generic_offset": 364,
+      "marker_summary": [
+        {
+          "offset": 364,
+          "kind": "bin8",
+          "length": 132
+        },
+        {
+          "offset": 498,
+          "kind": "bin8",
+          "length": 132
+        },
+        {
+          "offset": 632,
+          "kind": "bin16",
+          "length": 352
+        },
+        {
+          "offset": 987,
+          "kind": "fixpos",
+          "value": 1
+        },
+        {
+          "offset": 988,
+          "kind": "fixpos",
+          "value": 0
+        },
+        {
+          "offset": 989,
+          "kind": "fixpos",
+          "value": 1
+        },
+        {
+          "offset": 990,
+          "kind": "fixpos",
+          "value": 0
+        },
+        {
+          "offset": 991,
+          "kind": "fixpos",
+          "value": 1
+        },
+        {
+          "offset": 992,
+          "kind": "fixpos",
+          "value": 0
+        },
+        {
+          "offset": 993,
+          "kind": "fixpos",
+          "value": 1
+        },
+        {
+          "offset": 994,
+          "kind": "fixpos",
+          "value": 0
+        }
+      ],
+      "blob_lengths": [
+        132,
+        132,
+        352
+      ],
+      "expected_generic_blob_lengths": [
+        132,
+        132,
+        352
+      ],
+      "generic_blob_lengths_match": true,
+      "custom_tail_bytes_after_generic_blobs": 8,
+      "custom_tail_hex": "0100010001000100",
+      "generic_blob_bytes": 616
+    }
+  },
+  "grids": [
+    {
+      "grid_id": 1,
+      "chunks": [
+        {
+          "X": -31,
+          "Y": -31,
+          "Z": -31
+        }
+      ],
+      "chunk_offsets": [
+        {
+          "X": 1024,
+          "Y": 1024,
+          "Z": 1024
+        }
+      ],
+      "chunk_sizes": [
+        2048
+      ],
+      "brick_count": 50,
+      "component_count": 5,
+      "wire_count": 3,
+      "component": {
+        "path": "World/0/Bricks/Grids/1/Components/-1_-1_-1.mps",
+        "type_counters": [
+          {
+            "TypeIndex": 0,
+            "NumInstances": 2
+          },
+          {
+            "TypeIndex": 2,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 4,
+            "NumInstances": 2
+          }
+        ],
+        "component_brick_indices": 10,
+        "joint_brick_indices": [],
+        "joint_entity_references": [],
+        "unique_joint_entity_references": [],
+        "missing_joint_entity_references": [],
+        "microchip_grid_references": []
+      }
+    },
+    {
+      "grid_id": 64,
+      "chunks": [
+        {
+          "X": -31,
+          "Y": -31,
+          "Z": -31
+        }
+      ],
+      "chunk_offsets": [
+        {
+          "X": 1024,
+          "Y": 1024,
+          "Z": 1024
+        }
+      ],
+      "chunk_sizes": [
+        2048
+      ],
+      "brick_count": 1601,
+      "component_count": 134,
+      "wire_count": 131,
+      "component": {
+        "path": "World/0/Bricks/Grids/64/Components/-1_-1_-1.mps",
+        "type_counters": [
+          {
+            "TypeIndex": 0,
+            "NumInstances": 12
+          },
+          {
+            "TypeIndex": 3,
+            "NumInstances": 24
+          },
+          {
+            "TypeIndex": 1,
+            "NumInstances": 2
+          },
+          {
+            "TypeIndex": 5,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 6,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 7,
+            "NumInstances": 4
+          },
+          {
+            "TypeIndex": 8,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 9,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 10,
+            "NumInstances": 6
+          },
+          {
+            "TypeIndex": 11,
+            "NumInstances": 3
+          },
+          {
+            "TypeIndex": 12,
+            "NumInstances": 5
+          },
+          {
+            "TypeIndex": 13,
+            "NumInstances": 4
+          },
+          {
+            "TypeIndex": 14,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 2,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 15,
+            "NumInstances": 3
+          },
+          {
+            "TypeIndex": 16,
+            "NumInstances": 48
+          },
+          {
+            "TypeIndex": 17,
+            "NumInstances": 4
+          },
+          {
+            "TypeIndex": 18,
+            "NumInstances": 7
+          },
+          {
+            "TypeIndex": 4,
+            "NumInstances": 2
+          },
+          {
+            "TypeIndex": 19,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 20,
+            "NumInstances": 3
+          }
+        ],
+        "component_brick_indices": 268,
+        "joint_brick_indices": [
+          1584,
+          1585,
+          1586,
+          1587,
+          1588,
+          1589,
+          1590,
+          1591,
+          1592,
+          1593,
+          1594
+        ],
+        "joint_entity_references": [
+          8,
+          9,
+          10,
+          11,
+          1,
+          2,
+          3,
+          4,
+          5,
+          1,
+          7
+        ],
+        "unique_joint_entity_references": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "missing_joint_entity_references": [],
+        "microchip_grid_references": []
+      }
+    },
+    {
+      "grid_id": 65,
+      "chunks": [
+        {
+          "X": -31,
+          "Y": -31,
+          "Z": -31
+        }
+      ],
+      "chunk_offsets": [
+        {
+          "X": 1024,
+          "Y": 1024,
+          "Z": 1024
+        }
+      ],
+      "chunk_sizes": [
+        2048
+      ],
+      "brick_count": 6,
+      "component_count": 1,
+      "wire_count": 0,
+      "component": {
+        "path": "World/0/Bricks/Grids/65/Components/-1_-1_-1.mps",
+        "type_counters": [
+          {
+            "TypeIndex": 0,
+            "NumInstances": 1
+          }
+        ],
+        "component_brick_indices": 2,
+        "joint_brick_indices": [],
+        "joint_entity_references": [],
+        "unique_joint_entity_references": [],
+        "missing_joint_entity_references": [],
+        "microchip_grid_references": []
+      }
+    },
+    {
+      "grid_id": 66,
+      "chunks": [
+        {
+          "X": -31,
+          "Y": -31,
+          "Z": -31
+        }
+      ],
+      "chunk_offsets": [
+        {
+          "X": 1024,
+          "Y": 1024,
+          "Z": 1024
+        }
+      ],
+      "chunk_sizes": [
+        2048
+      ],
+      "brick_count": 60,
+      "component_count": 5,
+      "wire_count": 3,
+      "component": {
+        "path": "World/0/Bricks/Grids/66/Components/-1_-1_-1.mps",
+        "type_counters": [
+          {
+            "TypeIndex": 0,
+            "NumInstances": 2
+          },
+          {
+            "TypeIndex": 2,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 4,
+            "NumInstances": 2
+          }
+        ],
+        "component_brick_indices": 10,
+        "joint_brick_indices": [],
+        "joint_entity_references": [],
+        "unique_joint_entity_references": [],
+        "missing_joint_entity_references": [],
+        "microchip_grid_references": []
+      }
+    },
+    {
+      "grid_id": 67,
+      "chunks": [
+        {
+          "X": -31,
+          "Y": -31,
+          "Z": -31
+        }
+      ],
+      "chunk_offsets": [
+        {
+          "X": 1024,
+          "Y": 1024,
+          "Z": 1024
+        }
+      ],
+      "chunk_sizes": [
+        2048
+      ],
+      "brick_count": 33,
+      "component_count": 4,
+      "wire_count": 3,
+      "component": {
+        "path": "World/0/Bricks/Grids/67/Components/-1_-1_-1.mps",
+        "type_counters": [
+          {
+            "TypeIndex": 0,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 2,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 4,
+            "NumInstances": 2
+          }
+        ],
+        "component_brick_indices": 8,
+        "joint_brick_indices": [],
+        "joint_entity_references": [],
+        "unique_joint_entity_references": [],
+        "missing_joint_entity_references": [],
+        "microchip_grid_references": []
+      }
+    },
+    {
+      "grid_id": 68,
+      "chunks": [
+        {
+          "X": -31,
+          "Y": -31,
+          "Z": -31
+        }
+      ],
+      "chunk_offsets": [
+        {
+          "X": 1024,
+          "Y": 1024,
+          "Z": 1024
+        }
+      ],
+      "chunk_sizes": [
+        2048
+      ],
+      "brick_count": 15,
+      "component_count": 2,
+      "wire_count": 2,
+      "component": {
+        "path": "World/0/Bricks/Grids/68/Components/-1_-1_-1.mps",
+        "type_counters": [
+          {
+            "TypeIndex": 1,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 3,
+            "NumInstances": 1
+          }
+        ],
+        "component_brick_indices": 4,
+        "joint_brick_indices": [],
+        "joint_entity_references": [],
+        "unique_joint_entity_references": [],
+        "missing_joint_entity_references": [],
+        "microchip_grid_references": []
+      }
+    },
+    {
+      "grid_id": 69,
+      "chunks": [
+        {
+          "X": -31,
+          "Y": -31,
+          "Z": -31
+        }
+      ],
+      "chunk_offsets": [
+        {
+          "X": 1024,
+          "Y": 1024,
+          "Z": 1024
+        }
+      ],
+      "chunk_sizes": [
+        2048
+      ],
+      "brick_count": 15,
+      "component_count": 2,
+      "wire_count": 2,
+      "component": {
+        "path": "World/0/Bricks/Grids/69/Components/-1_-1_-1.mps",
+        "type_counters": [
+          {
+            "TypeIndex": 1,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 3,
+            "NumInstances": 1
+          }
+        ],
+        "component_brick_indices": 4,
+        "joint_brick_indices": [],
+        "joint_entity_references": [],
+        "unique_joint_entity_references": [],
+        "missing_joint_entity_references": [],
+        "microchip_grid_references": []
+      }
+    },
+    {
+      "grid_id": 71,
+      "chunks": [
+        {
+          "X": -31,
+          "Y": -31,
+          "Z": -31
+        }
+      ],
+      "chunk_offsets": [
+        {
+          "X": 1024,
+          "Y": 1024,
+          "Z": 1024
+        }
+      ],
+      "chunk_sizes": [
+        2048
+      ],
+      "brick_count": 51,
+      "component_count": 5,
+      "wire_count": 3,
+      "component": {
+        "path": "World/0/Bricks/Grids/71/Components/-1_-1_-1.mps",
+        "type_counters": [
+          {
+            "TypeIndex": 0,
+            "NumInstances": 2
+          },
+          {
+            "TypeIndex": 2,
+            "NumInstances": 1
+          },
+          {
+            "TypeIndex": 4,
+            "NumInstances": 2
+          }
+        ],
+        "component_brick_indices": 10,
+        "joint_brick_indices": [],
+        "joint_entity_references": [],
+        "unique_joint_entity_references": [],
+        "missing_joint_entity_references": [],
+        "microchip_grid_references": []
+      }
+    }
+  ],
+  "joints": {
+    "total_joint_entity_references": 11,
+    "unique_joint_entity_references": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "missing_joint_entity_references": []
+  },
+  "warnings": []
+}

@@ -1,0 +1,805 @@
+﻿
+C:\Users\tycox\AppData\Roaming\omegga\steam_installs\main\Brickadia\Binaries\Win64\BrickadiaServer-Win64-Shipping.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140ca1990 <src_float_to_int_array>:
+144724000:     	addb	%al, (%rax)
+144724002:     	addb	%cl, -0x75(%rax)
+144724005:     	addb	-0x77(%rax), %cl
+144724008:     	addl	%ecx, -0x39(%rax)
+14472400b:     	addb	(%rax), %al
+14472400d:     	addb	%al, (%rax)
+14472400f:     	addb	%cl, 0x41890842(%rbx)
+144724015:     	orb	%cl, 0x41890c42(%rbx)
+14472401b:     	orb	$0x48, %al
+14472401d:     	movl	$0x0, 0x8(%rdx)
+144724024:     	movq	$0x0, 0x10(%rcx)
+14472402c:     	movq	0x10(%rdx), %rax
+144724030:     	movq	%rax, 0x10(%rcx)
+144724034:     	movq	$0x0, 0x10(%rdx)
+14472403c:     	movl	0x18(%rdx), %eax
+14472403f:     	movl	%eax, 0x18(%rcx)
+144724042:     	movl	0x1c(%rdx), %eax
+144724045:     	movl	%eax, 0x1c(%rcx)
+144724048:     	movq	$0x0, 0x18(%rdx)
+144724050:     	movq	0x10(%rdx), %rcx
+144724054:     	xorl	%edx, %edx
+144724056:     	callq	0x142ea4e80 <src_float_to_int_array+0x22034f0>
+14472405b:     	movslq	0x18(%rdi), %r8
+14472405f:     	testq	%r8, %r8
+144724062:     	je	0x144724073 <src_float_to_int_array+0x3a826e3>
+144724064:     	shlq	$0x5, %r8
+144724068:     	movq	0x10(%rdi), %rcx
+14472406c:     	xorl	%edx, %edx
+14472406e:     	callq	0x1459f8680 <agsSetDisplayMode+0x10010>
+144724073:     	movl	$0x0, 0x18(%rdi)
+14472407a:     	cmpl	$0x0, 0xc(%rdi)
+14472407e:     	js	0x1447240a0 <src_float_to_int_array+0x3a82710>
+144724080:     	movslq	0x8(%rdi), %r8
+144724084:     	testq	%r8, %r8
+144724087:     	je	0x144724097 <src_float_to_int_array+0x3a82707>
+144724089:     	shlq	$0x2, %r8
+14472408d:     	movq	(%rdi), %rcx
+144724090:     	xorl	%edx, %edx
+144724092:     	callq	0x1459f8680 <agsSetDisplayMode+0x10010>
+144724097:     	movl	$0x0, 0x8(%rdi)
+14472409e:     	jmp	0x1447240b1 <src_float_to_int_array+0x3a82721>
+1447240a0:     	movl	$0x0, 0x8(%rdi)
+1447240a7:     	movq	%rdi, %rcx
+1447240aa:     	xorl	%edx, %edx
+1447240ac:     	callq	0x140045980 <ffxSetPrintMessageCallback+0x31cd0>
+1447240b1:     	movq	%rsi, %rax
+1447240b4:     	addq	$0x28, %rsp
+1447240b8:     	popq	%rdi
+1447240b9:     	popq	%rsi
+1447240ba:     	retq
+1447240bb:     	int3
+1447240bc:     	int3
+1447240bd:     	int3
+1447240be:     	int3
+1447240bf:     	int3
+1447240c0:     	pushq	%rsi
+1447240c1:     	pushq	%rdi
+1447240c2:     	subq	$0x28, %rsp
+1447240c6:     	movq	%rdx, %rdi
+1447240c9:     	movq	%rcx, %rsi
+1447240cc:     	movq	(%rdx), %rax
+1447240cf:     	movq	%rax, (%rcx)
+1447240d2:     	movq	$0x0, 0x8(%rcx)
+1447240da:     	movq	0x8(%rdx), %rax
+1447240de:     	movq	%rax, 0x8(%rcx)
+1447240e2:     	movq	$0x0, 0x8(%rdx)
+1447240ea:     	movl	0x10(%rdx), %eax
+1447240ed:     	movl	%eax, 0x10(%rcx)
+1447240f0:     	movl	0x14(%rdx), %eax
+1447240f3:     	movl	%eax, 0x14(%rcx)
+1447240f6:     	movq	$0x0, 0x10(%rdx)
+1447240fe:     	movq	$0x0, 0x18(%rcx)
+144724106:     	movq	0x18(%rdx), %rax
+14472410a:     	movq	%rax, 0x18(%rcx)
+14472410e:     	movq	$0x0, 0x18(%rdx)
+144724116:     	movl	0x20(%rdx), %eax
+144724119:     	movl	%eax, 0x20(%rcx)
+14472411c:     	movl	0x24(%rdx), %eax
+14472411f:     	movl	%eax, 0x24(%rcx)
+144724122:     	movq	$0x0, 0x20(%rdx)
+14472412a:     	movq	0x18(%rdx), %rcx
+14472412e:     	xorl	%edx, %edx
+144724130:     	callq	0x142ea4e80 <src_float_to_int_array+0x22034f0>
+144724135:     	movslq	0x20(%rdi), %r8
+144724139:     	testq	%r8, %r8
+14472413c:     	je	0x14472414d <src_float_to_int_array+0x3a827bd>
+14472413e:     	shlq	$0x5, %r8
+144724142:     	movq	0x18(%rdi), %rcx
+144724146:     	xorl	%edx, %edx
+144724148:     	callq	0x1459f8680 <agsSetDisplayMode+0x10010>
+14472414d:     	leaq	0x8(%rdi), %rcx
+144724151:     	movl	$0x0, 0x20(%rdi)
+144724158:     	cmpl	$0x0, 0x14(%rdi)
+14472415c:     	js	0x14472417e <src_float_to_int_array+0x3a827ee>
+14472415e:     	movslq	0x10(%rdi), %r8
+144724162:     	testq	%r8, %r8
+144724165:     	je	0x144724175 <src_float_to_int_array+0x3a827e5>
+144724167:     	shlq	$0x2, %r8
+14472416b:     	movq	(%rcx), %rcx
+14472416e:     	xorl	%edx, %edx
+144724170:     	callq	0x1459f8680 <agsSetDisplayMode+0x10010>
+144724175:     	movl	$0x0, 0x10(%rdi)
+14472417c:     	jmp	0x14472418c <src_float_to_int_array+0x3a827fc>
+14472417e:     	movl	$0x0, 0x10(%rdi)
+144724185:     	xorl	%edx, %edx
+144724187:     	callq	0x140045980 <ffxSetPrintMessageCallback+0x31cd0>
+14472418c:     	movb	$0x0, 0x28(%rsi)
+144724190:     	movq	%rsi, %rax
+144724193:     	addq	$0x28, %rsp
+144724197:     	popq	%rdi
+144724198:     	popq	%rsi
+144724199:     	retq
+14472419a:     	int3
+14472419b:     	int3
+14472419c:     	int3
+14472419d:     	int3
+14472419e:     	int3
+14472419f:     	int3
+1447241a0:     	pushq	%rsi
+1447241a1:     	pushq	%rdi
+1447241a2:     	subq	$0x28, %rsp
+1447241a6:     	movq	%rcx, %rsi
+1447241a9:     	movq	0x38(%rcx), %rcx
+1447241ad:     	testq	%rcx, %rcx
+1447241b0:     	je	0x1447241c9 <src_float_to_int_array+0x3a82839>
+1447241b2:     	lock
+1447241b3:     	decl	0x8(%rcx)
+1447241b6:     	jne	0x1447241c9 <src_float_to_int_array+0x3a82839>
+1447241b8:     	movq	(%rcx), %rax
+1447241bb:     	movq	(%rax), %rax
+1447241be:     	movl	$0x1, %edx
+1447241c3:     	callq	*0x142d8ff(%rip)        # 0x145b51ac8
+1447241c9:     	movq	0x30(%rsi), %rdi
+1447241cd:     	testq	%rdi, %rdi
+1447241d0:     	je	0x144724202 <src_float_to_int_array+0x3a82872>
+1447241d2:     	lock
+1447241d3:     	decl	0x8(%rdi)
+1447241d6:     	jne	0x144724202 <src_float_to_int_array+0x3a82872>
+1447241d8:     	movq	(%rdi), %rax
+1447241db:     	movq	(%rax), %rax
+1447241de:     	movq	%rdi, %rcx
+1447241e1:     	callq	*0x142d8e1(%rip)        # 0x145b51ac8
+1447241e7:     	lock
+1447241e8:     	decl	0xc(%rdi)
+1447241eb:     	jne	0x144724202 <src_float_to_int_array+0x3a82872>
+1447241ed:     	movq	(%rdi), %rax
+1447241f0:     	movq	0x8(%rax), %rax
+1447241f4:     	movq	%rdi, %rcx
+1447241f7:     	movl	$0x1, %edx
+1447241fc:     	callq	*0x142d8c6(%rip)        # 0x145b51ac8
+144724202:     	movq	0x18(%rsi), %rcx
+144724206:     	testq	%rcx, %rcx
+144724209:     	je	0x144724222 <src_float_to_int_array+0x3a82892>
+14472420b:     	lock
+14472420c:     	decl	0x8(%rcx)
+14472420f:     	jne	0x144724222 <src_float_to_int_array+0x3a82892>
+144724211:     	movq	(%rcx), %rax
+144724214:     	movq	(%rax), %rax
+144724217:     	movl	$0x1, %edx
+14472421c:     	callq	*0x142d8a6(%rip)        # 0x145b51ac8
+144724222:     	movq	(%rsi), %rcx
+144724225:     	testq	%rcx, %rcx
+144724228:     	je	0x144724235 <src_float_to_int_array+0x3a828a5>
+14472422a:     	addq	$0x28, %rsp
+14472422e:     	popq	%rdi
+14472422f:     	popq	%rsi
+144724230:     	jmp	0x140089c80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x1c0f0>
+144724235:     	addq	$0x28, %rsp
+144724239:     	popq	%rdi
+14472423a:     	popq	%rsi
+14472423b:     	retq
+14472423c:     	int3
+14472423d:     	int3
+14472423e:     	int3
+14472423f:     	int3
+144724240:     	pushq	%rsi
+144724241:     	subq	$0x20, %rsp
+144724245:     	movq	%rcx, %rsi
+144724248:     	movl	0x8(%rcx), %edx
+14472424b:     	movq	(%rcx), %rcx
+14472424e:     	callq	0x1443a71a0 <src_float_to_int_array+0x3705810>
+144724253:     	movq	(%rsi), %rcx
+144724256:     	testq	%rcx, %rcx
+144724259:     	je	0x144724265 <src_float_to_int_array+0x3a828d5>
+14472425b:     	addq	$0x20, %rsp
+14472425f:     	popq	%rsi
+144724260:     	jmp	0x140089c80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x1c0f0>
+144724265:     	addq	$0x20, %rsp
+144724269:     	popq	%rsi
+14472426a:     	retq
+14472426b:     	int3
+14472426c:     	int3
+14472426d:     	int3
+14472426e:     	int3
+14472426f:     	int3
+144724270:     	pushq	%rsi
+144724271:     	subq	$0x20, %rsp
+144724275:     	movq	%rcx, %rsi
+144724278:     	movl	0x8(%rcx), %edx
+14472427b:     	movq	(%rcx), %rcx
+14472427e:     	callq	0x1443a70d0 <src_float_to_int_array+0x3705740>
+144724283:     	movq	(%rsi), %rcx
+144724286:     	testq	%rcx, %rcx
+144724289:     	je	0x144724295 <src_float_to_int_array+0x3a82905>
+14472428b:     	addq	$0x20, %rsp
+14472428f:     	popq	%rsi
+144724290:     	jmp	0x140089c80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x1c0f0>
+144724295:     	addq	$0x20, %rsp
+144724299:     	popq	%rsi
+14472429a:     	retq
+14472429b:     	int3
+14472429c:     	int3
+14472429d:     	int3
+14472429e:     	int3
+14472429f:     	int3
+1447242a0:     	pushq	%rsi
+1447242a1:     	pushq	%rdi
+1447242a2:     	subq	$0x28, %rsp
+1447242a6:     	movq	%rdx, %rdi
+1447242a9:     	movq	%rcx, %rsi
+1447242ac:     	movq	$0x0, (%rcx)
+1447242b3:     	movq	(%rdx), %rax
+1447242b6:     	movq	%rax, (%rcx)
+1447242b9:     	movq	$0x0, (%rdx)
+1447242c0:     	movl	0x8(%rdx), %eax
+1447242c3:     	movl	%eax, 0x8(%rcx)
+1447242c6:     	movl	0xc(%rdx), %eax
+1447242c9:     	movl	%eax, 0xc(%rcx)
+1447242cc:     	movq	$0x0, 0x8(%rdx)
+1447242d4:     	movq	$0x0, 0x10(%rcx)
+1447242dc:     	movq	0x10(%rdx), %rax
+1447242e0:     	movq	%rax, 0x10(%rcx)
+1447242e4:     	movq	$0x0, 0x10(%rdx)
+1447242ec:     	movl	0x18(%rdx), %eax
+1447242ef:     	movl	%eax, 0x18(%rcx)
+1447242f2:     	movl	0x1c(%rdx), %eax
+1447242f5:     	movl	%eax, 0x1c(%rcx)
+1447242f8:     	movq	$0x0, 0x18(%rdx)
+144724300:     	movq	0x10(%rdx), %rcx
+144724304:     	xorl	%edx, %edx
+144724306:     	callq	0x142ea4e80 <src_float_to_int_array+0x22034f0>
+14472430b:     	movslq	0x18(%rdi), %r8
+14472430f:     	testq	%r8, %r8
+144724312:     	je	0x144724323 <src_float_to_int_array+0x3a82993>
+144724314:     	shlq	$0x5, %r8
+144724318:     	movq	0x10(%rdi), %rcx
+14472431c:     	xorl	%edx, %edx
+14472431e:     	callq	0x1459f8680 <agsSetDisplayMode+0x10010>
+144724323:     	movl	$0x0, 0x18(%rdi)
+14472432a:     	cmpl	$0x0, 0xc(%rdi)
+14472432e:     	js	0x144724350 <src_float_to_int_array+0x3a829c0>
+144724330:     	movslq	0x8(%rdi), %r8
+144724334:     	testq	%r8, %r8
+144724337:     	je	0x144724347 <src_float_to_int_array+0x3a829b7>
+144724339:     	shlq	$0x2, %r8
+14472433d:     	movq	(%rdi), %rcx
+144724340:     	xorl	%edx, %edx
+144724342:     	callq	0x1459f8680 <agsSetDisplayMode+0x10010>
+144724347:     	movl	$0x0, 0x8(%rdi)
+14472434e:     	jmp	0x144724361 <src_float_to_int_array+0x3a829d1>
+144724350:     	movl	$0x0, 0x8(%rdi)
+144724357:     	movq	%rdi, %rcx
+14472435a:     	xorl	%edx, %edx
+14472435c:     	callq	0x140045980 <ffxSetPrintMessageCallback+0x31cd0>
+144724361:     	movb	$0x0, 0x20(%rsi)
+144724365:     	movq	%rsi, %rax
+144724368:     	addq	$0x28, %rsp
+14472436c:     	popq	%rdi
+14472436d:     	popq	%rsi
+14472436e:     	retq
+14472436f:     	int3
+144724370:     	subq	$0x28, %rsp
+144724374:     	movq	0x3179845(%rip), %rax   # 0x14789dbc0 <D3D12SDKPath+0x36f990>
+14472437b:     	testq	%rax, %rax
+14472437e:     	je	0x144724385 <src_float_to_int_array+0x3a829f5>
+144724380:     	addq	$0x28, %rsp
+144724384:     	retq
+144724385:     	callq	0x14419b460 <src_float_to_int_array+0x34f9ad0>
+14472438a:     	leaq	0x1f(%rip), %rcx        # 0x1447243b0 <src_float_to_int_array+0x3a82a20>
+144724391:     	leaq	0x2690748(%rip), %r8    # 0x146db4ae0 <D3D12SDKVersion+0x55f4ec>
+144724398:     	movq	%rax, %rdx
+14472439b:     	callq	0x1404f6da0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x489210>
+1447243a0:     	movq	%rax, 0x3179819(%rip)   # 0x14789dbc0 <D3D12SDKPath+0x36f990>
+1447243a7:     	addq	$0x28, %rsp
+1447243ab:     	retq
+1447243ac:     	int3
+1447243ad:     	int3
+1447243ae:     	int3
+1447243af:     	int3
+1447243b0:     	subq	$0x28, %rsp
+1447243b4:     	movq	0x31797fd(%rip), %rax   # 0x14789dbb8 <D3D12SDKPath+0x36f988>
+1447243bb:     	testq	%rax, %rax
+1447243be:     	je	0x1447243c5 <src_float_to_int_array+0x3a82a35>
+1447243c0:     	addq	$0x28, %rsp
+1447243c4:     	retq
+1447243c5:     	leaq	0x31797ec(%rip), %rcx   # 0x14789dbb8 <D3D12SDKPath+0x36f988>
+1447243cc:     	leaq	0x26908dd(%rip), %rdx   # 0x146db4cb0 <D3D12SDKVersion+0x55f6bc>
+1447243d3:     	callq	0x14050bd80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x49e1f0>
+1447243d8:     	movq	0x31797d9(%rip), %rax   # 0x14789dbb8 <D3D12SDKPath+0x36f988>
+1447243df:     	addq	$0x28, %rsp
+1447243e3:     	retq
+1447243e4:     	int3
+1447243e5:     	int3
+1447243e6:     	int3
+1447243e7:     	int3
+1447243e8:     	int3
+1447243e9:     	int3
+1447243ea:     	int3
+1447243eb:     	int3
+1447243ec:     	int3
+1447243ed:     	int3
+1447243ee:     	int3
+1447243ef:     	int3
+1447243f0:     	subq	$0x28, %rsp
+1447243f4:     	movl	$0x10, %ecx
+1447243f9:     	callq	0x144302e50 <src_float_to_int_array+0x36614c0>
+1447243fe:     	movabsq	$0x800000028, %rcx      # imm = 0x800000028
+144724408:     	movq	%rcx, 0x8(%rax)
+14472440c:     	leaq	0x269344d(%rip), %rcx   # 0x146db7860 <D3D12SDKVersion+0x56226c>
+144724413:     	movq	%rcx, (%rax)
+144724416:     	addq	$0x28, %rsp
+14472441a:     	retq
+14472441b:     	int3
+14472441c:     	int3
+14472441d:     	int3
+14472441e:     	int3
+14472441f:     	int3
+144724420:     	subq	$0x28, %rsp
+144724424:     	movq	0x31797ad(%rip), %rax   # 0x14789dbd8 <D3D12SDKPath+0x36f9a8>
+14472442b:     	testq	%rax, %rax
+14472442e:     	je	0x144724435 <src_float_to_int_array+0x3a82aa5>
+144724430:     	addq	$0x28, %rsp
+144724434:     	retq
+144724435:     	callq	0x14419b460 <src_float_to_int_array+0x34f9ad0>
+14472443a:     	leaq	0x1f(%rip), %rcx        # 0x144724460 <src_float_to_int_array+0x3a82ad0>
+144724441:     	leaq	0x26908a0(%rip), %r8    # 0x146db4ce8 <D3D12SDKVersion+0x55f6f4>
+144724448:     	movq	%rax, %rdx
+14472444b:     	callq	0x1404f6da0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x489210>
+144724450:     	movq	%rax, 0x3179781(%rip)   # 0x14789dbd8 <D3D12SDKPath+0x36f9a8>
+144724457:     	addq	$0x28, %rsp
+14472445b:     	retq
+14472445c:     	int3
+14472445d:     	int3
+14472445e:     	int3
+14472445f:     	int3
+144724460:     	subq	$0x28, %rsp
+144724464:     	movq	0x3179765(%rip), %rax   # 0x14789dbd0 <D3D12SDKPath+0x36f9a0>
+14472446b:     	testq	%rax, %rax
+14472446e:     	je	0x144724475 <src_float_to_int_array+0x3a82ae5>
+144724470:     	addq	$0x28, %rsp
+144724474:     	retq
+144724475:     	leaq	0x3179754(%rip), %rcx   # 0x14789dbd0 <D3D12SDKPath+0x36f9a0>
+14472447c:     	leaq	0x2690a2d(%rip), %rdx   # 0x146db4eb0 <D3D12SDKVersion+0x55f8bc>
+144724483:     	callq	0x14050bd80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x49e1f0>
+144724488:     	movq	0x3179741(%rip), %rax   # 0x14789dbd0 <D3D12SDKPath+0x36f9a0>
+14472448f:     	addq	$0x28, %rsp
+144724493:     	retq
+144724494:     	int3
+144724495:     	int3
+144724496:     	int3
+144724497:     	int3
+144724498:     	int3
+144724499:     	int3
+14472449a:     	int3
+14472449b:     	int3
+14472449c:     	int3
+14472449d:     	int3
+14472449e:     	int3
+14472449f:     	int3
+1447244a0:     	subq	$0x28, %rsp
+1447244a4:     	movl	$0x10, %ecx
+1447244a9:     	callq	0x144302e50 <src_float_to_int_array+0x36614c0>
+1447244ae:     	movabsq	$0x800000018, %rcx      # imm = 0x800000018
+1447244b8:     	movq	%rcx, 0x8(%rax)
+1447244bc:     	leaq	0x269347d(%rip), %rcx   # 0x146db7940 <D3D12SDKVersion+0x56234c>
+1447244c3:     	movq	%rcx, (%rax)
+1447244c6:     	addq	$0x28, %rsp
+1447244ca:     	retq
+1447244cb:     	int3
+1447244cc:     	int3
+1447244cd:     	int3
+1447244ce:     	int3
+1447244cf:     	int3
+1447244d0:     	subq	$0x28, %rsp
+1447244d4:     	movq	0x3179715(%rip), %rax   # 0x14789dbf0 <D3D12SDKPath+0x36f9c0>
+1447244db:     	testq	%rax, %rax
+1447244de:     	je	0x1447244e5 <src_float_to_int_array+0x3a82b55>
+1447244e0:     	addq	$0x28, %rsp
+1447244e4:     	retq
+1447244e5:     	callq	0x14419b460 <src_float_to_int_array+0x34f9ad0>
+1447244ea:     	leaq	0x1f(%rip), %rcx        # 0x144724510 <src_float_to_int_array+0x3a82b80>
+1447244f1:     	leaq	0x26909f0(%rip), %r8    # 0x146db4ee8 <D3D12SDKVersion+0x55f8f4>
+1447244f8:     	movq	%rax, %rdx
+1447244fb:     	callq	0x1404f6da0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x489210>
+144724500:     	movq	%rax, 0x31796e9(%rip)   # 0x14789dbf0 <D3D12SDKPath+0x36f9c0>
+144724507:     	addq	$0x28, %rsp
+14472450b:     	retq
+14472450c:     	int3
+14472450d:     	int3
+14472450e:     	int3
+14472450f:     	int3
+144724510:     	subq	$0x28, %rsp
+144724514:     	movq	0x31796cd(%rip), %rax   # 0x14789dbe8 <D3D12SDKPath+0x36f9b8>
+14472451b:     	testq	%rax, %rax
+14472451e:     	je	0x144724525 <src_float_to_int_array+0x3a82b95>
+144724520:     	addq	$0x28, %rsp
+144724524:     	retq
+144724525:     	leaq	0x31796bc(%rip), %rcx   # 0x14789dbe8 <D3D12SDKPath+0x36f9b8>
+14472452c:     	leaq	0x2690a55(%rip), %rdx   # 0x146db4f88 <D3D12SDKVersion+0x55f994>
+144724533:     	callq	0x14050bd80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x49e1f0>
+144724538:     	movq	0x31796a9(%rip), %rax   # 0x14789dbe8 <D3D12SDKPath+0x36f9b8>
+14472453f:     	addq	$0x28, %rsp
+144724543:     	retq
+144724544:     	int3
+144724545:     	int3
+144724546:     	int3
+144724547:     	int3
+144724548:     	int3
+144724549:     	int3
+14472454a:     	int3
+14472454b:     	int3
+14472454c:     	int3
+14472454d:     	int3
+14472454e:     	int3
+14472454f:     	int3
+144724550:     	subq	$0x28, %rsp
+144724554:     	movl	$0x10, %ecx
+144724559:     	callq	0x144302e50 <src_float_to_int_array+0x36614c0>
+14472455e:     	movabsq	$0x800000008, %rcx      # imm = 0x800000008
+144724568:     	movq	%rcx, 0x8(%rax)
+14472456c:     	leaq	0x26934ad(%rip), %rcx   # 0x146db7a20 <D3D12SDKVersion+0x56242c>
+144724573:     	movq	%rcx, (%rax)
+144724576:     	addq	$0x28, %rsp
+14472457a:     	retq
+14472457b:     	int3
+14472457c:     	int3
+14472457d:     	int3
+14472457e:     	int3
+14472457f:     	int3
+144724580:     	subq	$0x28, %rsp
+144724584:     	movq	0x317967d(%rip), %rax   # 0x14789dc08 <D3D12SDKPath+0x36f9d8>
+14472458b:     	testq	%rax, %rax
+14472458e:     	je	0x144724595 <src_float_to_int_array+0x3a82c05>
+144724590:     	addq	$0x28, %rsp
+144724594:     	retq
+144724595:     	callq	0x14419b460 <src_float_to_int_array+0x34f9ad0>
+14472459a:     	leaq	0x1f(%rip), %rcx        # 0x1447245c0 <src_float_to_int_array+0x3a82c30>
+1447245a1:     	leaq	0x2690a18(%rip), %r8    # 0x146db4fc0 <D3D12SDKVersion+0x55f9cc>
+1447245a8:     	movq	%rax, %rdx
+1447245ab:     	callq	0x1404f6da0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x489210>
+1447245b0:     	movq	%rax, 0x3179651(%rip)   # 0x14789dc08 <D3D12SDKPath+0x36f9d8>
+1447245b7:     	addq	$0x28, %rsp
+1447245bb:     	retq
+1447245bc:     	int3
+1447245bd:     	int3
+1447245be:     	int3
+1447245bf:     	int3
+1447245c0:     	subq	$0x28, %rsp
+1447245c4:     	movq	0x3179635(%rip), %rax   # 0x14789dc00 <D3D12SDKPath+0x36f9d0>
+1447245cb:     	testq	%rax, %rax
+1447245ce:     	je	0x1447245d5 <src_float_to_int_array+0x3a82c45>
+1447245d0:     	addq	$0x28, %rsp
+1447245d4:     	retq
+1447245d5:     	leaq	0x3179624(%rip), %rcx   # 0x14789dc00 <D3D12SDKPath+0x36f9d0>
+1447245dc:     	leaq	0x2690bc5(%rip), %rdx   # 0x146db51a8 <D3D12SDKVersion+0x55fbb4>
+1447245e3:     	callq	0x14050bd80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x49e1f0>
+1447245e8:     	movq	0x3179611(%rip), %rax   # 0x14789dc00 <D3D12SDKPath+0x36f9d0>
+1447245ef:     	addq	$0x28, %rsp
+1447245f3:     	retq
+1447245f4:     	int3
+1447245f5:     	int3
+1447245f6:     	int3
+1447245f7:     	int3
+1447245f8:     	int3
+1447245f9:     	int3
+1447245fa:     	int3
+1447245fb:     	int3
+1447245fc:     	int3
+1447245fd:     	int3
+1447245fe:     	int3
+1447245ff:     	int3
+144724600:     	subq	$0x28, %rsp
+144724604:     	movl	$0x10, %ecx
+144724609:     	callq	0x144302e50 <src_float_to_int_array+0x36614c0>
+14472460e:     	movabsq	$0x800000030, %rcx      # imm = 0x800000030
+144724618:     	movq	%rcx, 0x8(%rax)
+14472461c:     	leaq	0x26934dd(%rip), %rcx   # 0x146db7b00 <D3D12SDKVersion+0x56250c>
+144724623:     	movq	%rcx, (%rax)
+144724626:     	addq	$0x28, %rsp
+14472462a:     	retq
+14472462b:     	int3
+14472462c:     	int3
+14472462d:     	int3
+14472462e:     	int3
+14472462f:     	int3
+144724630:     	subq	$0x28, %rsp
+144724634:     	movq	0x31795e5(%rip), %rax   # 0x14789dc20 <D3D12SDKPath+0x36f9f0>
+14472463b:     	testq	%rax, %rax
+14472463e:     	je	0x144724645 <src_float_to_int_array+0x3a82cb5>
+144724640:     	addq	$0x28, %rsp
+144724644:     	retq
+144724645:     	callq	0x14419b460 <src_float_to_int_array+0x34f9ad0>
+14472464a:     	leaq	0x1f(%rip), %rcx        # 0x144724670 <src_float_to_int_array+0x3a82ce0>
+144724651:     	leaq	0x2690b88(%rip), %r8    # 0x146db51e0 <D3D12SDKVersion+0x55fbec>
+144724658:     	movq	%rax, %rdx
+14472465b:     	callq	0x1404f6da0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x489210>
+144724660:     	movq	%rax, 0x31795b9(%rip)   # 0x14789dc20 <D3D12SDKPath+0x36f9f0>
+144724667:     	addq	$0x28, %rsp
+14472466b:     	retq
+14472466c:     	int3
+14472466d:     	int3
+14472466e:     	int3
+14472466f:     	int3
+144724670:     	subq	$0x28, %rsp
+144724674:     	movq	0x317959d(%rip), %rax   # 0x14789dc18 <D3D12SDKPath+0x36f9e8>
+14472467b:     	testq	%rax, %rax
+14472467e:     	je	0x144724685 <src_float_to_int_array+0x3a82cf5>
+144724680:     	addq	$0x28, %rsp
+144724684:     	retq
+144724685:     	leaq	0x317958c(%rip), %rcx   # 0x14789dc18 <D3D12SDKPath+0x36f9e8>
+14472468c:     	leaq	0x2690e95(%rip), %rdx   # 0x146db5528 <D3D12SDKVersion+0x55ff34>
+144724693:     	callq	0x14050bd80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x49e1f0>
+144724698:     	movq	0x3179579(%rip), %rax   # 0x14789dc18 <D3D12SDKPath+0x36f9e8>
+14472469f:     	addq	$0x28, %rsp
+1447246a3:     	retq
+1447246a4:     	int3
+1447246a5:     	int3
+1447246a6:     	int3
+1447246a7:     	int3
+1447246a8:     	int3
+1447246a9:     	int3
+1447246aa:     	int3
+1447246ab:     	int3
+1447246ac:     	int3
+1447246ad:     	int3
+1447246ae:     	int3
+1447246af:     	int3
+1447246b0:     	subq	$0x28, %rsp
+1447246b4:     	movl	$0x10, %ecx
+1447246b9:     	callq	0x144302e50 <src_float_to_int_array+0x36614c0>
+1447246be:     	movabsq	$0x800000028, %rcx      # imm = 0x800000028
+1447246c8:     	movq	%rcx, 0x8(%rax)
+1447246cc:     	leaq	0x269350d(%rip), %rcx   # 0x146db7be0 <D3D12SDKVersion+0x5625ec>
+1447246d3:     	movq	%rcx, (%rax)
+1447246d6:     	addq	$0x28, %rsp
+1447246da:     	retq
+1447246db:     	int3
+1447246dc:     	int3
+1447246dd:     	int3
+1447246de:     	int3
+1447246df:     	int3
+1447246e0:     	subq	$0x28, %rsp
+1447246e4:     	movq	0x317954d(%rip), %rax   # 0x14789dc38 <D3D12SDKPath+0x36fa08>
+1447246eb:     	testq	%rax, %rax
+1447246ee:     	je	0x1447246f5 <src_float_to_int_array+0x3a82d65>
+1447246f0:     	addq	$0x28, %rsp
+1447246f4:     	retq
+1447246f5:     	callq	0x14419b460 <src_float_to_int_array+0x34f9ad0>
+1447246fa:     	leaq	0x1f(%rip), %rcx        # 0x144724720 <src_float_to_int_array+0x3a82d90>
+144724701:     	leaq	0x2690e58(%rip), %r8    # 0x146db5560 <D3D12SDKVersion+0x55ff6c>
+144724708:     	movq	%rax, %rdx
+14472470b:     	callq	0x1404f6da0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x489210>
+144724710:     	movq	%rax, 0x3179521(%rip)   # 0x14789dc38 <D3D12SDKPath+0x36fa08>
+144724717:     	addq	$0x28, %rsp
+14472471b:     	retq
+14472471c:     	int3
+14472471d:     	int3
+14472471e:     	int3
+14472471f:     	int3
+144724720:     	subq	$0x28, %rsp
+144724724:     	movq	0x3179505(%rip), %rax   # 0x14789dc30 <D3D12SDKPath+0x36fa00>
+14472472b:     	testq	%rax, %rax
+14472472e:     	je	0x144724735 <src_float_to_int_array+0x3a82da5>
+144724730:     	addq	$0x28, %rsp
+144724734:     	retq
+144724735:     	leaq	0x31794f4(%rip), %rcx   # 0x14789dc30 <D3D12SDKPath+0x36fa00>
+14472473c:     	leaq	0x2690ea5(%rip), %rdx   # 0x146db55e8 <D3D12SDKVersion+0x55fff4>
+144724743:     	callq	0x14050bd80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x49e1f0>
+144724748:     	movq	0x31794e1(%rip), %rax   # 0x14789dc30 <D3D12SDKPath+0x36fa00>
+14472474f:     	addq	$0x28, %rsp
+144724753:     	retq
+144724754:     	int3
+144724755:     	int3
+144724756:     	int3
+144724757:     	int3
+144724758:     	int3
+144724759:     	int3
+14472475a:     	int3
+14472475b:     	int3
+14472475c:     	int3
+14472475d:     	int3
+14472475e:     	int3
+14472475f:     	int3
+144724760:     	subq	$0x28, %rsp
+144724764:     	movl	$0x10, %ecx
+144724769:     	callq	0x144302e50 <src_float_to_int_array+0x36614c0>
+14472476e:     	movabsq	$0x800000038, %rcx      # imm = 0x800000038
+144724778:     	movq	%rcx, 0x8(%rax)
+14472477c:     	leaq	0x269354d(%rip), %rcx   # 0x146db7cd0 <D3D12SDKVersion+0x5626dc>
+144724783:     	movq	%rcx, (%rax)
+144724786:     	addq	$0x28, %rsp
+14472478a:     	retq
+14472478b:     	int3
+14472478c:     	int3
+14472478d:     	int3
+14472478e:     	int3
+14472478f:     	int3
+144724790:     	subq	$0x28, %rsp
+144724794:     	movq	0x31794b5(%rip), %rax   # 0x14789dc50 <D3D12SDKPath+0x36fa20>
+14472479b:     	testq	%rax, %rax
+14472479e:     	je	0x1447247a5 <src_float_to_int_array+0x3a82e15>
+1447247a0:     	addq	$0x28, %rsp
+1447247a4:     	retq
+1447247a5:     	callq	0x14419b460 <src_float_to_int_array+0x34f9ad0>
+1447247aa:     	leaq	0x1f(%rip), %rcx        # 0x1447247d0 <src_float_to_int_array+0x3a82e40>
+1447247b1:     	leaq	0x2690e68(%rip), %r8    # 0x146db5620 <D3D12SDKVersion+0x56002c>
+1447247b8:     	movq	%rax, %rdx
+1447247bb:     	callq	0x1404f6da0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x489210>
+1447247c0:     	movq	%rax, 0x3179489(%rip)   # 0x14789dc50 <D3D12SDKPath+0x36fa20>
+1447247c7:     	addq	$0x28, %rsp
+1447247cb:     	retq
+1447247cc:     	int3
+1447247cd:     	int3
+1447247ce:     	int3
+1447247cf:     	int3
+1447247d0:     	subq	$0x28, %rsp
+1447247d4:     	movq	0x317946d(%rip), %rax   # 0x14789dc48 <D3D12SDKPath+0x36fa18>
+1447247db:     	testq	%rax, %rax
+1447247de:     	je	0x1447247e5 <src_float_to_int_array+0x3a82e55>
+1447247e0:     	addq	$0x28, %rsp
+1447247e4:     	retq
+1447247e5:     	leaq	0x317945c(%rip), %rcx   # 0x14789dc48 <D3D12SDKPath+0x36fa18>
+1447247ec:     	leaq	0x2690ebd(%rip), %rdx   # 0x146db56b0 <D3D12SDKVersion+0x5600bc>
+1447247f3:     	callq	0x14050bd80 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x49e1f0>
+1447247f8:     	movq	0x3179449(%rip), %rax   # 0x14789dc48 <D3D12SDKPath+0x36fa18>
+1447247ff:     	addq	$0x28, %rsp
+144724803:     	retq
+144724804:     	int3
+144724805:     	int3
+144724806:     	int3
+144724807:     	int3
+144724808:     	int3
+144724809:     	int3
+14472480a:     	int3
+14472480b:     	int3
+14472480c:     	int3
+14472480d:     	int3
+14472480e:     	int3
+14472480f:     	int3
+144724810:     	subq	$0x28, %rsp
+144724814:     	movl	$0x10, %ecx
+144724819:     	callq	0x144302e50 <src_float_to_int_array+0x36614c0>
+14472481e:     	movabsq	$0x800000018, %rcx      # imm = 0x800000018
+144724828:     	movq	%rcx, 0x8(%rax)
+14472482c:     	leaq	0x269357d(%rip), %rcx   # 0x146db7db0 <D3D12SDKVersion+0x5627bc>
+144724833:     	movq	%rcx, (%rax)
+144724836:     	addq	$0x28, %rsp
+14472483a:     	retq
+14472483b:     	int3
+14472483c:     	int3
+14472483d:     	int3
+14472483e:     	int3
+14472483f:     	int3
+144724840:     	subq	$0x28, %rsp
+144724844:     	movq	0x3179435(%rip), %rax   # 0x14789dc80 <D3D12SDKPath+0x36fa50>
+14472484b:     	testq	%rax, %rax
+14472484e:     	je	0x144724855 <src_float_to_int_array+0x3a82ec5>
+144724850:     	addq	$0x28, %rsp
+144724854:     	retq
+144724855:     	leaq	0x3179424(%rip), %rcx   # 0x14789dc80 <D3D12SDKPath+0x36fa50>
+14472485c:     	leaq	0x269145d(%rip), %rdx   # 0x146db5cc0 <D3D12SDKVersion+0x5606cc>
+144724863:     	callq	0x14050c380 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x49e7f0>
+144724868:     	movq	0x3179411(%rip), %rax   # 0x14789dc80 <D3D12SDKPath+0x36fa50>
+14472486f:     	addq	$0x28, %rsp
+144724873:     	retq
+144724874:     	int3
+144724875:     	int3
+144724876:     	int3
+144724877:     	int3
+144724878:     	int3
+144724879:     	int3
+14472487a:     	int3
+14472487b:     	int3
+14472487c:     	int3
+14472487d:     	int3
+14472487e:     	int3
+14472487f:     	int3
+144724880:     	subq	$0x28, %rsp
+144724884:     	movq	0x31793d5(%rip), %rax   # 0x14789dc60 <D3D12SDKPath+0x36fa30>
+14472488b:     	testq	%rax, %rax
+14472488e:     	je	0x144724895 <src_float_to_int_array+0x3a82f05>
+144724890:     	addq	$0x28, %rsp
+144724894:     	retq
+144724895:     	leaq	0x31793c4(%rip), %rcx   # 0x14789dc60 <D3D12SDKPath+0x36fa30>
+14472489c:     	leaq	0x2690f3d(%rip), %rdx   # 0x146db57e0 <D3D12SDKVersion+0x5601ec>
+1447248a3:     	callq	0x14050b290 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x49d700>
+1447248a8:     	movq	0x31793b1(%rip), %rax   # 0x14789dc60 <D3D12SDKPath+0x36fa30>
+1447248af:     	addq	$0x28, %rsp
+1447248b3:     	retq
+1447248b4:     	int3
+1447248b5:     	int3
+1447248b6:     	int3
+1447248b7:     	int3
+1447248b8:     	int3
+1447248b9:     	int3
+1447248ba:     	int3
+1447248bb:     	int3
+1447248bc:     	int3
+1447248bd:     	int3
+1447248be:     	int3
+1447248bf:     	int3
+1447248c0:     	pushq	%rsi
+1447248c1:     	pushq	%rdi
+1447248c2:     	pushq	%rbp
+1447248c3:     	pushq	%rbx
+1447248c4:     	subq	$0x58, %rsp
+1447248c8:     	movq	%r9, %rdi
+1447248cb:     	movq	%r8, %rbx
+1447248ce:     	movl	%edx, %ebp
+1447248d0:     	movq	%rcx, %rsi
+1447248d3:     	movq	0x2e23d66(%rip), %rax   # 0x147548640 <D3D12SDKPath+0x1a410>
+1447248da:     	xorq	%rsp, %rax
+1447248dd:     	movq	%rax, 0x50(%rsp)
+1447248e2:     	vxorps	%xmm0, %xmm0, %xmm0
+1447248e6:     	vmovups	%xmm0, 0x28(%rsp)
+1447248ec:     	movq	$0x0, 0x38(%rsp)
+1447248f5:     	leaq	0x40(%rsp), %rcx
+1447248fa:     	callq	0x1400e1ee0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x74350>
+1447248ff:     	movb	%bpl, 0x20(%rsp)
+144724904:     	vmovups	(%rbx), %xmm0
+144724908:     	vmovups	%xmm0, 0x28(%rsp)
+14472490e:     	movq	0x10(%rbx), %rcx
+144724912:     	cmpb	$0x1, 0x2f5fb87(%rip)   # 0x1476844a0 <D3D12SDKPath+0x156270>
+144724919:     	jne	0x14472492d <src_float_to_int_array+0x3a82f9d>
+14472491b:     	testq	%rcx, %rcx
+14472491e:     	je	0x14472492b <src_float_to_int_array+0x3a82f9b>
+144724920:     	callq	0x1403d2930 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x364da0>
+144724925:     	movq	0x10(%rbx), %rcx
+144724929:     	jmp	0x14472492d <src_float_to_int_array+0x3a82f9d>
+14472492b:     	xorl	%ecx, %ecx
+14472492d:     	movq	%rcx, 0x38(%rsp)
+144724932:     	movq	(%rdi), %rcx
+144724935:     	movq	0x40(%rsp), %rbx
+14472493a:     	cmpq	%rcx, %rbx
+14472493d:     	je	0x14472496b <src_float_to_int_array+0x3a82fdb>
+14472493f:     	movq	%rcx, 0x40(%rsp)
+144724944:     	testq	%rcx, %rcx
+144724947:     	je	0x144724956 <src_float_to_int_array+0x3a82fc6>
+144724949:     	movq	(%rcx), %rax
+14472494c:     	movq	0x8(%rax), %rax
+144724950:     	callq	*0x142d172(%rip)        # 0x145b51ac8
+144724956:     	testq	%rbx, %rbx
+144724959:     	je	0x14472496b <src_float_to_int_array+0x3a82fdb>
+14472495b:     	movq	(%rbx), %rax
+14472495e:     	movq	0x10(%rax), %rax
+144724962:     	movq	%rbx, %rcx
+144724965:     	callq	*0x142d15d(%rip)        # 0x145b51ac8
+14472496b:     	movl	0x8(%rdi), %eax
+14472496e:     	movl	%eax, 0x48(%rsp)
+144724972:     	movq	%rsi, %rcx
+144724975:     	callq	0x14053aae0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x4ccf50>
+14472497a:     	testb	%al, %al
+14472497c:     	je	0x1447249ee <src_float_to_int_array+0x3a8305e>
+14472497e:     	cmpq	$0x0, 0x8(%rsi)
+144724983:     	je	0x1447249f3 <src_float_to_int_array+0x3a83063>
+144724985:     	movq	%rsi, %rcx
+144724988:     	callq	0x14053abf0 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x4cd060>
+14472498d:     	movq	%rax, %rdi
+144724990:     	movq	0x8(%rsi), %rdx
+144724994:     	movq	%rax, %rcx
+144724997:     	callq	0x1404dc760 <??4IAntiLag2Module@@QEAAAEAV0@AEBV0@@Z+0x46ebd0>
+14472499c:     	movq	(%rdi), %rcx
+14472499f:     	movq	0x280(%rcx), %r9
+1447249a6:     	leaq	0x20(%rsp), %r8
+1447249ab:     	movq	%rdi, %rcx
+1447249ae:     	movq	%rax, %rdx
+1447249b1:     	movq	%r9, %rax
+1447249b4:     	callq	*0x142d10e(%rip)        # 0x145b51ac8
+1447249ba:     	movq	0x40(%rsp), %rcx
+1447249bf:     	testq	%rcx, %rcx
+1447249c2:     	je	0x1447249d1 <src_float_to_int_array+0x3a83041>
+1447249c4:     	movq	(%rcx), %rax
+1447249c7:     	movq	0x10(%rax), %rax
+1447249cb:     	callq	*0x142d0f7(%rip)        # 0x145b51ac8
+1447249d1:     	movq	0x50(%rsp), %rax
+1447249d6:     	xorq	%rsp, %rax
+1447249d9:     	movq	0x2e23c60(%rip), %rcx   # 0x147548640 <D3D12SDKPath+0x1a410>
+1447249e0:     	cmpq	%rax, %rcx
+1447249e3:     	jne	0x1447249f8 <src_float_to_int_array+0x3a83068>
+1447249e5:     	addq	$0x58, %rsp
+1447249e9:     	popq	%rbx
+1447249ea:     	popq	%rbp
+1447249eb:     	popq	%rdi
+1447249ec:     	popq	%rsi
+1447249ed:     	retq
+1447249ee:     	callq	0x145a4bc92
+1447249f3:     	callq	0x145a4bcc8
+1447249f8:     	movq	0x50(%rsp), %rcx
+1447249fd:     	xorq	%rsp, %rcx

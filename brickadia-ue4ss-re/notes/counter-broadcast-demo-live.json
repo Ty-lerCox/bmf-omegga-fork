@@ -1,0 +1,22 @@
+﻿{
+    "mod_name":  "CounterBroadcastDemo",
+    "started_at":  "2026-03-23T21:56:12.3154495-04:00",
+    "pid":  43736,
+    "selected_port":  7777,
+    "map":  "Plate",
+    "interval_ms":  3000,
+    "connect_host":  "127.0.0.1",
+    "connect_address":  "127.0.0.1:7777",
+    "verified":  true,
+    "verify_reason":  "observed bridge hello plus demo bridge/context readiness",
+    "state_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\count.txt",
+    "trace_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\mod.log",
+    "bridge_inbox_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\bridge-inbox.ndjson",
+    "bridge_outbox_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\bridge-outbox.ndjson",
+    "bridge_status_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\bridge-status.json",
+    "bridge_trace_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\bridge-trace.log",
+    "chat_trace_path":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\ue4ss-counter-broadcast-demo\\chat-trace.log",
+    "ue4ss_log":  "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\UE4SS.log",
+    "brickadia_log":  "C:\\Users\\tycox\\OneDrive\\Documents\\GitHub\\Brickadia\\omegga-master\\omegga-master\\data\\Saved\\Logs\\Brickadia.log",
+    "runtime_mod":  "C:\\Users\\tycox\\AppData\\Roaming\\omegga\\steam_installs\\main\\Brickadia\\Binaries\\Win64\\ue4ss\\main\\Mods\\CounterBroadcastDemo"
+}

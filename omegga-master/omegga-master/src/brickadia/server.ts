@@ -1,0 +1,1079 @@
+/*
+  Brickadia Server Wrapper
+  Manages IO with the game server
+*/
+
+import Logger from '@/logger';
+import {
+  ACTIVE_WORLD_FILE,
+  CONFIG_SAVED_DIR,
+} from '@/softconfig';
+import { getGlobalToken } from '@cli/auth';
+import { IConfig } from '@config/types';
+import { terminateChildProcess } from '@util/process';
+import { IS_WINDOWS } from '@util/platform';
+import {
+  formatUe4ssDiagnostics,
+  getBrickadiaLogPath,
+  installManagedUe4ss,
+  readBrickadiaBuildInfo,
+  readUe4ssDiagnostics,
+  resolveGameBinary,
+  resolveWindowsControlBackend,
+  type WindowsControlBackend,
+} from '@util/ue4ss';
+import { ensureWindowsConsoleBridgeBinary } from '@util/windowsBridge';
+import { checkWsl } from '@util/wsl';
+import 'colors';
+import { ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
+import { randomInt } from 'node:crypto';
+import EventEmitter from 'node:events';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createConnection, Socket } from 'node:net';
+import path from 'node:path';
+import { env } from 'node:process';
+import readline from 'readline';
+import stripAnsi from 'strip-ansi';
+import Ue4ssBridgeHost from './ue4ssBridge';
+
+// list of errors that can be solved by yelling at the user
+const knownErrors: {
+  name: string;
+  solution?: string;
+  match: RegExp;
+  message?: string;
+}[] = [
+  {
+    name: 'MISSING_LIBGL',
+    solution: 'apt-get install libgl1-mesa-glx libglib2.0-0',
+    match:
+      /error while loading shared libraries: libGL\.so\.1: cannot open shared object file/,
+  },
+  {
+    name: 'MISSING_GLIB',
+    solution: 'apt-get install libgl1-mesa-glx libglib2.0-0',
+    match:
+      /error while loading shared libraries: libgthread-2\.0\.so\.0: cannot open shared object file/,
+  },
+];
+
+const WINDOWS_BRIDGE_CONNECT_RETRIES = 100;
+const WINDOWS_BRIDGE_CONNECT_RETRY_MS = 50;
+const WINDOWS_BRIDGE_CONTROL_PORT_MIN = 20000;
+const WINDOWS_BRIDGE_CONTROL_PORT_MAX = 60000;
+const WINDOWS_UE4SS_READY_TIMEOUT_MS = 15000;
+
+/** Start a brickadia server */
+export default class BrickadiaServer extends EventEmitter {
+  #child: ChildProcessWithoutNullStreams = null;
+  #errInterface: readline.Interface = null;
+  #outInterface: readline.Interface = null;
+  #windowsBackend: WindowsControlBackend = null;
+  #windowsControlPort: number = null;
+  #windowsControlSocket: Socket = null;
+  #windowsControlConnected = false;
+  #windowsControlQueue: string[] = [];
+  #windowsControlEndRequested = false;
+  #windowsControlRetryTimer: NodeJS.Timeout = null;
+  #ue4ssBridge: Ue4ssBridgeHost = null;
+  #ue4ssWin64Dir: string = null;
+  #syntheticLogCounter = 0;
+  #ue4ssDegraded = false;
+  #ue4ssCompatibilityValidated = true;
+  #ue4ssCompatibilityBundleId: string = null;
+  #ue4ssCompatibilityCl: string = null;
+  #ue4ssCompatibilityReportPath: string = null;
+
+  config: IConfig;
+  path: string;
+
+  constructor(dataPath: string, config: IConfig) {
+    super();
+
+    this.config = config;
+    // use the data path if it's absolute, otherwise build an absolute path
+    this.path =
+      path.isAbsolute(dataPath) || dataPath.startsWith('/')
+        ? dataPath
+        : path.join(process.cwd(), dataPath);
+
+    this.lineListener = this.lineListener.bind(this);
+    this.errorListener = this.errorListener.bind(this);
+    this.exitListener = this.exitListener.bind(this);
+  }
+
+  getWindowsControlBackend(): WindowsControlBackend {
+    return this.#windowsBackend;
+  }
+
+  getWindowsControlCapabilities() {
+    if (!IS_WINDOWS || this.#windowsBackend !== 'ue4ss' || !this.#ue4ssBridge) {
+      return null;
+    }
+
+    return this.#ue4ssBridge.getCapabilities();
+  }
+
+  async waitUntilControlReady(timeoutMs = WINDOWS_UE4SS_READY_TIMEOUT_MS) {
+    if (!IS_WINDOWS || !this.#windowsBackend) return null;
+
+    if (this.#windowsBackend === 'ue4ss') {
+      if (!this.#ue4ssBridge) {
+        throw new Error('UE4SS bridge has not been initialized.');
+      }
+
+      return this.#ue4ssBridge.waitUntilReady(timeoutMs);
+    }
+
+    if (this.#windowsControlConnected) {
+      return { backend: 'bridge' };
+    }
+
+    await new Promise((resolve, reject) => {
+      const startedAt = Date.now();
+      const timer = setInterval(() => {
+        if (this.#windowsControlConnected) {
+          clearInterval(timer);
+          resolve(null);
+          return;
+        }
+
+        if (Date.now() - startedAt >= timeoutMs) {
+          clearInterval(timer);
+          reject(new Error('Timed out waiting for the Windows control socket.'));
+        }
+      }, 100);
+      timer.unref?.();
+    });
+
+    return { backend: 'bridge' };
+  }
+
+  async pingWindowsControl(timeoutMs = 5000) {
+    if (!IS_WINDOWS || this.#windowsBackend !== 'ue4ss' || !this.#ue4ssBridge) {
+      throw new Error('UE4SS control backend is not active.');
+    }
+
+    return this.#ue4ssBridge.ping(timeoutMs);
+  }
+
+  getWindowsControlPort(): number {
+    return randomInt(
+      WINDOWS_BRIDGE_CONTROL_PORT_MIN,
+      WINDOWS_BRIDGE_CONTROL_PORT_MAX + 1,
+    );
+  }
+
+  clearWindowsControlRetry() {
+    if (!this.#windowsControlRetryTimer) return;
+
+    clearTimeout(this.#windowsControlRetryTimer);
+    this.#windowsControlRetryTimer = null;
+  }
+
+  flushWindowsControlQueue() {
+    if (
+      !this.#windowsControlSocket ||
+      !this.#windowsControlConnected ||
+      this.#windowsControlSocket.destroyed ||
+      this.#windowsControlSocket.writableEnded
+    ) {
+      return;
+    }
+
+    Logger.verbose(
+      'Flushing Windows console bridge queue',
+      this.#windowsControlQueue.length,
+      'pending line(s)',
+    );
+
+    while (this.#windowsControlQueue.length > 0) {
+      const line = this.#windowsControlQueue.shift();
+      Logger.verbose(
+        'Windows console bridge flush write',
+        JSON.stringify(line.replace(/\n$/, '')),
+      );
+      this.#windowsControlSocket.write(line);
+    }
+  }
+
+  connectWindowsControlSocket(port: number, attempt = 0) {
+    if (!IS_WINDOWS || !this.#child || this.#child.exitCode !== null) return;
+
+    const socket = createConnection({
+      host: '127.0.0.1',
+      port,
+    });
+
+    socket.setNoDelay(true);
+
+    socket.once('connect', () => {
+      if (this.#windowsControlSocket !== socket) {
+        socket.destroy();
+        return;
+      }
+
+      this.clearWindowsControlRetry();
+      this.#windowsControlConnected = true;
+      Logger.verbose(
+        'Connected to Windows console bridge control port',
+        port,
+        'local',
+        `${socket.localAddress}:${socket.localPort}`,
+        'remote',
+        `${socket.remoteAddress}:${socket.remotePort}`,
+      );
+      this.flushWindowsControlQueue();
+
+      if (this.#windowsControlEndRequested && !socket.writableEnded) {
+        socket.end();
+      }
+    });
+
+    socket.on('error', (err: NodeJS.ErrnoException) => {
+      Logger.verbose(
+        'Windows console bridge socket error',
+        err.code || 'UNKNOWN',
+        err.message,
+      );
+      if (this.#windowsControlSocket === socket) {
+        this.#windowsControlSocket = null;
+      }
+
+      this.#windowsControlConnected = false;
+      socket.destroy();
+
+      if (!this.#child || this.#child.exitCode !== null) return;
+
+      if (err.code === 'ECONNREFUSED' && attempt < WINDOWS_BRIDGE_CONNECT_RETRIES) {
+        this.#windowsControlRetryTimer = setTimeout(
+          () => this.connectWindowsControlSocket(port, attempt + 1),
+          WINDOWS_BRIDGE_CONNECT_RETRY_MS,
+        );
+        this.#windowsControlRetryTimer.unref?.();
+        return;
+      }
+
+      Logger.error(
+        'Failed to connect to Windows console bridge control port',
+        String(port).yellow,
+        err.message,
+      );
+    });
+
+    socket.on('close', () => {
+      Logger.verbose('Windows console bridge socket closed');
+      if (this.#windowsControlSocket === socket) {
+        this.#windowsControlSocket = null;
+      }
+
+      this.#windowsControlConnected = false;
+    });
+
+    this.#windowsControlSocket = socket;
+  }
+
+  writeToWindowsControl(line: string) {
+    if (
+      this.#windowsControlSocket &&
+      this.#windowsControlConnected &&
+      !this.#windowsControlSocket.destroyed &&
+      !this.#windowsControlSocket.writableEnded
+    ) {
+      Logger.verbose(
+        'Windows console bridge direct write',
+        JSON.stringify(line.replace(/\n$/, '')),
+      );
+      this.#windowsControlSocket.write(line);
+      return;
+    }
+
+    Logger.verbose(
+      'Queueing Windows console bridge write',
+      JSON.stringify(line.replace(/\n$/, '')),
+      'connected=',
+      this.#windowsControlConnected,
+      'socket=',
+      !!this.#windowsControlSocket,
+    );
+    this.#windowsControlQueue.push(line);
+  }
+
+  requestWindowsShutdown() {
+    if (!IS_WINDOWS) return;
+
+    this.#windowsControlEndRequested = true;
+    this.writeToWindowsControl('exit\n');
+
+    if (
+      this.#windowsControlSocket &&
+      this.#windowsControlConnected &&
+      !this.#windowsControlSocket.destroyed &&
+      !this.#windowsControlSocket.writableEnded
+    ) {
+      this.#windowsControlSocket.end();
+    }
+  }
+
+  cleanupWindowsControl() {
+    this.clearWindowsControlRetry();
+    this.#windowsControlPort = null;
+    this.#windowsControlQueue = [];
+    this.#windowsControlEndRequested = false;
+    this.#windowsControlConnected = false;
+
+    if (this.#windowsControlSocket) {
+      this.#windowsControlSocket.removeAllListeners();
+      this.#windowsControlSocket.destroy();
+      this.#windowsControlSocket = null;
+    }
+  }
+
+  cleanupUe4ssBridge() {
+    if (!this.#ue4ssBridge) return;
+
+    this.#ue4ssBridge.removeAllListeners();
+    this.#ue4ssBridge.stop();
+    this.#ue4ssBridge = null;
+  }
+
+  emitSyntheticConsoleLine(line: string) {
+    this.emit('line', this.formatSyntheticConsoleLine(line));
+  }
+
+  formatSyntheticConsoleLine(line: string) {
+    if (
+      /^\[\d{4}\.\d\d.\d\d-\d\d.\d\d.\d\d:\d{3}\]\[\s*\d+\]/.test(line)
+    ) {
+      return line;
+    }
+
+    const now = new Date();
+    const pad = (value: number, size = 2) => String(value).padStart(size, '0');
+    const timestamp = `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(
+      now.getDate(),
+    )}-${pad(now.getHours())}.${pad(now.getMinutes())}.${pad(
+      now.getSeconds(),
+    )}:${pad(now.getMilliseconds(), 3)}`;
+
+    this.#syntheticLogCounter += 1;
+    const payload = line.startsWith('LogConsoleCommands:')
+      ? line
+      : `LogConsoleCommands: ${line}`;
+
+    return `[${timestamp}][${this.#syntheticLogCounter}]${payload}`;
+  }
+
+  handleUe4ssDegraded(reason: string) {
+    if (!IS_WINDOWS || this.#windowsBackend !== 'ue4ss' || this.#ue4ssDegraded) {
+      return;
+    }
+
+    this.#ue4ssDegraded = true;
+
+    const diagnostics = this.#ue4ssWin64Dir
+      ? readUe4ssDiagnostics(this.#ue4ssWin64Dir)
+      : null;
+    const buildInfo = readBrickadiaBuildInfo(
+      getBrickadiaLogPath(
+        this.path,
+        this.config?.server?.savedDir ?? CONFIG_SAVED_DIR,
+      ),
+    );
+    const detail = diagnostics
+      ? formatUe4ssDiagnostics(diagnostics, buildInfo)
+      : '';
+    const message = [reason, detail].filter(Boolean).join(' ');
+
+    Logger.warnp('UE4SS control backend is degraded.'.yellow, message);
+    this.emit('control:degraded', {
+      backend: 'ue4ss',
+      reason,
+      detail,
+      diagnostics,
+      buildInfo,
+    });
+  }
+
+  async writeToUe4ssControl(line: string) {
+    if (!this.#ue4ssBridge) {
+      this.handleUe4ssDegraded('UE4SS bridge was not initialized.');
+      return;
+    }
+
+    const normalizedLine = line.replace(/\r?\n$/, '');
+    const runBridgeBookkeepingCommand = async () => {
+      if (
+        normalizedLine === 'Server.Status' &&
+        this.#ue4ssBridge.hasCapability('server_status')
+      ) {
+        await this.#ue4ssBridge.requestServerStatus();
+        return true;
+      }
+
+      const allowUnsafePlayersList =
+        process.env.OMEGGA_UE4SS_ALLOW_UNSAFE_PLAYERS_LIST === '1';
+      if (
+        allowUnsafePlayersList &&
+        normalizedLine === 'GetAll BRPlayerState UserName' &&
+        this.#ue4ssBridge.hasCapability('players_list')
+      ) {
+        await this.#ue4ssBridge.requestPlayers('usernames');
+        return true;
+      }
+
+      const ownerMatch = normalizedLine.match(
+        /^GetAll BRPlayerState Owner Name=(.+)$/,
+      );
+      if (
+        allowUnsafePlayersList &&
+        ownerMatch &&
+        this.#ue4ssBridge.hasCapability('players_list')
+      ) {
+        await this.#ue4ssBridge.requestPlayers(
+          'owners',
+          { stateName: ownerMatch[1] },
+        );
+        return true;
+      }
+
+      const allowDegradedWorldCommands =
+        process.env.OMEGGA_UE4SS_ALLOW_DEGRADED_WORLD_COMMANDS === '1';
+      const forceWorldCommand = normalizedLine.match(
+        /^Omegga\.Bridge\.ForceConsoleExecutor\s+(?:consolemanager|console)\s+((?:BR\.World\.(?:SaveAs|LoadAdditive)|Bricks\.(?:Save|SaveRegion|Load))\b.*)$/,
+      );
+      const directWorldCommand = normalizedLine.match(
+        /^(?:BR\.World\.(?:SaveAs|LoadAdditive)|Bricks\.(?:Save|SaveRegion|Load))\b.*$/,
+      );
+      if (allowDegradedWorldCommands && (forceWorldCommand || directWorldCommand)) {
+        const command = forceWorldCommand
+          ? normalizedLine
+          : `Omegga.Bridge.ForceConsoleExecutor consolemanager ${normalizedLine}`;
+        await this.#ue4ssBridge.execCommand(command);
+        return true;
+      }
+
+      return false;
+    };
+    const allowUnsafePositionProbes =
+      process.env.OMEGGA_UE4SS_ALLOW_UNSAFE_POSITION_PROBES === '1';
+    const isDegradedSafePositionProbe =
+      allowUnsafePositionProbes &&
+      /^GetAll BP_PlayerController_C Pawn Name=BP_PlayerController_C_\d+$/.test(
+        normalizedLine,
+      ) ||
+      (allowUnsafePositionProbes &&
+        /^GetAll SceneComponent RelativeLocation Name=CollisionCylinder Outer=BP_FigureV2_C_\d+$/.test(
+          normalizedLine,
+        ));
+    const buildInfo = readBrickadiaBuildInfo(
+      getBrickadiaLogPath(
+        this.path,
+        this.config?.server?.savedDir ?? CONFIG_SAVED_DIR,
+      ),
+    );
+
+    if (
+      this.#ue4ssCompatibilityCl &&
+      buildInfo.cl &&
+      buildInfo.cl !== this.#ue4ssCompatibilityCl
+    ) {
+      const reason =
+        `Detected Brickadia build CL${buildInfo.cl}, but the installed UE4SS compatibility bundle ` +
+        `${this.#ue4ssCompatibilityBundleId ?? 'unknown'} targets CL${this.#ue4ssCompatibilityCl}.`;
+      this.handleUe4ssDegraded(reason);
+      throw new Error(reason);
+    }
+
+    const tryTypedChatCommand = async (): Promise<boolean> => {
+      const decodeConsoleChatText = (value: string) => {
+        const trimmed = value.trim();
+        if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (typeof parsed === 'string') return parsed;
+          } catch (_error) {
+            return value;
+          }
+        }
+        return value;
+      };
+
+      const broadcastMatch = normalizedLine.match(/^Chat\.Broadcast\s+(.+)$/);
+      if (broadcastMatch && this.#ue4ssBridge.hasCapability('chat_broadcast')) {
+        await this.#ue4ssBridge.broadcast(decodeConsoleChatText(broadcastMatch[1]));
+        return true;
+      }
+
+      const whisperMatch = normalizedLine.match(/^Chat\.Whisper\s+"([^"]+)"\s+(.+)$/);
+      if (whisperMatch && this.#ue4ssBridge.hasCapability('chat_whisper')) {
+        await this.#ue4ssBridge.whisper(
+          whisperMatch[1],
+          decodeConsoleChatText(whisperMatch[2]),
+        );
+        return true;
+      }
+
+      const statusMessageMatch = normalizedLine.match(
+        /^Chat\.StatusMessage\s+"([^"]+)"\s+(.+)$/,
+      );
+      if (
+        statusMessageMatch &&
+        this.#ue4ssBridge.hasCapability('chat_status_message')
+      ) {
+        await this.#ue4ssBridge.statusMessage(
+          statusMessageMatch[1],
+          decodeConsoleChatText(statusMessageMatch[2]),
+        );
+        return true;
+      }
+
+      return false;
+    };
+
+    try {
+      if (await runBridgeBookkeepingCommand()) {
+        return;
+      }
+
+      if (await tryTypedChatCommand()) {
+        return;
+      }
+
+      if (!this.#ue4ssCompatibilityValidated) {
+        if (isDegradedSafePositionProbe) {
+          await this.#ue4ssBridge.execCommand(normalizedLine);
+          return;
+        }
+
+        const reason = [
+          `Brickadia UE4SS compatibility bundle ${this.#ue4ssCompatibilityBundleId ?? 'unknown'} is staged but not validated.`,
+          'Windows object-dependent control is paused until the baseline passes.',
+          this.#ue4ssCompatibilityReportPath
+            ? `See ${this.#ue4ssCompatibilityReportPath}.`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' ');
+        this.handleUe4ssDegraded(reason);
+        throw new Error(reason);
+      }
+
+      await this.#ue4ssBridge.execCommand(normalizedLine);
+    } catch (error) {
+      this.handleUe4ssDegraded(
+        error instanceof Error ? error.message : String(error),
+      );
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  async execControlCommandWithOutput(
+    command: string,
+    timeoutMs = WINDOWS_UE4SS_READY_TIMEOUT_MS,
+  ) {
+    if (!IS_WINDOWS || this.#windowsBackend !== 'ue4ss' || !this.#ue4ssBridge) {
+      await this.writelnAsync(command);
+      return null;
+    }
+
+    return this.#ue4ssBridge.execCommandWithOutput(command, timeoutMs);
+  }
+
+  getActiveWorldFile(): string {
+    return path.join(this.path, ACTIVE_WORLD_FILE);
+  }
+
+  /** A world specified by the active world file */
+  getActiveWorld(): string | null {
+    const activeWorldFile = this.getActiveWorldFile();
+    if (existsSync(activeWorldFile)) {
+      try {
+        return readFileSync(activeWorldFile, 'utf8').trim();
+      } catch (err) {
+        Logger.errorp(
+          'Failed to read active world file',
+          activeWorldFile.yellow,
+          err,
+        );
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /** Set the world to use next startup */
+  setActiveWorld(world: string | null): boolean {
+    const activeWorldFile = this.getActiveWorldFile();
+    if (!world || world === null) {
+      if (existsSync(activeWorldFile)) {
+        Logger.verbose('Removing active world file', activeWorldFile.yellow);
+        unlinkSync(activeWorldFile);
+      }
+      return true;
+    }
+
+    if (!this.worldExists(world)) {
+      Logger.verbose(
+        'Cannot set active world to',
+        world.yellow,
+        'as it does not exist',
+      );
+      return false;
+    }
+
+    Logger.verbose('Setting active world to', world.yellow);
+    try {
+      writeFileSync(activeWorldFile, world, 'utf8');
+      return true;
+    } catch (err) {
+      Logger.errorp(
+        'Failed to write active world file',
+        activeWorldFile.yellow,
+        err,
+      );
+      return false;
+    }
+  }
+
+  /** A world specified by the config */
+  getConfigWorld(): string | null {
+    return this.config?.server?.world ?? null;
+  }
+
+  /** A world specified by the BRICKADIA_WORLD env variable */
+  getEnvWorld(): string | null {
+    return env.BRICKADIA_WORLD || null;
+  }
+
+  /** Check if a world exists */
+  worldExists(world: string): boolean {
+    const savedDir = this.config?.server?.savedDir ?? CONFIG_SAVED_DIR;
+    const worldPath = path.join(this.path, savedDir, 'Worlds', world + '.brdb');
+    return existsSync(worldPath);
+  }
+
+  /** Get the world that will be used next startup */
+  getNextWorld() {
+    const candidates = [
+      { source: 'file', file: this.getActiveWorld() },
+      { source: 'config', file: this.getConfigWorld() },
+      { source: 'env', file: this.getEnvWorld() },
+    ];
+
+    return (
+      candidates.find(({ file }) => file && this.worldExists(file)) ?? null
+    );
+  }
+
+  // start the server child process
+  start() {
+    const {
+      email,
+      password,
+      token: confToken,
+    }: { email?: string; password?: string; token?: string } = this.config
+      .credentials || {};
+
+    const token = confToken || process.env.BRICKADIA_TOKEN || getGlobalToken();
+
+    if (token) {
+      Logger.verbose('Starting server with hosting token');
+    } else {
+      Logger.verbose(
+        'Starting server',
+        (!email && !password ? 'without' : 'with').yellow,
+        'credentials',
+      );
+    }
+
+    const {
+      gameBinary,
+      isSteam,
+      overrideBinary,
+      steamBinary,
+      steamBeta,
+    } = resolveGameBinary(this.config);
+
+    if (overrideBinary) {
+      if (!existsSync(overrideBinary)) {
+        Logger.error(
+          'Override binary',
+          overrideBinary.yellow,
+          'does not exist!',
+        );
+        throw new Error(`Override binary ${overrideBinary} does not exist!`);
+      }
+
+      Logger.verbose(
+        'Using override binary',
+        overrideBinary.yellow,
+        'instead of',
+        steamBinary.yellow,
+      );
+    } else if (isSteam) {
+      Logger.verbose('Using steam binary', steamBeta.yellow);
+    } else {
+      if (IS_WINDOWS) {
+        throw new Error(
+          'Legacy launcher branches are not supported on Windows. Use SteamCMD or BRICKADIA_DIR.',
+        );
+      }
+
+      Logger.verbose(
+        'Running',
+        (this.config.server.__LOCAL
+          ? path.join(__dirname, '../../tools/brickadia.sh')
+          : 'brickadia launcher'
+        ).yellow,
+      );
+      if (typeof this.config.server.branch === 'string')
+        Logger.verbose('Using branch', this.config.server.branch.yellow);
+    }
+
+    const command = isSteam
+      ? gameBinary
+      : this.config.server.__LOCAL
+        ? path.join(__dirname, '../../tools/brickadia.sh')
+        : 'brickadia';
+    const launchArgs = isSteam
+      ? []
+      : [
+          this.config.server.branch && `--branch=${this.config.server.branch}`,
+          '--server',
+          '--',
+        ];
+
+    const world = this.getNextWorld();
+    if (world) {
+      Logger.verbose(
+        'Using world',
+        world.file.yellow,
+        'from',
+        world.source.yellow,
+      );
+    } else if (this.config.server.map) {
+      Logger.verbose('Using map', this.config.server.map.yellow, 'from config');
+    }
+
+    const gameArgs = [
+      !world &&
+        this.config.server.map &&
+        `-Environment="${this.config.server.map}"`,
+      world && `-World="${world.file}"`,
+      '-NotInstalled',
+      IS_WINDOWS ? '-stdout' : null,
+      IS_WINDOWS ? '-FullStdOutLogOutput' : null,
+      '-log',
+      checkWsl() === 1 ? '-OneThread' : null,
+      this.path ? `-UserDir="${this.path}"` : null,
+      token ? `-Token="${token}"` : null, // remove token argument if not provided
+      !token && email ? `-User="${email}"` : null, // remove email argument if not provided or token is provided
+      !token && password ? `-Password="${password}"` : null, // remove password argument if not provided or token is provided
+      `-port="${this.config.server.port}"`,
+      this.config.server.launchArgs,
+    ].filter(Boolean); // remove unused arguments
+    const params = [...launchArgs, ...gameArgs];
+
+    Logger.verbose(
+      'Params for spawn',
+      [command, ...params]
+        .join(' ')
+        .replace(/-User=".*?"/, '-User="<hidden>"')
+        .replace(/-Password=".*?"/, '-Password="<hidden>"')
+        .replace(/-Token=".*?"/, '-Token="<hidden>"'),
+    );
+
+    this.cleanupWindowsControl();
+    this.cleanupUe4ssBridge();
+    this.#windowsBackend = IS_WINDOWS ? resolveWindowsControlBackend() : null;
+    this.#windowsControlPort =
+      IS_WINDOWS && this.#windowsBackend === 'bridge'
+        ? this.getWindowsControlPort()
+        : null;
+    this.#ue4ssWin64Dir = IS_WINDOWS ? path.dirname(command) : null;
+    this.#syntheticLogCounter = 0;
+    this.#ue4ssDegraded = false;
+    this.#ue4ssCompatibilityValidated = true;
+    this.#ue4ssCompatibilityBundleId = null;
+    this.#ue4ssCompatibilityCl = null;
+    this.#ue4ssCompatibilityReportPath = null;
+
+    let spawnCommand = 'stdbuf';
+    let spawnArgs = ['--output=L', '--', command, ...params];
+    const spawnEnv = { ...process.env };
+
+    if (IS_WINDOWS && this.#windowsBackend === 'ue4ss') {
+      const install = installManagedUe4ss(this.#ue4ssWin64Dir);
+      this.#ue4ssCompatibilityValidated =
+        install.compatibilityBundle.manifest.validated;
+      this.#ue4ssCompatibilityBundleId = install.compatibilityBundle.bundleId;
+      this.#ue4ssCompatibilityCl =
+        install.compatibilityBundle.manifest.brickadia_cl;
+      this.#ue4ssCompatibilityReportPath =
+        install.compatibilityBundle.validationReportMarkdownPath;
+      Logger.verbose(
+        'Using Windows control backend',
+        'ue4ss'.yellow,
+        'from',
+        install.sourceRoot.yellow,
+      );
+      Logger.verbose(
+        'Using Brickadia UE4SS compatibility bundle',
+        `${install.compatibilityBundle.bundleId} (${install.compatibilityBundle.manifest.validated ? 'validated' : 'staged'})`
+          .yellow,
+      );
+      if (!this.#ue4ssCompatibilityValidated) {
+        Logger.warnp(
+          'Brickadia UE4SS compatibility bundle'.yellow,
+          install.compatibilityBundle.bundleId.yellow,
+          'is staged but not validated. Windows object-dependent control stays degraded until',
+          install.compatibilityBundle.validationReportMarkdownPath.yellow,
+          'passes the baseline gates.',
+        );
+      }
+
+      this.#ue4ssBridge = new Ue4ssBridgeHost(path.join(this.path, 'ue4ss-bridge'));
+      this.#ue4ssBridge.on('ready', info => {
+        Logger.verbose('UE4SS bridge ready', info);
+        this.emit('control:ready', {
+          backend: 'ue4ss',
+          transport: info.transport ?? 'file',
+          capabilities: this.#ue4ssBridge.capabilities,
+        });
+      });
+      this.#ue4ssBridge.on('capabilities', capabilities => {
+        Logger.verbose('UE4SS bridge capabilities', capabilities);
+      });
+      this.#ue4ssBridge.on('log', payload => {
+        const message =
+          typeof payload === 'string'
+            ? payload
+            : String(
+                (payload as { message?: string })?.message ??
+                  JSON.stringify(payload),
+              );
+        Logger.verbose('UE4SS bridge', message);
+        this.emit('control:log', { backend: 'ue4ss', payload });
+      });
+      this.#ue4ssBridge.on('console.chunk', payload => {
+        if (typeof payload.line === 'string' && payload.line.length > 0) {
+          this.emitSyntheticConsoleLine(payload.line);
+        }
+      });
+      this.#ue4ssBridge.on('console.complete', payload => {
+        this.emit('control:complete', { backend: 'ue4ss', payload });
+      });
+
+      Object.assign(spawnEnv, this.#ue4ssBridge.start());
+      spawnCommand = command;
+      spawnArgs = params;
+    } else if (IS_WINDOWS) {
+      Logger.verbose(
+        'Using Windows control backend',
+        'bridge'.yellow,
+        '(legacy fallback)',
+      );
+      spawnCommand = ensureWindowsConsoleBridgeBinary();
+      spawnArgs = [
+        '--control-port',
+        String(this.#windowsControlPort),
+        '--cwd',
+        process.cwd(),
+        '--',
+        command,
+        ...params,
+      ];
+    }
+
+    Logger.verbose(
+      'Spawn command',
+      [spawnCommand, ...spawnArgs]
+        .join(' ')
+        .replace(/-User=".*?"/, '-User="<hidden>"')
+        .replace(/-Password=".*?"/, '-Password="<hidden>"')
+        .replace(/-Token=".*?"/, '-Token="<hidden>"'),
+    );
+
+    this.#child = spawn(spawnCommand, spawnArgs, {
+      stdio: 'pipe',
+      windowsHide: IS_WINDOWS,
+      env: spawnEnv,
+    });
+
+    Logger.verbose(
+      'Spawn process',
+      this.#child ? this.#child.pid : 'failed'.red,
+    );
+    if (!this.#child)
+      throw new Error('Failed to spawn Brickadia server process');
+
+    this.#child.stdin.setDefaultEncoding('utf8');
+    if (IS_WINDOWS && this.#windowsBackend === 'bridge')
+      this.connectWindowsControlSocket(this.#windowsControlPort);
+    this.#outInterface = readline.createInterface({
+      input: this.#child.stdout,
+      terminal: false,
+    });
+    this.#errInterface = readline.createInterface({
+      input: this.#child.stderr,
+      terminal: false,
+    });
+    this.attachListeners();
+    Logger.verbose('Attached listeners');
+
+    if (IS_WINDOWS && this.#windowsBackend === 'ue4ss' && this.#ue4ssBridge) {
+      void this.#ue4ssBridge
+        .waitUntilReady(WINDOWS_UE4SS_READY_TIMEOUT_MS)
+        .catch(error =>
+          this.handleUe4ssDegraded(
+            error instanceof Error ? error.message : String(error),
+          ),
+        );
+    }
+  }
+
+  // write a string to the child process
+  async writeAsync(line: string) {
+    if (line.length >= 512) {
+      // show a warning
+      Logger.warn(
+        'WARNING'.yellow,
+        'The following line was called and is',
+        'longer than allowed limit'.red,
+      );
+      Logger.warn(line.replace(/\n$/, ''));
+      // throw a fake error to get the line number
+      try {
+        throw new Error('Console Line Too Long');
+      } catch (err) {
+        Logger.warn(err);
+      }
+      return;
+    }
+    if (this.#child) {
+      Logger.verbose('WRITE'.green, line.replace(/\n$/, ''));
+      if (IS_WINDOWS) {
+        if (this.#windowsBackend === 'ue4ss') {
+          await this.writeToUe4ssControl(line);
+        } else {
+          this.writeToWindowsControl(line);
+        }
+      } else {
+        this.#child.stdin.write(line);
+      }
+    }
+  }
+
+  write(line: string) {
+    void this.writeAsync(line).catch(() => {});
+  }
+
+  // write a line to the child process
+  async writelnAsync(line: string) {
+    await this.writeAsync(line + '\n');
+  }
+
+  writeln(line: string) {
+    this.write(line + '\n');
+  }
+
+  // forcibly kills the server
+  stop() {
+    if (!this.#child) {
+      Logger.verbose('Cannot stop server as no subprocess exists');
+      return;
+    }
+
+    Logger.verbose('Stopping server process');
+    if (IS_WINDOWS && this.#windowsBackend === 'ue4ss') {
+      if (this.#ue4ssBridge) {
+        void this.#ue4ssBridge.execCommand('exit', 2000).catch(error =>
+          Logger.verbose(
+            'UE4SS exit command failed',
+            error instanceof Error ? error.message : String(error),
+          ),
+        );
+      }
+      void terminateChildProcess(this.#child, {
+        forceAfterMs: 5000,
+        immediateSignal: false,
+      });
+    } else if (IS_WINDOWS) {
+      this.requestWindowsShutdown();
+      void terminateChildProcess(this.#child, {
+        forceAfterMs: 5000,
+        immediateSignal: false,
+      });
+    } else {
+      void terminateChildProcess(this.#child, {
+        gracefulLine: 'exit',
+        forceAfterMs: 5000,
+        immediateSignal: false,
+      });
+    }
+  }
+
+  // detaches listeners
+  cleanup() {
+    if (!this.#child) return;
+
+    Logger.verbose('Cleaning up brickadia server');
+
+    // detach listener
+    this.detachListeners();
+    this.cleanupWindowsControl();
+    this.cleanupUe4ssBridge();
+    this.#windowsBackend = null;
+    this.#ue4ssWin64Dir = null;
+    this.#ue4ssCompatibilityValidated = true;
+    this.#ue4ssCompatibilityBundleId = null;
+    this.#ue4ssCompatibilityCl = null;
+    this.#ue4ssCompatibilityReportPath = null;
+
+    this.#child = null;
+    this.#outInterface = null;
+    this.#errInterface = null;
+  }
+
+  // attaches proxy event listeners
+  attachListeners() {
+    this.#outInterface.on('line', this.lineListener);
+    this.#errInterface.on('line', this.errorListener);
+    this.#child.on('exit', this.exitListener);
+    this.#child.on('close', () => {});
+  }
+
+  // removes previously attached proxy event listeners
+  detachListeners() {
+    this.#outInterface.off('line', this.lineListener);
+    this.#errInterface.off('line', this.errorListener);
+    this.#child.off('exit', this.exitListener);
+    this.#child.removeAllListeners('close');
+  }
+
+  // -- listeners for basic events (line, err, exit)
+  errorListener(line: string) {
+    Logger.verbose('ERROR'.red, line);
+    this.emit('err', line);
+    for (const { match, solution, name, message } of knownErrors) {
+      if (line.match(match)) {
+        Logger.error(
+          `Encountered ${name.red}. ${
+            solution ? 'Known fix:\n  ' + solution : message || 'Unknown error.'
+          }`,
+        );
+      }
+    }
+  }
+
+  exitListener(...args: any[]) {
+    Logger.verbose('Exit listener fired');
+    this.emit('closed', ...args);
+    this.cleanup();
+  }
+
+  lineListener(line: string) {
+    this.emit('line', stripAnsi(line));
+  }
+}
