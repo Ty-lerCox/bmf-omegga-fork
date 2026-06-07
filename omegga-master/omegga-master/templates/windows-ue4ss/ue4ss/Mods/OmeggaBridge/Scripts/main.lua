@@ -5893,6 +5893,20 @@ local function execute_command(id, command)
     end
 end
 
+function unsafe_console_exec_block_reason(command)
+    local lower = trim(command or ""):lower()
+    if lower:match("^server%.players%.setteam%s+") then
+        return "Server.Players.SetTeam is blocked in the UE4SS bridge because this Brickadia dedicated-server build crashes in ProcessConsoleExec; use a BMF/native minigame team API instead"
+    end
+    if lower:match("^getall%s+bp_ruleset_c") then
+        return "GetAll BP_Ruleset_C is blocked in the UE4SS bridge because it can crash this Brickadia dedicated-server build; use BMF minigame live/data commands instead"
+    end
+    if lower:match("^getall%s+bp_team_c") then
+        return "GetAll BP_Team_C is blocked in the UE4SS bridge because it can crash this Brickadia dedicated-server build; use BMF minigame live/data commands instead"
+    end
+    return nil
+end
+
 local function handle_message(line)
     local message = parse_message(line)
     if not message.method then
@@ -6016,6 +6030,17 @@ local function handle_message(line)
                 "Console command is empty",
                 "console.exec requires command_b64 or command",
                 -32602
+            )
+            return
+        end
+        local unsafe_reason = unsafe_console_exec_block_reason(command)
+        if unsafe_reason ~= nil then
+            finish_command_error(
+                message.id or 0,
+                command,
+                "Console command blocked by OmeggaBridge safety policy",
+                unsafe_reason,
+                -32004
             )
             return
         end

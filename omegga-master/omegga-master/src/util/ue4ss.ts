@@ -31,6 +31,7 @@ const UE4SS_CACHE_DIR = path.join(CONFIG_HOME, 'ue4ss');
 const UE4SS_BRIDGE_MOD_NAME = 'OmeggaBridge';
 const UE4SS_PROBE_MOD_NAME = 'OmeggaBridgeProbe';
 const BMF_MOD_NAME = 'BMF';
+const BMF_SOCKET_MOD_NAME = 'BMFSocket';
 const BMF_SOURCE_ENV = 'OMEGGA_BMF_SOURCE_DIR';
 const TEMPLATE_ROOT = path.resolve(
   __dirname,
@@ -534,9 +535,10 @@ function syncManagedBridgeMod(
 
 function getManagedBmfMod() {
   const overrideSourceDir = process.env[BMF_SOURCE_ENV]?.trim();
-  const sourceDir = overrideSourceDir
+  const configuredSourceDir = overrideSourceDir
     ? path.resolve(overrideSourceDir)
     : path.join(TEMPLATE_ROOT, UE4SS_DIRNAME, 'Mods', BMF_MOD_NAME);
+  const sourceDir = resolveBmfSourceDir(configuredSourceDir);
 
   if (!fs.existsSync(sourceDir)) {
     const sourceLabel = overrideSourceDir
@@ -544,7 +546,7 @@ function getManagedBmfMod() {
       : 'bundled BMF template';
     throw new Error(
       `Could not locate the ${sourceLabel} at ${sourceDir}. ` +
-        `This Omegga build must be packaged with ${BMF_MOD_NAME}, or ${BMF_SOURCE_ENV} must point to a complete BMF mod directory.`,
+        `This Omegga build must be packaged with ${BMF_MOD_NAME}, or ${BMF_SOURCE_ENV} must point to a complete BMF mod directory or BMF repository root.`,
     );
   }
 
@@ -555,9 +557,74 @@ function getManagedBmfMod() {
   };
 }
 
+function getManagedBmfSocketMod() {
+  const overrideSourceDir = process.env[BMF_SOURCE_ENV]?.trim();
+  const configuredSourceDir = overrideSourceDir
+    ? path.resolve(overrideSourceDir)
+    : path.join(TEMPLATE_ROOT, UE4SS_DIRNAME, 'Mods', BMF_MOD_NAME);
+  const sourceDir = resolveSiblingManagedModSourceDir(
+    configuredSourceDir,
+    BMF_SOCKET_MOD_NAME,
+  );
+  const dllPath = path.join(sourceDir, 'dlls', 'main.dll');
+
+  if (!fs.existsSync(dllPath)) {
+    return null;
+  }
+
+  return {
+    name: BMF_SOCKET_MOD_NAME,
+    sourceDir,
+    enabled: true,
+  };
+}
+
+function resolveBmfSourceDir(sourceDir: string) {
+  if (fs.existsSync(path.join(sourceDir, 'bmf.json'))) return sourceDir;
+
+  const repoLayoutSourceDir = path.join(
+    sourceDir,
+    'framework',
+    UE4SS_DIRNAME,
+    'Mods',
+    BMF_MOD_NAME,
+  );
+  if (fs.existsSync(path.join(repoLayoutSourceDir, 'bmf.json'))) {
+    return repoLayoutSourceDir;
+  }
+
+  return sourceDir;
+}
+
+function resolveSiblingManagedModSourceDir(
+  configuredSourceDir: string,
+  modName: string,
+) {
+  if (fs.existsSync(path.join(configuredSourceDir, 'bmf.json'))) {
+    return path.join(path.dirname(configuredSourceDir), modName);
+  }
+
+  const repoLayoutSourceDir = path.join(
+    configuredSourceDir,
+    'framework',
+    UE4SS_DIRNAME,
+    'Mods',
+    modName,
+  );
+  if (fs.existsSync(repoLayoutSourceDir)) {
+    return repoLayoutSourceDir;
+  }
+
+  return path.join(configuredSourceDir, modName);
+}
+
 function getManagedMods() {
   const mods: { name: string; sourceDir: string; enabled: boolean }[] = [];
   mods.push(getManagedBmfMod());
+  const bmfSocketMod = getManagedBmfSocketMod();
+  if (bmfSocketMod) {
+    mods.push(bmfSocketMod);
+  }
   return mods;
 }
 
@@ -568,8 +635,20 @@ function syncManagedMods(destinationModsDir: string) {
     fs.cpSync(mod.sourceDir, path.join(destinationModsDir, mod.name), {
       recursive: true,
       force: true,
+      filter: shouldCopyManagedModPath,
     });
   }
+}
+
+function shouldCopyManagedModPath(sourcePath: string) {
+  const name = path.basename(sourcePath);
+  return ![
+    '.git',
+    '.github',
+    '.pytest_cache',
+    '__pycache__',
+    'node_modules',
+  ].includes(name);
 }
 
 function ensureBridgeModEnabled(modsDir: string) {

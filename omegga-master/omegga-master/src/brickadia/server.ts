@@ -34,6 +34,7 @@ import path from 'node:path';
 import { env } from 'node:process';
 import readline from 'readline';
 import stripAnsi from 'strip-ansi';
+import BmfSocketBridgeHost from './bmfSocketBridge';
 import Ue4ssBridgeHost from './ue4ssBridge';
 
 // list of errors that can be solved by yelling at the user
@@ -88,6 +89,8 @@ const MINIGAME_GETALL_COMMANDS = new Set([
 const isAllowedMinigameGetAllCommand = (line: string) =>
   MINIGAME_GETALL_COMMANDS.has(line);
 
+const STAGED_PLAYER_MUTATION_COMMAND = /^Server\.Players\.(?:SetTeam|SetMinigame|SetLeaderboardValue|GiveItem|RemoveItem)\b/;
+
 /** Start a brickadia server */
 export default class BrickadiaServer extends EventEmitter {
   #child: ChildProcessWithoutNullStreams = null;
@@ -101,6 +104,7 @@ export default class BrickadiaServer extends EventEmitter {
   #windowsControlEndRequested = false;
   #windowsControlRetryTimer: NodeJS.Timeout = null;
   #ue4ssBridge: Ue4ssBridgeHost = null;
+  #bmfSocketBridge: BmfSocketBridgeHost = null;
   #ue4ssWin64Dir: string = null;
   #syntheticLogCounter = 0;
   #ue4ssDegraded = false;
@@ -108,6 +112,7 @@ export default class BrickadiaServer extends EventEmitter {
   #ue4ssCompatibilityBundleId: string = null;
   #ue4ssCompatibilityCl: string = null;
   #ue4ssCompatibilityReportPath: string = null;
+  #ue4ssStagedObjectControlOverride = false;
   #writeQueue: Promise<void> = Promise.resolve();
 
   config: IConfig;
@@ -363,6 +368,14 @@ export default class BrickadiaServer extends EventEmitter {
     this.#ue4ssBridge = null;
   }
 
+  cleanupBmfSocketBridge() {
+    if (!this.#bmfSocketBridge) return;
+
+    this.#bmfSocketBridge.removeAllListeners();
+    this.#bmfSocketBridge.stop();
+    this.#bmfSocketBridge = null;
+  }
+
   emitSyntheticConsoleLine(line: string) {
     this.emit('line', this.formatSyntheticConsoleLine(line));
   }
@@ -576,8 +589,11 @@ export default class BrickadiaServer extends EventEmitter {
       const allowMinigameGetAll =
         env.OMEGGA_UE4SS_ALLOW_MINIGAME_GETALL === '1' &&
         isAllowedMinigameGetAllCommand(normalizedLine);
+      const noopUnsafeConsoleCommands =
+        env.OMEGGA_UE4SS_NOOP_UNSAFE_CONSOLE_COMMANDS === '1' ||
+        this.#ue4ssStagedObjectControlOverride;
       if (
-        env.OMEGGA_UE4SS_NOOP_UNSAFE_CONSOLE_COMMANDS === '1' &&
+        noopUnsafeConsoleCommands &&
         /^GetAll\s+/i.test(normalizedLine) &&
         !allowMinigameGetAll
       ) {
@@ -591,6 +607,17 @@ export default class BrickadiaServer extends EventEmitter {
       if (requireConsoleCommandShape && !looksLikeConsoleCommand) {
         Logger.verbose(
           'UE4SS bridge skipping non-command line',
+          normalizedLine,
+        );
+        return;
+      }
+
+      if (
+        this.#ue4ssStagedObjectControlOverride &&
+        STAGED_PLAYER_MUTATION_COMMAND.test(normalizedLine)
+      ) {
+        Logger.warnp(
+          'UE4SS bridge skipped staged player mutation command'.yellow,
           normalizedLine,
         );
         return;
@@ -847,6 +874,7 @@ export default class BrickadiaServer extends EventEmitter {
 
     this.cleanupWindowsControl();
     this.cleanupUe4ssBridge();
+    this.cleanupBmfSocketBridge();
     this.#windowsBackend = IS_WINDOWS ? resolveWindowsControlBackend() : null;
     this.#windowsControlPort =
       IS_WINDOWS && this.#windowsBackend === 'bridge'
@@ -859,6 +887,7 @@ export default class BrickadiaServer extends EventEmitter {
     this.#ue4ssCompatibilityBundleId = null;
     this.#ue4ssCompatibilityCl = null;
     this.#ue4ssCompatibilityReportPath = null;
+    this.#ue4ssStagedObjectControlOverride = false;
 
     let spawnCommand = 'stdbuf';
     let spawnArgs = ['--output=L', '--', command, ...params];
@@ -868,6 +897,9 @@ export default class BrickadiaServer extends EventEmitter {
       const install = installManagedUe4ss(this.#ue4ssWin64Dir);
       const allowStagedObjectControl =
         env.OMEGGA_UE4SS_ALLOW_STAGED_OBJECT_CONTROL === '1';
+      this.#ue4ssStagedObjectControlOverride =
+        !install.compatibilityBundle.manifest.validated &&
+        allowStagedObjectControl;
       this.#ue4ssCompatibilityValidated =
         install.compatibilityBundle.manifest.validated ||
         allowStagedObjectControl;
@@ -888,8 +920,7 @@ export default class BrickadiaServer extends EventEmitter {
             .yellow,
       );
       if (
-        !install.compatibilityBundle.manifest.validated &&
-        allowStagedObjectControl
+        this.#ue4ssStagedObjectControlOverride
       ) {
         Logger.warnp(
           'Brickadia UE4SS compatibility bundle'.yellow,
@@ -939,6 +970,28 @@ export default class BrickadiaServer extends EventEmitter {
       });
 
       Object.assign(spawnEnv, this.#ue4ssBridge.start());
+      if (env.OMEGGA_BMF_SOCKET_ENABLED !== '0') {
+        this.#bmfSocketBridge = new BmfSocketBridgeHost();
+        this.#bmfSocketBridge.on('ready', info => {
+          Logger.verbose('BMF socket bridge ready', info);
+        });
+        this.#bmfSocketBridge.on('client', info => {
+          Logger.verbose('BMF socket bridge client', info);
+        });
+        this.#bmfSocketBridge.on('log', payload => {
+          const message =
+            typeof payload === 'string'
+              ? payload
+              : String(
+                  (payload as { message?: string })?.message ??
+                    JSON.stringify(payload),
+                );
+          Logger.verbose('BMF socket bridge', message);
+        });
+        const bmfSocketEnv = this.#bmfSocketBridge.start();
+        Object.assign(spawnEnv, bmfSocketEnv);
+        Object.assign(process.env, bmfSocketEnv);
+      }
       spawnCommand = command;
       spawnArgs = params;
     } else if (IS_WINDOWS) {
@@ -1107,6 +1160,7 @@ export default class BrickadiaServer extends EventEmitter {
     this.detachListeners();
     this.cleanupWindowsControl();
     this.cleanupUe4ssBridge();
+    this.cleanupBmfSocketBridge();
     this.#windowsBackend = null;
     this.#ue4ssWin64Dir = null;
     this.#ue4ssCompatibilityValidated = true;

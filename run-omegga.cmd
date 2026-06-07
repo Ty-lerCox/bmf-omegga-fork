@@ -8,6 +8,8 @@ set "OMEGGA_WINDOWS_BACKEND=ue4ss"
 set "OMEGGA_UE4SS_PREFAB_PASTE=1"
 set "OMEGGA_UE4SS_UNSAFE_PROBES=1"
 set "OMEGGA_UE4SS_ALLOW_DEGRADED_WORLD_COMMANDS=1"
+set "OMEGGA_UE4SS_ALLOW_STAGED_OBJECT_CONTROL=1"
+set "OMEGGA_UE4SS_NOOP_UNSAFE_CONSOLE_COMMANDS=1"
 set "OMEGGA_UE4SS_ALLOW_UNSAFE_PLAYER_LOCATION=0"
 set "OMEGGA_NATIVE_PREFAB_PLAYER_LOCATION=0"
 set "OMEGGA_NATIVE_PREFAB_FALLBACK_X=14"
@@ -50,6 +52,15 @@ if exist "%UE4SS_SOURCE%\dwmapi.dll" (
   echo WARNING: Bundled UE4SS source was not found at:
   echo   %UE4SS_SOURCE%
   echo Omegga will fall back to its normal UE4SS source resolution.
+  echo.
+)
+
+if exist "%SCRIPT_DIR%..\bmf\framework\ue4ss\Mods\BMF\bmf.json" (
+  set "OMEGGA_BMF_SOURCE_DIR=%SCRIPT_DIR%..\bmf"
+) else (
+  echo WARNING: Sibling BMF repo was not found at:
+  echo   %SCRIPT_DIR%..\bmf
+  echo Omegga will fall back to its packaged BMF template.
   echo.
 )
 

@@ -16,6 +16,14 @@ version skew: the Windows bridge templates, `OmeggaBridge`, BMF staging, and
 UE4SS compatibility work are validated against this fork rather than the newest
 upstream release.
 
+For low-latency BMF minigame and command traffic, this fork starts a loopback
+BMF socket broker for UE4SS launches and passes the generated host, port, and
+token through `OMEGGA_BMF_SOCKET_*`. The optional `BMFSocket` UE4SS C++ mod is
+only copied and enabled when `Mods/BMFSocket/dlls/main.dll` exists. Live
+CityRPG validation used this path to assign a minigame team over the socket in
+about 51ms, replacing the earlier multi-second file-polling workflow for that
+gameplay path.
+
 The generic install instructions below are upstream Omegga documentation. Use
 them for non-Windows or generic plugin development. For BMF Windows runtime
 work, clone and run the forked repository instead of installing `omegga` from

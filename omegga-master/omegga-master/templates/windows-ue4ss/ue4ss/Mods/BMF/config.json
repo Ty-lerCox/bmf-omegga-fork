@@ -6,5 +6,6 @@
     "pluginWatchdogMaxErrors":  3,
     "allowPluginUnsafeGlobals":  false,
     "allowUnsafeApplicatorLuaHook":  false,
-    "brickadiaSavedDir":  "C:/Users/tycox/OneDrive/Documents/GitHub/Brickadia/omegga-master/omegga-master/data/Saved"
+    "brickadiaSavedDir":  "C:/Users/tycox/OneDrive/Documents/GitHub/Brickadia/omegga-master/omegga-master/data/Saved",
+    "allowUnsafeMinigameObjectSnapshot":  false
 }
