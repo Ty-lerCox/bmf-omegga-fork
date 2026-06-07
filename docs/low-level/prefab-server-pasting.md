@@ -4,6 +4,11 @@ This document captures the current Windows dedicated-server prefab loading path.
 It is intentionally low level: it describes the bridge pieces we have today and
 the constraints that matter before wrapping them in a safer Lua/Omegga API.
 
+When this document says Omegga, it means the BMF-supported Windows fork at
+<https://github.com/Ty-lerCox/bmf-omegga-fork>. Stock upstream Omegga is not the
+supported Windows runtime for this path, and the fork intentionally trails the
+latest upstream builds. See [Supported Omegga Runtime](../supported-omegga-runtime.md).
+
 ## Scope
 
 The current goal is to paste a Brickadia prefab into a running dedicated server
@@ -21,7 +26,7 @@ need to be re-verified before relying on this path.
 
 - Reverse-engineering repo:
   `C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\brickadia-ue4ss-re`
-- Omegga repo:
+- BMF-supported Omegga fork:
   `C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\omegga-master\omegga-master`
 - UE4SS source:
   `C:\Users\tycox\Tools\reverse-engineering\RE-UE4SS`

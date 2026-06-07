@@ -9,6 +9,10 @@ The functions below are the intended public wrapper over the current low-level
 bridge path. They should hide `.brz` to `.brdb` conversion, world-bundle
 staging, console-manager execution, and log verification.
 
+Runtime note: the `Omegga.*` namespace in this API targets the
+BMF-supported Windows fork at <https://github.com/Ty-lerCox/bmf-omegga-fork>,
+not stock upstream Omegga.
+
 Important: the additive world-bundle API is not sufficient for dynamic vehicle
 prefabs. It can stage and load archive contents, but current testing shows it
 does not create the same physics/dynamic actor state as Brickadia's normal

@@ -1,12 +1,23 @@
 # Brickadia Server Lua API
 
-Draft API documentation for exposing dedicated-server automation through
-Omegga and UE4SS Lua.
+Draft API documentation for exposing dedicated-server automation through the
+BMF-supported Omegga Windows fork and UE4SS Lua.
 
 This section is written like public website documentation: start with the
 supported workflow, then drill into function references and error behavior.
 The high-level prefab API is the target contract. The low-level bridge commands
 are the pieces currently available while that contract is being implemented.
+
+## Supported Runtime
+
+When this documentation says Omegga, it means the BMF-supported Windows fork at
+<https://github.com/Ty-lerCox/bmf-omegga-fork>, not the stock upstream Omegga
+package. Upstream Omegga is Linux/WSL-oriented and is not the supported Windows
+runtime for this bridge path. The fork intentionally trails the latest upstream
+builds; keep the fork version aligned with the BMF/UE4SS bridge templates.
+
+See [Supported Omegga Runtime](../supported-omegga-runtime.md) for the runtime
+contract.
 
 ## Status
 

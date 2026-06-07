@@ -4,6 +4,23 @@ Read the README first before asking questions! [Join the discord](https://discor
 
 Omegga wraps [Brickadia](https://brickadia.com/)'s server console to provide interactivity and utility via plugins along with a web interface for managing your server.
 
+## BMF Windows Runtime Notice
+
+For BMF Windows server automation, **Omegga means the forked runtime at
+<https://github.com/Ty-lerCox/bmf-omegga-fork>**. Stock upstream Omegga and the
+global npm package are Linux/WSL-oriented and are not the supported Windows
+runtime for the BMF/UE4SS bridge path.
+
+This fork intentionally trails the latest upstream Omegga builds. Keep that
+version skew: the Windows bridge templates, `OmeggaBridge`, BMF staging, and
+UE4SS compatibility work are validated against this fork rather than the newest
+upstream release.
+
+The generic install instructions below are upstream Omegga documentation. Use
+them for non-Windows or generic plugin development. For BMF Windows runtime
+work, clone and run the forked repository instead of installing `omegga` from
+npm.
+
 Omegga can do things like:
 
 - Automatically update/restart your server
@@ -37,7 +54,9 @@ Omegga plugins can do things like:
 
 ## Install
 
-You can run omegga in the [Windows Subsystem for Linux](#wsl) (I recommend Ubuntu) or on an actual linux install.
+For upstream/generic Omegga, you can run omegga in the
+[Windows Subsystem for Linux](#wsl) (I recommend Ubuntu) or on an actual linux
+install. For BMF Windows runtime work, use the fork linked in the notice above.
 
 <font size="5" color="red">Do not install omegga or run brickadia/omegga as root/superuser</font>:
 
@@ -52,6 +71,10 @@ If any of the above are true, [create a new user](#creating-a-new-user) and cont
 If you need to run omegga as root, make sure your branch is `main-server` or `unstable-server`, as `main` will not work as root.
 
 ### Quick Setup
+
+This quick setup is for upstream/generic Omegga on Linux or WSL. For BMF
+Windows runtime work, use the forked repository from the notice above instead
+of `npm i -g omegga`.
 
 1. Install linux if you haven't already ([Windows Install](#wsl) is not that bad)
 
@@ -131,15 +154,17 @@ Omegga depends on:
   - `tar` (most linuxes come with this, though you can `sudo apt install tar`)
   - [Brickadia linux launcher](https://brickadia.com/download)
 
-Omegga is installed as a global npm package
+Upstream/generic Omegga is installed as a global npm package. Do not use this
+install path for the BMF Windows runtime.
 
     npm i -g omegga
 
-Alternatively, you can use a development/local omegga.
+Alternatively, you can use a development/local omegga. For BMF Windows runtime
+work, clone the supported fork instead of upstream:
 
 ```sh
 # clone omegga
-git clone https://github.com/brickadia-community/omegga.git && cd omegga
+git clone https://github.com/Ty-lerCox/bmf-omegga-fork.git && cd bmf-omegga-fork/omegga-master/omegga-master
 
 # install dependencies
 npm i
@@ -218,9 +243,14 @@ Omegga will prompt for credentials as necessary and only stores the auth tokens 
 
 ## Updating
 
-Omegga will tell you when it's out of date. You can update with this command:
+Upstream/generic Omegga will tell you when it's out of date. You can update it
+with this command:
 
     npm i -g omegga
+
+For the BMF Windows runtime, update the cloned fork intentionally and keep it on
+the supported fork revision. Do not replace it with the newest upstream npm
+package unless the BMF/UE4SS bridge has been validated against that version.
 
 If don't have automatic update enabled, you can start update the Brickadia server by starting omegga with the `--update` flag:
 

@@ -2,7 +2,16 @@
 
 This workspace is the source of truth for Brickadia-specific UE4SS compatibility work.
 
-The current target is `Brickadia EA2 (PC-Shipping-CL13530)`. Omegga consumes only the compatibility bundle artifacts from this workspace. It does not treat ad hoc runtime probing as proof that Windows object-dependent control is safe.
+The current target is `Brickadia EA2 (PC-Shipping-CL13530)`. The
+BMF-supported Omegga Windows fork consumes only the compatibility bundle
+artifacts from this workspace. It does not treat ad hoc runtime probing as
+proof that Windows object-dependent control is safe.
+
+Runtime note: Omegga references in this workspace mean
+<https://github.com/Ty-lerCox/bmf-omegga-fork> unless explicitly stated
+otherwise. Do not substitute stock upstream Omegga for the Windows runtime; the
+fork is intentionally several builds behind upstream and is the supported
+BMF/UE4SS integration target.
 
 ## Layout
 
@@ -29,11 +38,11 @@ The current target is `Brickadia EA2 (PC-Shipping-CL13530)`. Omegga consumes onl
 
 ## Current State
 
-- The `CL13530` bundle exists and is consumable by Omegga.
+- The `CL13530` bundle exists and is consumable by the supported Omegga fork.
 - The `CL13530` bundle is **staged**, not validated.
 - The copied `CL12960` signatures and layout must be rerun through the baseline ladder before Windows object-dependent control can be enabled.
 
-Until those pass the baseline ladder, Omegga should remain degraded for Windows object-dependent features.
+Until those pass the baseline ladder, the supported Omegga fork should remain degraded for Windows object-dependent features.
 
 ## Baseline Ladder
 

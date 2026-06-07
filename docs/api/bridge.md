@@ -1,13 +1,19 @@
 # Bridge API
 
 Low-level bridge interface for sending commands into a Windows Brickadia
-dedicated server through Omegga and UE4SS.
+dedicated server through the BMF-supported Omegga Windows fork and UE4SS.
 
 Status: `Available`, `Internal`, `Unsafe`
 
 Normal plugins should use the high-level prefab API once it exists. This page
 documents the current bridge because it is the working path for prefab loading
 today.
+
+Runtime requirement: Omegga here means the fork at
+<https://github.com/Ty-lerCox/bmf-omegga-fork>. Do not use stock upstream
+Omegga or the npm package for the Windows bridge runtime; the fork is several
+builds behind upstream by design and carries the supported Windows/BMF bridge
+integration. See [Supported Omegga Runtime](../supported-omegga-runtime.md).
 
 ## Transport
 
