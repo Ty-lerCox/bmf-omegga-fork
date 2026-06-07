@@ -62,6 +62,31 @@ const WINDOWS_BRIDGE_CONNECT_RETRY_MS = 50;
 const WINDOWS_BRIDGE_CONTROL_PORT_MIN = 20000;
 const WINDOWS_BRIDGE_CONTROL_PORT_MAX = 60000;
 const WINDOWS_UE4SS_READY_TIMEOUT_MS = 15000;
+const DEFAULT_WINDOWS_UE4SS_WRITE_SPACING_MS = 75;
+
+const delay = (ms: number) =>
+  new Promise<void>(resolve => setTimeout(resolve, ms));
+
+const getWindowsUe4ssWriteSpacingMs = () => {
+  const value = Number(
+    env.OMEGGA_UE4SS_WRITE_SPACING_MS ??
+      DEFAULT_WINDOWS_UE4SS_WRITE_SPACING_MS,
+  );
+
+  return Number.isFinite(value) && value > 0 ? value : 0;
+};
+
+const MINIGAME_GETALL_COMMANDS = new Set([
+  'GetAll BP_Ruleset_C RulesetName',
+  'GetAll BP_Ruleset_C MemberStates',
+  'GetAll BP_Ruleset_C bInSession',
+  'GetAll BP_Team_C MemberStates',
+  'GetAll BP_Team_C TeamName',
+  'GetAll BP_Team_C TeamColor',
+]);
+
+const isAllowedMinigameGetAllCommand = (line: string) =>
+  MINIGAME_GETALL_COMMANDS.has(line);
 
 /** Start a brickadia server */
 export default class BrickadiaServer extends EventEmitter {
@@ -83,6 +108,7 @@ export default class BrickadiaServer extends EventEmitter {
   #ue4ssCompatibilityBundleId: string = null;
   #ue4ssCompatibilityCl: string = null;
   #ue4ssCompatibilityReportPath: string = null;
+  #writeQueue: Promise<void> = Promise.resolve();
 
   config: IConfig;
   path: string;
@@ -466,6 +492,13 @@ export default class BrickadiaServer extends EventEmitter {
         /^GetAll SceneComponent RelativeLocation Name=CollisionCylinder Outer=BP_FigureV2_C_\d+$/.test(
           normalizedLine,
         ));
+    const requireConsoleCommandShape =
+      env.OMEGGA_UE4SS_REQUIRE_COMMAND_SHAPE === '1';
+    const looksLikeConsoleCommand =
+      /^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+(?:\s|$)/.test(
+        normalizedLine,
+      ) ||
+      /^(?:GetAll|ServerTravel|exit|quit)\b/i.test(normalizedLine);
     const buildInfo = readBrickadiaBuildInfo(
       getBrickadiaLogPath(
         this.path,
@@ -540,6 +573,29 @@ export default class BrickadiaServer extends EventEmitter {
         return;
       }
 
+      const allowMinigameGetAll =
+        env.OMEGGA_UE4SS_ALLOW_MINIGAME_GETALL === '1' &&
+        isAllowedMinigameGetAllCommand(normalizedLine);
+      if (
+        env.OMEGGA_UE4SS_NOOP_UNSAFE_CONSOLE_COMMANDS === '1' &&
+        /^GetAll\s+/i.test(normalizedLine) &&
+        !allowMinigameGetAll
+      ) {
+        Logger.verbose(
+          'UE4SS bridge skipping unsafe console probe',
+          normalizedLine,
+        );
+        return;
+      }
+
+      if (requireConsoleCommandShape && !looksLikeConsoleCommand) {
+        Logger.verbose(
+          'UE4SS bridge skipping non-command line',
+          normalizedLine,
+        );
+        return;
+      }
+
       if (!this.#ue4ssCompatibilityValidated) {
         if (isDegradedSafePositionProbe) {
           await this.#ue4ssBridge.execCommand(normalizedLine);
@@ -561,9 +617,14 @@ export default class BrickadiaServer extends EventEmitter {
 
       await this.#ue4ssBridge.execCommand(normalizedLine);
     } catch (error) {
-      this.handleUe4ssDegraded(
-        error instanceof Error ? error.message : String(error),
-      );
+      const reason = error instanceof Error ? error.message : String(error);
+      this.handleUe4ssDegraded(reason);
+
+      if (/^Chat\.(?:Broadcast|Whisper|StatusMessage)\b/.test(normalizedLine)) {
+        Logger.warn('UE4SS chat delivery failed', reason);
+        return;
+      }
+
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -805,8 +866,11 @@ export default class BrickadiaServer extends EventEmitter {
 
     if (IS_WINDOWS && this.#windowsBackend === 'ue4ss') {
       const install = installManagedUe4ss(this.#ue4ssWin64Dir);
+      const allowStagedObjectControl =
+        env.OMEGGA_UE4SS_ALLOW_STAGED_OBJECT_CONTROL === '1';
       this.#ue4ssCompatibilityValidated =
-        install.compatibilityBundle.manifest.validated;
+        install.compatibilityBundle.manifest.validated ||
+        allowStagedObjectControl;
       this.#ue4ssCompatibilityBundleId = install.compatibilityBundle.bundleId;
       this.#ue4ssCompatibilityCl =
         install.compatibilityBundle.manifest.brickadia_cl;
@@ -820,10 +884,19 @@ export default class BrickadiaServer extends EventEmitter {
       );
       Logger.verbose(
         'Using Brickadia UE4SS compatibility bundle',
-        `${install.compatibilityBundle.bundleId} (${install.compatibilityBundle.manifest.validated ? 'validated' : 'staged'})`
-          .yellow,
+          `${install.compatibilityBundle.bundleId} (${install.compatibilityBundle.manifest.validated ? 'validated' : allowStagedObjectControl ? 'staged, local override' : 'staged'})`
+            .yellow,
       );
-      if (!this.#ue4ssCompatibilityValidated) {
+      if (
+        !install.compatibilityBundle.manifest.validated &&
+        allowStagedObjectControl
+      ) {
+        Logger.warnp(
+          'Brickadia UE4SS compatibility bundle'.yellow,
+          install.compatibilityBundle.bundleId.yellow,
+          'is staged but local object control is enabled by OMEGGA_UE4SS_ALLOW_STAGED_OBJECT_CONTROL=1.',
+        );
+      } else if (!this.#ue4ssCompatibilityValidated) {
         Logger.warnp(
           'Brickadia UE4SS compatibility bundle'.yellow,
           install.compatibilityBundle.bundleId.yellow,
@@ -935,34 +1008,44 @@ export default class BrickadiaServer extends EventEmitter {
 
   // write a string to the child process
   async writeAsync(line: string) {
-    if (line.length >= 512) {
-      // show a warning
-      Logger.warn(
-        'WARNING'.yellow,
-        'The following line was called and is',
-        'longer than allowed limit'.red,
-      );
-      Logger.warn(line.replace(/\n$/, ''));
-      // throw a fake error to get the line number
-      try {
-        throw new Error('Console Line Too Long');
-      } catch (err) {
-        Logger.warn(err);
-      }
-      return;
-    }
-    if (this.#child) {
-      Logger.verbose('WRITE'.green, line.replace(/\n$/, ''));
-      if (IS_WINDOWS) {
-        if (this.#windowsBackend === 'ue4ss') {
-          await this.writeToUe4ssControl(line);
-        } else {
-          this.writeToWindowsControl(line);
+    const runWrite = async () => {
+      if (line.length >= 512) {
+        // show a warning
+        Logger.warn(
+          'WARNING'.yellow,
+          'The following line was called and is',
+          'longer than allowed limit'.red,
+        );
+        Logger.warn(line.replace(/\n$/, ''));
+        // throw a fake error to get the line number
+        try {
+          throw new Error('Console Line Too Long');
+        } catch (err) {
+          Logger.warn(err);
         }
-      } else {
-        this.#child.stdin.write(line);
+        return;
       }
-    }
+
+      if (this.#child) {
+        Logger.verbose('WRITE'.green, line.replace(/\n$/, ''));
+        if (IS_WINDOWS) {
+          if (this.#windowsBackend === 'ue4ss') {
+            await this.writeToUe4ssControl(line);
+
+            const spacingMs = getWindowsUe4ssWriteSpacingMs();
+            if (spacingMs > 0) await delay(spacingMs);
+          } else {
+            this.writeToWindowsControl(line);
+          }
+        } else {
+          this.#child.stdin.write(line);
+        }
+      }
+    };
+
+    const queuedWrite = this.#writeQueue.then(runWrite, runWrite);
+    this.#writeQueue = queuedWrite.catch(() => {});
+    return queuedWrite;
   }
 
   write(line: string) {

@@ -29,6 +29,7 @@ const windowsDescribe = IS_WINDOWS ? describe : describe.skip;
 const tempDirs: string[] = [];
 const originalUe4ssSource = process.env.OMEGGA_UE4SS_SOURCE;
 const originalUe4ssReRoot = process.env.OMEGGA_UE4SS_RE_ROOT;
+const originalBmfSource = process.env.OMEGGA_BMF_SOURCE_DIR;
 
 const makeTempDir = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'omegga-windows-'));
@@ -103,8 +104,11 @@ const createTempCompatibilityWorkspace = ({
 afterEach(() => {
   if (originalUe4ssSource === undefined) delete process.env.OMEGGA_UE4SS_SOURCE;
   else process.env.OMEGGA_UE4SS_SOURCE = originalUe4ssSource;
-  if (originalUe4ssReRoot === undefined) delete process.env.OMEGGA_UE4SS_RE_ROOT;
+  if (originalUe4ssReRoot === undefined)
+    delete process.env.OMEGGA_UE4SS_RE_ROOT;
   else process.env.OMEGGA_UE4SS_RE_ROOT = originalUe4ssReRoot;
+  if (originalBmfSource === undefined) delete process.env.OMEGGA_BMF_SOURCE_DIR;
+  else process.env.OMEGGA_BMF_SOURCE_DIR = originalBmfSource;
 
   vi.restoreAllMocks();
 
@@ -251,11 +255,35 @@ windowsDescribe('Windows platform support', () => {
       ),
     ).toBe(true);
     expect(
+      fs.existsSync(
+        path.join(targetRoot, 'ue4ss', 'Mods', 'BMF', 'Scripts', 'main.lua'),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(
+          targetRoot,
+          'ue4ss',
+          'Brickadia',
+          'Mods',
+          'BMF',
+          'Scripts',
+          'main.lua',
+        ),
+      ),
+    ).toBe(true);
+    expect(
       fs.readFileSync(
         path.join(targetRoot, 'ue4ss', 'Brickadia', 'Mods', 'mods.txt'),
         'utf8',
       ),
     ).toContain('OmeggaBridge : 1');
+    expect(
+      fs.readFileSync(
+        path.join(targetRoot, 'ue4ss', 'Brickadia', 'Mods', 'mods.txt'),
+        'utf8',
+      ),
+    ).toContain('BMF : 1');
     expect(
       fs.existsSync(
         path.join(
@@ -268,8 +296,25 @@ windowsDescribe('Windows platform support', () => {
       ),
     ).toBe(true);
     expect(
-      fs.readFileSync(path.join(targetRoot, 'ue4ss', 'Mods', 'mods.txt'), 'utf8'),
+      fs.readFileSync(
+        path.join(targetRoot, 'ue4ss', 'Mods', 'mods.txt'),
+        'utf8',
+      ),
     ).toContain('OmeggaBridge : 1');
+    expect(
+      fs.readFileSync(
+        path.join(targetRoot, 'ue4ss', 'Mods', 'mods.txt'),
+        'utf8',
+      ),
+    ).toContain('BMF : 1');
+    expect(
+      JSON.parse(
+        fs.readFileSync(
+          path.join(targetRoot, 'ue4ss', 'Mods', 'mods.json'),
+          'utf8',
+        ),
+      ),
+    ).toContainEqual({ mod_name: 'BMF', mod_enabled: true });
 
     disableManagedUe4ss(targetRoot);
     expect(fs.existsSync(path.join(targetRoot, 'dwmapi.dll'))).toBe(false);
@@ -311,8 +356,60 @@ windowsDescribe('Windows platform support', () => {
     installManagedUe4ss(targetRoot);
 
     expect(
-      copyFileSpy.mock.calls.some(([, destination]) => destination === targetProxyDll),
+      copyFileSpy.mock.calls.some(
+        ([, destination]) => destination === targetProxyDll,
+      ),
     ).toBe(false);
+  });
+
+  it('uses OMEGGA_BMF_SOURCE_DIR as the managed BMF package override', () => {
+    const sourceRoot = makeTempDir();
+    const targetRoot = makeTempDir();
+    const bmfSource = makeTempDir();
+    const compatibilityWorkspace = createTempCompatibilityWorkspace();
+
+    fs.mkdirSync(path.join(sourceRoot, 'ue4ss', 'Mods'), { recursive: true });
+    fs.writeFileSync(path.join(sourceRoot, 'dwmapi.dll'), 'proxy');
+    fs.writeFileSync(path.join(sourceRoot, 'ue4ss', 'UE4SS.dll'), 'dll');
+    fs.writeFileSync(
+      path.join(sourceRoot, 'ue4ss', 'UE4SS-settings.ini'),
+      '[General]\n',
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, 'ue4ss', 'Mods', 'mods.txt'),
+      'Keybinds : 1\n',
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, 'ue4ss', 'Mods', 'mods.json'),
+      '[]\n',
+    );
+
+    fs.mkdirSync(path.join(bmfSource, 'Scripts'), { recursive: true });
+    fs.writeFileSync(path.join(bmfSource, 'bmf.json'), '{"name":"BMF"}\n');
+    fs.writeFileSync(
+      path.join(bmfSource, 'Scripts', 'main.lua'),
+      'return nil\n',
+    );
+    fs.writeFileSync(path.join(bmfSource, 'override-marker.txt'), 'override\n');
+
+    process.env.OMEGGA_UE4SS_SOURCE = sourceRoot;
+    process.env.OMEGGA_UE4SS_RE_ROOT = compatibilityWorkspace.workspaceRoot;
+    process.env.OMEGGA_BMF_SOURCE_DIR = bmfSource;
+
+    installManagedUe4ss(targetRoot);
+
+    expect(
+      fs.readFileSync(
+        path.join(targetRoot, 'ue4ss', 'Mods', 'BMF', 'override-marker.txt'),
+        'utf8',
+      ),
+    ).toBe('override\n');
+    expect(
+      fs.readFileSync(
+        path.join(targetRoot, 'ue4ss', 'Mods', 'mods.txt'),
+        'utf8',
+      ),
+    ).toContain('BMF : 1');
   });
 
   it('parses UE4SS compatibility diagnostics', () => {
@@ -325,7 +422,7 @@ windowsDescribe('Windows platform support', () => {
         '[2026-03-06 16:00:03.1106958] UE4SS - v3.0.1 Beta #0 - Git SHA #01e0a584',
         '[2026-03-06 16:00:03.1200000] Found configuration for game: main',
         '[2026-03-06 16:00:03.2631603] [PS] Found EngineVersion: 5.5',
-        "[2026-03-06 16:00:03.2639619] [PS] Failed to find FName::FName(wchar_t*): FNameCtorWchar: found 2 unique values [A, B]",
+        '[2026-03-06 16:00:03.2639619] [PS] Failed to find FName::FName(wchar_t*): FNameCtorWchar: found 2 unique values [A, B]',
         "[2026-03-06 16:00:03.2642467] [PS] You can supply your own AOB in 'UE4SS_Signatures/FName_Constructor.lua'",
         '[2026-03-06 16:00:03.2678489] [PS] Scan failed',
       ].join('\n'),
@@ -499,21 +596,25 @@ windowsDescribe('Windows platform support', () => {
     });
     await expect(bridge.ping(1000)).resolves.toMatchObject({ pong: true });
     expect(bridge.hasCapability('server_status')).toBe(true);
-    await expect(bridge.execCommand('Server.Status', 1000)).resolves.toMatchObject({
+    await expect(
+      bridge.execCommand('Server.Status', 1000),
+    ).resolves.toMatchObject({
       accepted: true,
     });
     await expect(bridge.requestServerStatus(1000)).resolves.toMatchObject({
       accepted: true,
     });
-    await expect(bridge.requestPlayers('usernames', {}, 1000)).resolves.toMatchObject({
+    await expect(
+      bridge.requestPlayers('usernames', {}, 1000),
+    ).resolves.toMatchObject({
       accepted: true,
     });
-    await expect(bridge.broadcast('Hello from typed test', 1000)).resolves.toMatchObject(
-      {
-        accepted: true,
-        executor: 'typed-chat-broadcast',
-      },
-    );
+    await expect(
+      bridge.broadcast('Hello from typed test', 1000),
+    ).resolves.toMatchObject({
+      accepted: true,
+      executor: 'typed-chat-broadcast',
+    });
     expect(consoleChunks).toContain('Server Name: Test Server');
     expect(consoleChunks).toContain(
       '0) BP_PlayerState_C PersistentLevel.BP_PlayerState_C_1.UserName = Ty',

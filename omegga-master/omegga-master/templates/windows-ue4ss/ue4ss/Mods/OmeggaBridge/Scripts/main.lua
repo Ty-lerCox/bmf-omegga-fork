@@ -178,6 +178,9 @@ local observed_chat_function_path = nil
 local observed_chat_context = nil
 local observed_chat_source = nil
 local call_by_name_helper_available = nil
+CHAT_WHISPER_PLAYER_SOURCE_BY_TARGET = CHAT_WHISPER_PLAYER_SOURCE_BY_TARGET or {}
+CHAT_WHISPER_LAST_PLAYER_SOURCE = CHAT_WHISPER_LAST_PLAYER_SOURCE or nil
+CHAT_WHISPER_LAST_TARGET_KEY = CHAT_WHISPER_LAST_TARGET_KEY or ""
 local call_by_name_helper_error = nil
 
 local function read_file(path)
@@ -708,6 +711,26 @@ function quote_console_string(value)
     return "\"" .. quote_name(value) .. "\""
 end
 
+function unquote_console_string(value)
+    local result = trim(tostring(value or ""))
+    if #result >= 2 and result:sub(1, 1) == "\"" and result:sub(-1) == "\"" then
+        result = result:sub(2, -2)
+        result = result:gsub("\\n", "\n")
+        result = result:gsub("\\r", "\r")
+        result = result:gsub("\\t", "\t")
+        result = result:gsub("\\\"", "\"")
+        result = result:gsub("\\\\", "\\")
+    end
+    return result
+end
+
+function flatten_rich_chat_text(value)
+    local result = unquote_console_string(value)
+    result = result:gsub("<[^>]*>", "")
+    result = result:gsub("%s+", " ")
+    return trim(result)
+end
+
 local function format_duration_ms(milliseconds)
     local total_ms = math.max(0, math.floor(tonumber(milliseconds) or 0))
     local total_seconds = math.floor(total_ms / 1000)
@@ -793,6 +816,10 @@ local function get_data_root()
     local bridge_root = dirname(BRIDGE_DIR)
     if not bridge_root then
         return nil
+    end
+
+    if tostring(bridge_root):match("[/\\]ue4ss%-bridge$") then
+        return dirname(bridge_root) or bridge_root
     end
 
     return bridge_root
@@ -2699,6 +2726,15 @@ local function get_player_state_record(player_state, index, uptime_seconds)
     }
 end
 
+function get_player_state_chat_name(player_state)
+    return trim(safe_value_to_string(select(1, try_get_first_property_value(player_state, {
+        "UserName",
+        "PlayerNamePrivate",
+        "PlayerName",
+        "DisplayName",
+    }))))
+end
+
 local function get_cached_player_state_records(game_state, world)
     local uptime_seconds = value_to_number(select(1, try_get_first_property_value(world, {
         "TimeSeconds",
@@ -3952,12 +3988,16 @@ local function get_object_address_key(object, fallback)
     return fallback or tostring(object)
 end
 
-local function add_fast_chat_source(candidates, seen, label, object, executor, extra_contexts)
+local function add_fast_chat_source(candidates, seen, label, object, executor, extra_contexts, player_name)
     if not is_valid_object(object) then
         return
     end
 
     local key = get_object_address_key(object, label)
+    local label_text = tostring(label or "")
+    if label_text == "player_controller" or label_text:find("^player_controller%[") ~= nil then
+        key = label_text .. ":" .. key
+    end
     if seen[key] then
         return
     end
@@ -3968,6 +4008,7 @@ local function add_fast_chat_source(candidates, seen, label, object, executor, e
         object = object,
         executor = is_valid_object(executor) and executor or object,
         extra_contexts = extra_contexts or {},
+        player_name = tostring(player_name or ""),
     })
 end
 
@@ -3975,7 +4016,7 @@ function build_fast_chat_player_controller_sources(objects, context, fallback_co
     local results = {}
     local seen = {}
 
-    local function push_controller_source(label, controller, player_state, player_pawn, cheat_manager)
+    local function push_controller_source(label, controller, player_state, player_pawn, cheat_manager, player_name)
         if not is_valid_object(controller) then
             return
         end
@@ -3986,6 +4027,29 @@ function build_fast_chat_player_controller_sources(objects, context, fallback_co
         end
 
         seen[key] = true
+        if not is_valid_object(player_state) then
+            player_state = try_get_property_value(controller, "PlayerState")
+        end
+        if not is_valid_object(cheat_manager) then
+            cheat_manager = try_get_property_value(controller, "CheatManager")
+        end
+        if not is_valid_object(player_pawn) then
+            player_pawn = try_get_property_value(controller, "Pawn")
+                or try_get_property_value(controller, "AcknowledgedPawn")
+        end
+
+        local resolved_player_name = trim(tostring(player_name or ""))
+        if resolved_player_name == "" and is_valid_object(player_state) then
+            resolved_player_name = get_player_state_chat_name(player_state)
+        end
+        if resolved_player_name == "" then
+            resolved_player_name = trim(safe_value_to_string(select(1, try_get_first_property_value(controller, {
+                "UserName",
+                "PlayerNamePrivate",
+                "PlayerName",
+                "DisplayName",
+            }))))
+        end
 
         local extra_contexts = {}
         for _, value in ipairs(fallback_contexts or {}) do
@@ -4006,6 +4070,7 @@ function build_fast_chat_player_controller_sources(objects, context, fallback_co
             object = controller,
             executor = controller,
             extra_contexts = extra_contexts,
+            player_name = tostring(resolved_player_name or ""),
         })
     end
 
@@ -4015,7 +4080,8 @@ function build_fast_chat_player_controller_sources(objects, context, fallback_co
             context.player_controller,
             context.player_state,
             context.player_pawn,
-            context.cheat_manager
+            context.cheat_manager,
+            get_player_state_chat_name(context.player_state)
         )
     end
 
@@ -4031,7 +4097,22 @@ function build_fast_chat_player_controller_sources(objects, context, fallback_co
                 owner,
                 player_state,
                 player_pawn,
-                cheat_manager
+                cheat_manager,
+                get_player_state_chat_name(player_state)
+            )
+        end
+    end
+
+    for _, class_name in ipairs({ "BRPlayerController", "BP_PlayerController_C", "PlayerController" }) do
+        local controller = find_first_valid(class_name)
+        if is_valid_object(controller) then
+            push_controller_source(
+                "player_controller[FindFirstOf(" .. tostring(class_name) .. ")]",
+                controller,
+                nil,
+                nil,
+                nil,
+                nil
             )
         end
     end
@@ -4138,7 +4219,8 @@ local function build_fast_chat_sources(objects, context)
             player_controller_source.label,
             player_controller_source.object,
             player_controller_source.executor,
-            player_controller_source.extra_contexts
+            player_controller_source.extra_contexts,
+            player_controller_source.player_name
         )
     end
 
@@ -4286,6 +4368,83 @@ end
 function is_player_controller_fast_source(source)
     local label = type(source) == "table" and tostring(source.label or "") or ""
     return label == "player_controller" or label:find("^player_controller%[") ~= nil
+end
+
+function normalize_chat_whisper_target_key(value)
+    return string.lower(trim(tostring(value or "")))
+end
+
+function clone_fast_chat_player_source(source, player_name)
+    if type(source) ~= "table" or not is_player_controller_fast_source(source) or not is_valid_object(source.object) then
+        return nil
+    end
+
+    local extra_contexts = {}
+    for _, value in ipairs(source.extra_contexts or {}) do
+        if is_valid_object(value) then
+            table.insert(extra_contexts, value)
+        end
+    end
+
+    return {
+        label = tostring(source.label or "player_controller[cached]"),
+        object = source.object,
+        executor = is_valid_object(source.executor) and source.executor or source.object,
+        extra_contexts = extra_contexts,
+        player_name = tostring(player_name or source.player_name or ""),
+    }
+end
+
+function remember_chat_whisper_player_source(target, source)
+    local resolved_player_name = trim(tostring(type(source) == "table" and source.player_name or ""))
+    if resolved_player_name == "" then
+        resolved_player_name = trim(tostring(target or ""))
+    end
+
+    local cached_source = clone_fast_chat_player_source(source, resolved_player_name)
+    if not cached_source then
+        return false
+    end
+
+    CHAT_WHISPER_LAST_PLAYER_SOURCE = cached_source
+    CHAT_WHISPER_LAST_TARGET_KEY = normalize_chat_whisper_target_key(target)
+
+    local target_key = CHAT_WHISPER_LAST_TARGET_KEY
+    if target_key ~= "" then
+        CHAT_WHISPER_PLAYER_SOURCE_BY_TARGET[target_key] = cached_source
+    end
+
+    local player_key = normalize_chat_whisper_target_key(resolved_player_name)
+    if player_key ~= "" then
+        CHAT_WHISPER_PLAYER_SOURCE_BY_TARGET[player_key] = cached_source
+    end
+
+    return true
+end
+
+function get_cached_chat_whisper_player_source(target)
+    local target_key = normalize_chat_whisper_target_key(target)
+    local cached_source = nil
+    if target_key ~= "" then
+        cached_source = CHAT_WHISPER_PLAYER_SOURCE_BY_TARGET[target_key]
+    end
+    if not cached_source and target_key ~= "" and CHAT_WHISPER_LAST_TARGET_KEY == target_key then
+        cached_source = CHAT_WHISPER_LAST_PLAYER_SOURCE
+    end
+
+    if cached_source and is_valid_object(cached_source.object) then
+        return clone_fast_chat_player_source(cached_source, cached_source.player_name)
+    end
+
+    if target_key ~= "" then
+        CHAT_WHISPER_PLAYER_SOURCE_BY_TARGET[target_key] = nil
+    end
+    if cached_source == CHAT_WHISPER_LAST_PLAYER_SOURCE then
+        CHAT_WHISPER_LAST_PLAYER_SOURCE = nil
+        CHAT_WHISPER_LAST_TARGET_KEY = ""
+    end
+
+    return nil
 end
 
 function try_fast_chat_client_fanout(sources, function_name, message)
@@ -4614,6 +4773,7 @@ end
 
 local function try_fast_typed_chat_broadcast(message)
     bridge_log("info", "Typed chat broadcast fast-path begin")
+    message = flatten_rich_chat_text(message)
     local objects, object_error = get_chat_broadcast_objects()
     if not objects then
         return false, object_error or "Cached game objects are unavailable."
@@ -4628,6 +4788,20 @@ local function try_fast_typed_chat_broadcast(message)
 
     local attempts = {}
     local client_fanout_attempted = {}
+    for _, function_name in ipairs(CHAT_FAST_FUNCTION_NAMES) do
+        if call_by_name_helper_available ~= false and is_client_targeted_chat_function(function_name) then
+            client_fanout_attempted[function_name] = true
+            local ok, executor_or_error = try_fast_chat_client_fanout(sources, function_name, message)
+            if ok then
+                return true, executor_or_error
+            end
+            table.insert(
+                attempts,
+                "fanout-preferred->" .. tostring(function_name) .. "=callbyname:" .. tostring(executor_or_error)
+            )
+        end
+    end
+
     for _, source in ipairs(sources) do
         for _, function_name in ipairs(CHAT_FAST_FUNCTION_NAMES) do
             if call_by_name_helper_available ~= false then
@@ -4671,6 +4845,83 @@ local function try_fast_typed_chat_broadcast(message)
                 )
             end
         end
+    end
+
+    return false, table.concat(attempts, "; ")
+end
+
+function try_fast_typed_chat_whisper(target, message)
+    bridge_log("info", "Typed chat whisper fast-path begin target=" .. tostring(target or ""))
+    local target_lower = string.lower(trim(tostring(target or "")))
+    local clean_message = flatten_rich_chat_text(message)
+    local objects, object_error = get_chat_broadcast_objects()
+    if not objects then
+        return false, object_error or "Cached game objects are unavailable."
+    end
+
+    local context = build_chat_runtime_context(objects, clean_message)
+    local sources = build_fast_chat_sources(objects, context)
+    local exact_sources = {}
+    local player_sources = {}
+    local player_seen = {}
+
+    for _, source in ipairs(sources) do
+        if is_player_controller_fast_source(source) and is_valid_object(source.object) then
+            local source_key = get_object_address_key(source.object, source.label)
+            if not player_seen[source_key] then
+                player_seen[source_key] = true
+                table.insert(player_sources, source)
+            end
+            local player_name = string.lower(trim(tostring(source.player_name or "")))
+            if target_lower ~= "" and player_name == target_lower then
+                table.insert(exact_sources, source)
+            end
+        end
+    end
+
+    if #exact_sources == 0 then
+        local cached_source = get_cached_chat_whisper_player_source(target_lower)
+        if cached_source then
+            bridge_log("info", "Typed chat whisper using cached player-controller source for target=" .. tostring(target or ""))
+            table.insert(player_sources, cached_source)
+            table.insert(exact_sources, cached_source)
+        end
+    end
+
+    local selected_sources = exact_sources
+    if #selected_sources == 0 and #player_sources == 1 then
+        selected_sources = player_sources
+    end
+
+    if #selected_sources == 0 then
+        return false,
+            "No player-controller source matched whisper target "
+                .. tostring(target or "")
+                .. " among "
+                .. tostring(#player_sources)
+                .. " player controller(s)."
+    end
+
+    local attempts = {}
+    for _, source in ipairs(selected_sources) do
+        local ok, executor_or_error = try_fast_chat_call_by_name(source, "ClientPushChatMessage", clean_message)
+        if ok then
+            remember_chat_whisper_player_source(target, source)
+            return true,
+                "typed-chat-whisper:"
+                    .. tostring(source.label)
+                    .. "["
+                    .. tostring(source.player_name or "")
+                    .. "]->ClientPushChatMessage"
+        end
+        table.insert(
+            attempts,
+            tostring(source.label)
+                .. "["
+                .. tostring(source.player_name or "")
+                .. "]->ClientPushChatMessage="
+                .. tostring(executor_or_error)
+        )
     end
 
     return false, table.concat(attempts, "; ")
@@ -4736,6 +4987,7 @@ end
 
 local function handle_typed_chat_broadcast(message)
     bridge_log("info", "Typed chat broadcast begin")
+    message = flatten_rich_chat_text(message)
     local fast_ok, fast_executor_or_error = try_fast_typed_chat_broadcast(message)
     if fast_ok then
         return true, fast_executor_or_error
@@ -4807,11 +5059,12 @@ local function handle_typed_chat_broadcast(message)
 end
 
 local function handle_typed_chat_whisper(target, message)
-    return false,
-        "Typed Windows whisper is intentionally disabled until the direct broadcast canary is proven. Target="
-            .. tostring(target or "")
-            .. " message="
-            .. tostring(message or "")
+    local success, executor_or_error = try_fast_typed_chat_whisper(target, message)
+    if success then
+        return true, executor_or_error
+    end
+
+    return false, tostring(executor_or_error)
 end
 
 local function handle_typed_chat_status_message(target, message)
@@ -5521,25 +5774,21 @@ local function execute_command(id, command)
     set_status("executing", { last_command = command })
 
     if command == "Chat.MessageForUnknownCommands 0" then
+        if type(OmeggaExecuteKismetConsoleCommand) == "function" then
+            local exec_ok, success, output = pcall(OmeggaExecuteKismetConsoleCommand, command)
+            if exec_ok and success then
+                finish_command_success(id, command, "kismet-message-for-unknown-commands", output or "")
+                return
+            end
+
+            bridge_log(
+                "warn",
+                "Kismet Chat.MessageForUnknownCommands bootstrap failed: " .. tostring(exec_ok and output or success)
+            )
+        end
+
         bridge_log("info", "Skipping bootstrap command Chat.MessageForUnknownCommands 0 on Windows UE4SS bridge")
-        set_status("running", { last_command = command, executor = "noop" })
-        send_response(
-            id,
-            json_object({
-                json_bool_field("accepted", true),
-                json_string_field("executor", "noop"),
-            }),
-            false
-        )
-        send_notification(
-            "console.complete",
-            json_object({
-                string.format("\"request_id\":%d", id),
-                json_bool_field("success", true),
-                json_string_field("executor", "noop"),
-                json_string_field("command_b64", base64_encode(command)),
-            })
-        )
+        finish_command_success(id, command, "noop", "")
         return
     end
 

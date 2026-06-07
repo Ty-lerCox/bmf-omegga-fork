@@ -87,7 +87,13 @@ export default class NodeVmPlugin extends Plugin {
     });
 
     // let the worker write commands to brickadia
-    this.plugin.on('exec', (_, cmd) => omegga.writeln(cmd));
+    this.plugin.on('exec', async (resp, cmd) => {
+      try {
+        await omegga.writelnAsync(cmd);
+      } finally {
+        this.notify(resp);
+      }
+    });
 
     // storage interface
     this.plugin.on('store.get', async (resp, key) => {

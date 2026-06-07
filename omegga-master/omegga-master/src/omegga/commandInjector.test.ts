@@ -51,4 +51,42 @@ describe('commandInjector getServerStatus', () => {
     ]);
     expect(status.players[0].time).toBeGreaterThanOrEqual(10_000);
   });
+
+  it('falls back when Brickadia omits the player table header', async () => {
+    const fakePlayer = {
+      name: 'Ty',
+      displayName: 'Ty',
+      id: 'player-1',
+      controller: 'BP_PlayerController_C_1',
+      state: 'BP_PlayerState_C_1',
+      getRoles: () => ['Admin'],
+    };
+    const fakeOmegga = {
+      players: [fakePlayer],
+      _startedAtMs: Date.now() - 30_000,
+      _playerJoinedAt: new Map([[fakePlayer.id, Date.now() - 5_000]]),
+    };
+    const fakeLogWrangler = {
+      omegga: fakeOmegga,
+      watchLogChunk: vi.fn().mockResolvedValue([
+        asLogMatch('Server Name: Brickadia Windows UE4SS'),
+        asLogMatch('Description: '),
+        asLogMatch('Bricks: 0'),
+        asLogMatch('Components: 0'),
+        asLogMatch('Time: 0s'),
+      ]),
+    };
+
+    const target = {};
+    commandInjector(target as any, fakeLogWrangler as any);
+
+    const status = await (target as { getServerStatus: () => Promise<any> }).getServerStatus();
+
+    expect(status.players).toEqual([
+      expect.objectContaining({
+        name: 'Ty',
+        id: 'player-1',
+      }),
+    ]);
+  });
 });

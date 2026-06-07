@@ -2,13 +2,15 @@ import Player from '@omegga/player';
 import { MatchGenerator } from './types';
 
 const join: MatchGenerator<Player> = omegga => {
-  // username + id and a log counter to keep track of actual join messages
-  const userJoinInfo: {
+  type UserJoinInfo = {
     counter: string;
     UserName?: string;
     UserId?: string;
     DisplayName?: string;
-  }[] = [];
+  };
+
+  // username + id and a log counter to keep track of actual join messages
+  const userJoinInfo: UserJoinInfo[] = [];
 
   // username + id to get player state and controller
   const joiningPlayers: {
@@ -17,6 +19,7 @@ const join: MatchGenerator<Player> = omegga => {
     id: string;
     state?: string;
     controller?: string;
+    player?: Player;
   }[] = [];
 
   // patterns to match PlayerState and PlayerController objects in GetAll commands
@@ -24,6 +27,39 @@ const join: MatchGenerator<Player> = omegga => {
     /BP_PlayerState_C .+?PersistentLevel\.(?<state>BP_PlayerState_C_\d+)\.UserName = (?<name>.+)$/;
   const controllerRegExp =
     /BP_PlayerState_C .+?PersistentLevel\.(?<state>BP_PlayerState_C_\d+)\.Owner = .*?BP_PlayerController_C'.+?:PersistentLevel.(?<controller>BP_PlayerController_C_\d+)'/;
+  const checkpointRegExp =
+    /^Ruleset .+? (?:loading|no) saved checkpoint for player (?<name>.+) \((?<id>.+)\)$/;
+
+  const getJoinInfo = (counter: string) => {
+    let joinData = userJoinInfo.find(l => l.counter === counter);
+
+    if (!joinData) {
+      joinData = { counter };
+      userJoinInfo.push(joinData);
+    }
+
+    return joinData;
+  };
+
+  const findJoinInfoForName = (counter: string, name: string) => {
+    const joinData = userJoinInfo.find(l => l.counter === counter);
+
+    if (
+      joinData &&
+      (joinData.DisplayName === name || joinData.UserName === name)
+    )
+      return joinData;
+
+    return userJoinInfo.find(
+      l => l.DisplayName === name || l.UserName === name,
+    );
+  };
+
+  const emitRawPlayers = () =>
+    omegga.emit(
+      'plugin:players:raw',
+      omegga.players.map(p => p.raw()),
+    );
 
   return {
     // listen for join events and wait for PlayerController info
@@ -35,10 +71,7 @@ const join: MatchGenerator<Player> = omegga => {
         // LogServerList includes the new user information
         if (generator === 'LogServerList') {
           // create joindata if it doesn't exist
-          if (!joinData) {
-            joinData = { counter };
-            userJoinInfo.push(joinData);
-          }
+          joinData = getJoinInfo(counter);
 
           // match on username or user id
           const match = data.match(
@@ -52,6 +85,19 @@ const join: MatchGenerator<Player> = omegga => {
             ] = match.groups.value;
           }
 
+          // newer Brickadia logs put the player id in the checkpoint line
+        } else if (generator === 'LogBrickadia') {
+          const match = data.match(checkpointRegExp);
+
+          if (match) {
+            const { name, id } = match.groups;
+            joinData = getJoinInfo(counter);
+
+            if (!joinData.UserName) joinData.UserName = name;
+            if (!joinData.DisplayName) joinData.DisplayName = name;
+            joinData.UserId = id;
+          }
+
           // LogNet lets us know the player successfully joined
         } else if (generator == 'LogNet') {
           // find which player joined
@@ -59,20 +105,44 @@ const join: MatchGenerator<Player> = omegga => {
 
           // make sure this joindata corresponds to this player
           // TODO: [BRICKADIA] display name used here instead of username...
-          if (match && joinData.DisplayName === match[1]) {
+          if (match && (joinData = findJoinInfoForName(counter, match[1]))) {
             // remove that player from our buffer
             userJoinInfo.splice(userJoinInfo.indexOf(joinData), 1);
 
+            const displayName = joinData.DisplayName || match[1];
+            const name = joinData.UserName || match[1];
+
+            // without a player id, role and plugin lookups cannot resolve the player
+            if (!joinData.UserId) return;
+
+            const existingPlayer = omegga.players.find(
+              p => p.id === joinData.UserId || p.name === name,
+            );
+            if (existingPlayer) return;
+
+            const player = new Player(
+              omegga,
+              name,
+              displayName,
+              joinData.UserId,
+              '',
+              '',
+            );
+
             // found joined player, now we need to find the BRPlayerState
             joiningPlayers.push({
-              displayName: joinData.DisplayName,
-              name: joinData.UserName,
+              displayName,
+              name,
               id: joinData.UserId,
+              player,
             });
 
             // get the state of all players so we can determine which is this player
             // TODO: maybe also use the ReplicatedJoinTime, which matches the time for these logs
             omegga.writeln('GetAll BRPlayerState UserName');
+
+            // return the player now so plugins can resolve them by id immediately
+            return player;
           }
         }
 
@@ -110,6 +180,13 @@ const join: MatchGenerator<Player> = omegga => {
           player.state = state;
           joiningPlayers.splice(joiningPlayers.indexOf(player), 1);
 
+          if (player.player) {
+            player.player.controller = controller;
+            player.player.state = state;
+            emitRawPlayers();
+            return;
+          }
+
           // return the newly joined player
           return new Player(
             omegga,
@@ -124,12 +201,26 @@ const join: MatchGenerator<Player> = omegga => {
     },
     // when there's a match, emit a join event and add the player to the player list
     callback(player) {
+      const existingPlayer = omegga.players.find(
+        p =>
+          (player.id && p.id === player.id) ||
+          p.name === player.name ||
+          p.displayName === player.displayName,
+      );
+
+      if (existingPlayer) {
+        existingPlayer.name = player.name;
+        existingPlayer.displayName = player.displayName;
+        existingPlayer.id = player.id;
+        if (player.controller) existingPlayer.controller = player.controller;
+        if (player.state) existingPlayer.state = player.state;
+        emitRawPlayers();
+        return;
+      }
+
       omegga.emit('join', player);
       omegga.players.push(player);
-      omegga.emit(
-        'plugin:players:raw',
-        omegga.players.map(p => p.raw()),
-      );
+      emitRawPlayers();
     },
   };
 };

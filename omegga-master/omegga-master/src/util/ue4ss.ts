@@ -30,7 +30,8 @@ const UE4SS_VTABLE_LAYOUT_FILENAME = 'VTableLayout.ini';
 const UE4SS_CACHE_DIR = path.join(CONFIG_HOME, 'ue4ss');
 const UE4SS_BRIDGE_MOD_NAME = 'OmeggaBridge';
 const UE4SS_PROBE_MOD_NAME = 'OmeggaBridgeProbe';
-const OPTIONAL_BMF_SOURCE_DIR = process.env.OMEGGA_BMF_SOURCE_DIR ?? '';
+const BMF_MOD_NAME = 'BMF';
+const BMF_SOURCE_ENV = 'OMEGGA_BMF_SOURCE_DIR';
 const TEMPLATE_ROOT = path.resolve(
   __dirname,
   '..',
@@ -188,7 +189,8 @@ export function getUe4ssLogPath(
   { allowDisabled = true }: { allowDisabled?: boolean } = {},
 ) {
   const searchRoots = [path.join(targetWin64Dir, UE4SS_DIRNAME)];
-  if (allowDisabled) searchRoots.push(path.join(targetWin64Dir, UE4SS_DISABLED_DIRNAME));
+  if (allowDisabled)
+    searchRoots.push(path.join(targetWin64Dir, UE4SS_DISABLED_DIRNAME));
 
   const discoveredLogs = searchRoots
     .flatMap(rootDir => findUe4ssLogs(rootDir))
@@ -253,7 +255,8 @@ export function readUe4ssDiagnostics(
   return {
     logPath,
     loaded: /UE4SS - v/i.test(contents),
-    engineVersion: contents.match(/Found EngineVersion:\s*([0-9.]+)/)?.[1] ?? null,
+    engineVersion:
+      contents.match(/Found EngineVersion:\s*([0-9.]+)/)?.[1] ?? null,
     compatibilityOk:
       !contents.includes('Scan failed') &&
       missingSymbols.length === 0 &&
@@ -293,9 +296,9 @@ export function formatUe4ssDiagnostics(
   buildInfo?: { branchLabel: string | null; cl: string | null },
 ) {
   const parts = [];
-  if (buildInfo?.branchLabel) parts.push(`Brickadia build ${buildInfo.branchLabel}`);
-  if (diagnostics.engineVersion)
-    parts.push(`UE ${diagnostics.engineVersion}`);
+  if (buildInfo?.branchLabel)
+    parts.push(`Brickadia build ${buildInfo.branchLabel}`);
+  if (diagnostics.engineVersion) parts.push(`UE ${diagnostics.engineVersion}`);
   if (diagnostics.missingSymbols.length > 0)
     parts.push(`missing ${diagnostics.missingSymbols.join(', ')}`);
   if (diagnostics.scanFailureCount > 0)
@@ -310,7 +313,9 @@ export function formatUe4ssDiagnostics(
   return parts.join('; ');
 }
 
-export function installManagedUe4ss(targetWin64Dir: string): ManagedUe4ssInstall {
+export function installManagedUe4ss(
+  targetWin64Dir: string,
+): ManagedUe4ssInstall {
   if (!IS_WINDOWS) {
     throw new Error('UE4SS management is only supported on Windows.');
   }
@@ -321,12 +326,17 @@ export function installManagedUe4ss(targetWin64Dir: string): ManagedUe4ssInstall
   const targetUe4ssDir = path.join(targetWin64Dir, UE4SS_DIRNAME);
   const targetProxyDll = path.join(targetWin64Dir, UE4SS_PROXY_DLL);
 
-  Logger.verbose('Installing managed UE4SS payload into', targetWin64Dir.yellow);
+  Logger.verbose(
+    'Installing managed UE4SS payload into',
+    targetWin64Dir.yellow,
+  );
   fs.mkdirSync(targetWin64Dir, { recursive: true });
 
   restoreDisabledInstall(targetWin64Dir);
 
-  if (isCurrentManagedInstall(targetWin64Dir, sourceRoot, compatibilityBundle)) {
+  if (
+    isCurrentManagedInstall(targetWin64Dir, sourceRoot, compatibilityBundle)
+  ) {
     Logger.verbose(
       'Managed UE4SS install is already current in',
       targetWin64Dir.yellow,
@@ -394,8 +404,10 @@ export function disableManagedUe4ss(targetWin64Dir: string) {
       recursive: true,
     });
 
-  if (fs.existsSync(targetProxyDll)) fs.renameSync(targetProxyDll, disabledProxyDll);
-  if (fs.existsSync(targetUe4ssDir)) fs.renameSync(targetUe4ssDir, disabledUe4ssDir);
+  if (fs.existsSync(targetProxyDll))
+    fs.renameSync(targetProxyDll, disabledProxyDll);
+  if (fs.existsSync(targetUe4ssDir))
+    fs.renameSync(targetUe4ssDir, disabledUe4ssDir);
 
   return {
     targetWin64Dir,
@@ -413,9 +425,17 @@ function overlayManagedTemplates(
     throw new Error(`UE4SS templates are missing from ${TEMPLATE_ROOT}`);
   }
 
-  const managedTemplateModsDir = path.join(TEMPLATE_ROOT, UE4SS_DIRNAME, 'Mods');
+  const managedTemplateModsDir = path.join(
+    TEMPLATE_ROOT,
+    UE4SS_DIRNAME,
+    'Mods',
+  );
   const rootModsDir = path.join(targetUe4ssDir, 'Mods');
-  overlayCompatibilityBundle(targetUe4ssDir, compatibilityBundle, runtimeAliases);
+  overlayCompatibilityBundle(
+    targetUe4ssDir,
+    compatibilityBundle,
+    runtimeAliases,
+  );
   const normalizedAliases = Array.from(
     new Set(
       runtimeAliases
@@ -426,16 +446,13 @@ function overlayManagedTemplates(
 
   for (const alias of normalizedAliases) {
     const aliasModsDir = path.join(targetUe4ssDir, alias, 'Mods');
-    syncManagedBridgeMod(
-      managedTemplateModsDir,
-      aliasModsDir,
-    );
-    syncOptionalManagedMods(aliasModsDir);
+    syncManagedBridgeMod(managedTemplateModsDir, aliasModsDir);
+    syncManagedMods(aliasModsDir);
     ensureBridgeModEnabled(aliasModsDir);
   }
 
   syncManagedBridgeMod(managedTemplateModsDir, rootModsDir);
-  syncOptionalManagedMods(rootModsDir);
+  syncManagedMods(rootModsDir);
   ensureBridgeModEnabled(rootModsDir);
 }
 
@@ -495,34 +512,57 @@ function replaceDirectory(sourceDir: string, targetDir: string) {
   });
 }
 
-function syncManagedBridgeMod(sourceModsDir: string, destinationModsDir: string) {
+function syncManagedBridgeMod(
+  sourceModsDir: string,
+  destinationModsDir: string,
+) {
   if (!fs.existsSync(sourceModsDir)) return;
 
   const bridgeSourceDir = path.join(sourceModsDir, UE4SS_BRIDGE_MOD_NAME);
   if (!fs.existsSync(bridgeSourceDir)) return;
 
   fs.mkdirSync(destinationModsDir, { recursive: true });
-  fs.cpSync(bridgeSourceDir, path.join(destinationModsDir, UE4SS_BRIDGE_MOD_NAME), {
-    recursive: true,
-    force: true,
-  });
+  fs.cpSync(
+    bridgeSourceDir,
+    path.join(destinationModsDir, UE4SS_BRIDGE_MOD_NAME),
+    {
+      recursive: true,
+      force: true,
+    },
+  );
 }
 
-function getOptionalManagedMods() {
-  const mods: { name: string; sourceDir: string; enabled: boolean }[] = [];
-  const bmfSourceDir = OPTIONAL_BMF_SOURCE_DIR.trim();
-  if (bmfSourceDir) {
-    mods.push({
-      name: path.basename(path.resolve(bmfSourceDir)),
-      sourceDir: path.resolve(bmfSourceDir),
-      enabled: true,
-    });
+function getManagedBmfMod() {
+  const overrideSourceDir = process.env[BMF_SOURCE_ENV]?.trim();
+  const sourceDir = overrideSourceDir
+    ? path.resolve(overrideSourceDir)
+    : path.join(TEMPLATE_ROOT, UE4SS_DIRNAME, 'Mods', BMF_MOD_NAME);
+
+  if (!fs.existsSync(sourceDir)) {
+    const sourceLabel = overrideSourceDir
+      ? `configured ${BMF_SOURCE_ENV} path`
+      : 'bundled BMF template';
+    throw new Error(
+      `Could not locate the ${sourceLabel} at ${sourceDir}. ` +
+        `This Omegga build must be packaged with ${BMF_MOD_NAME}, or ${BMF_SOURCE_ENV} must point to a complete BMF mod directory.`,
+    );
   }
+
+  return {
+    name: BMF_MOD_NAME,
+    sourceDir,
+    enabled: true,
+  };
+}
+
+function getManagedMods() {
+  const mods: { name: string; sourceDir: string; enabled: boolean }[] = [];
+  mods.push(getManagedBmfMod());
   return mods;
 }
 
-function syncOptionalManagedMods(destinationModsDir: string) {
-  for (const mod of getOptionalManagedMods()) {
+function syncManagedMods(destinationModsDir: string) {
+  for (const mod of getManagedMods()) {
     if (!fs.existsSync(mod.sourceDir)) continue;
     fs.mkdirSync(destinationModsDir, { recursive: true });
     fs.cpSync(mod.sourceDir, path.join(destinationModsDir, mod.name), {
@@ -534,11 +574,11 @@ function syncOptionalManagedMods(destinationModsDir: string) {
 
 function ensureBridgeModEnabled(modsDir: string) {
   fs.mkdirSync(modsDir, { recursive: true });
-  const optionalMods = getOptionalManagedMods();
+  const managedMods = getManagedMods();
   const managedModNames = [
     UE4SS_BRIDGE_MOD_NAME,
     UE4SS_PROBE_MOD_NAME,
-    ...optionalMods.map(mod => mod.name),
+    ...managedMods.map(mod => mod.name),
   ];
 
   const modsTxtPath = path.join(modsDir, 'mods.txt');
@@ -560,9 +600,7 @@ function ensureBridgeModEnabled(modsDir: string) {
   );
   const bridgeLines = [
     `${UE4SS_BRIDGE_MOD_NAME} : 1`,
-    ...optionalMods
-      .filter(mod => mod.enabled)
-      .map(mod => `${mod.name} : 1`),
+    ...managedMods.filter(mod => mod.enabled).map(mod => `${mod.name} : 1`),
   ];
   const insertionIndex =
     keybindsIndex === -1 ? rewrittenLines.length : Math.max(keybindsIndex, 0);
@@ -576,10 +614,13 @@ function ensureBridgeModEnabled(modsDir: string) {
   const normalizedMods = Array.isArray(modsJson) ? modsJson : [];
   upsertNamedMod(normalizedMods, UE4SS_BRIDGE_MOD_NAME, true);
   upsertNamedMod(normalizedMods, UE4SS_PROBE_MOD_NAME, false);
-  for (const mod of optionalMods) {
+  for (const mod of managedMods) {
     upsertNamedMod(normalizedMods, mod.name, mod.enabled);
   }
-  fs.writeFileSync(modsJsonPath, JSON.stringify(normalizedMods, null, 2) + os.EOL);
+  fs.writeFileSync(
+    modsJsonPath,
+    JSON.stringify(normalizedMods, null, 2) + os.EOL,
+  );
 }
 
 function escapeRegExp(value: string) {
@@ -613,7 +654,9 @@ function readManagedMarker(targetDir: string): ManagedMarker | null {
   if (!fs.existsSync(markerPath)) return null;
 
   const marker = safeReadJsonFile(markerPath);
-  return marker && typeof marker === 'object' ? (marker as ManagedMarker) : null;
+  return marker && typeof marker === 'object'
+    ? (marker as ManagedMarker)
+    : null;
 }
 
 function isCurrentManagedInstall(
@@ -679,9 +722,18 @@ function ensureCachedUe4ssBundle(
   Logger.verbose('Refreshing cached UE4SS payload from', sourceRoot.yellow);
   fs.rmSync(cacheRoot, { ...RM_SYNC_RETRY_OPTIONS, recursive: true });
   fs.mkdirSync(cacheRoot, { recursive: true });
-  fs.copyFileSync(path.join(sourceRoot, UE4SS_PROXY_DLL), path.join(cacheRoot, UE4SS_PROXY_DLL));
-  copyDirectoryContents(path.join(sourceRoot, UE4SS_DIRNAME), path.join(cacheRoot, UE4SS_DIRNAME));
-  overlayManagedTemplates(path.join(cacheRoot, UE4SS_DIRNAME), compatibilityBundle);
+  fs.copyFileSync(
+    path.join(sourceRoot, UE4SS_PROXY_DLL),
+    path.join(cacheRoot, UE4SS_PROXY_DLL),
+  );
+  copyDirectoryContents(
+    path.join(sourceRoot, UE4SS_DIRNAME),
+    path.join(cacheRoot, UE4SS_DIRNAME),
+  );
+  overlayManagedTemplates(
+    path.join(cacheRoot, UE4SS_DIRNAME),
+    compatibilityBundle,
+  );
   writeManagedMarker(
     cacheRoot,
     buildManagedMarker(sourceRoot, undefined, compatibilityBundle),
@@ -756,11 +808,15 @@ export function validateUe4ssCompatibilityBundle(
   }
 
   if (workspaceRoot && !fs.existsSync(bundleDir)) {
-    errors.push(`Compatibility bundle ${bundleId} was not found in ${workspaceRoot}.`);
+    errors.push(
+      `Compatibility bundle ${bundleId} was not found in ${workspaceRoot}.`,
+    );
   }
 
   if (bundleDir && fs.existsSync(bundleDir) && !fs.existsSync(manifestPath)) {
-    errors.push(`Compatibility bundle manifest is missing from ${manifestPath}.`);
+    errors.push(
+      `Compatibility bundle manifest is missing from ${manifestPath}.`,
+    );
   }
 
   if (manifestPath && fs.existsSync(manifestPath)) {
@@ -792,7 +848,10 @@ export function validateUe4ssCompatibilityBundle(
       }
     }
 
-    if (!manifest.brickadia_cl || String(manifest.brickadia_cl) !== bundleId.replace(/^CL/i, '')) {
+    if (
+      !manifest.brickadia_cl ||
+      String(manifest.brickadia_cl) !== bundleId.replace(/^CL/i, '')
+    ) {
       errors.push(
         `Compatibility bundle manifest brickadia_cl ${String(
           manifest.brickadia_cl ?? '',
@@ -818,13 +877,17 @@ export function validateUe4ssCompatibilityBundle(
   }
 
   if (!manifest?.files || typeof manifest.files !== 'object') {
-    errors.push('Compatibility bundle manifest.files must be an object map of relative paths to sha256 hashes.');
+    errors.push(
+      'Compatibility bundle manifest.files must be an object map of relative paths to sha256 hashes.',
+    );
   } else if (bundleDir) {
     for (const relativePath of COMPATIBILITY_BUNDLE_REQUIRED_FILES) {
       const normalizedPath = normalizeBundleRelativePath(relativePath);
       const expectedHash = manifest.files[normalizedPath];
       if (!expectedHash) {
-        errors.push(`Compatibility bundle manifest is missing hash for ${normalizedPath}.`);
+        errors.push(
+          `Compatibility bundle manifest is missing hash for ${normalizedPath}.`,
+        );
         continue;
       }
 
@@ -1053,7 +1116,10 @@ function safeStatMtime(filepath: string) {
 }
 
 function resolveBundleAbsolutePath(bundleDir: string, relativePath: string) {
-  return path.join(bundleDir, ...normalizeBundleRelativePath(relativePath).split('/'));
+  return path.join(
+    bundleDir,
+    ...normalizeBundleRelativePath(relativePath).split('/'),
+  );
 }
 
 function normalizeBundleRelativePath(relativePath: string) {
@@ -1061,11 +1127,12 @@ function normalizeBundleRelativePath(relativePath: string) {
 }
 
 function sha256File(filepath: string) {
-  return createHash('sha256')
-    .update(fs.readFileSync(filepath))
-    .digest('hex');
+  return createHash('sha256').update(fs.readFileSync(filepath)).digest('hex');
 }
 
-export function getBrickadiaLogPath(dataPath: string, savedDir = CONFIG_SAVED_DIR) {
+export function getBrickadiaLogPath(
+  dataPath: string,
+  savedDir = CONFIG_SAVED_DIR,
+) {
   return path.join(dataPath, savedDir, 'Logs', 'Brickadia.log');
 }

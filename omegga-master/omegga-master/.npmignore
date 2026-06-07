@@ -1,9 +1,14 @@
 .github/
 .vscode/
+/artifacts/
 /data/
+/data-clean-*/
 /plugins/
+/plugins-disabled/
 /src/
 /frontend/
+/tools/
+*.log
 .omegga-config.yml
 .omegga.yml
 .prettierrc

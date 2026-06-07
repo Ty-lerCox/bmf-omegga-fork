@@ -125,38 +125,49 @@ const COMMANDS: InjectedCommands = {
       .filter(l => l[1].startsWith('* '))
       .map(l => l[1].slice(1));
 
+    const fallback = getWindowsStatusFallback(this as LogWrangler);
+    const getStatusField = (index: number, match: RegExp, fallback = '') =>
+      statusLines[index]?.[1]?.match(match)?.[1] ?? fallback;
+
     // use the size of each column to build a regex that matches each row
-    const columnRegExp = buildTableHeaderRegex(tableHeader);
+    const columnRegExp = tableHeader ? buildTableHeaderRegex(tableHeader) : null;
+    const players: IServerStatus['players'] = columnRegExp
+      ? tableLines
+          .map(l => {
+            // match the player row with the generated regex
+            const rowMatch = l.match(columnRegExp);
+            if (!rowMatch?.groups) return null;
+            const { name, ping, time: online, roles, address, id } =
+              rowMatch.groups;
+            // trim and parse the matched data
+            return {
+              name: name.trim(),
+              ping: time.parseDuration(ping.trim()),
+              time: time.parseDuration(online.trim()),
+              roles: roles
+                .trim()
+                .split(', ')
+                .filter(r => r.length > 0), // roles are split by ', '
+              address: address.replace('(Owner)', '').trim(),
+              id: id.trim(),
+            };
+          })
+          .filter(
+            (player): player is IServerStatus['players'][number] =>
+              Boolean(player),
+          )
+      : [];
 
     const status = {
       // easily extract certain values from the server status
-      serverName: statusLines[0][1].match(/^Server Name: (.*)$/)[1],
-      description: statusLines[1][1].match(/^Description: (.*)$/)[1],
-      bricks: Number(statusLines[2][1].match(/^Bricks: (\d+)$/)[1]),
-      components: Number(statusLines[3][1].match(/^Components: (\d+)$/)[1]),
-      time: time.parseDuration(statusLines[4][1].match(/^Time: (.*)$/)[1]),
+      serverName: getStatusField(0, /^Server Name: (.*)$/),
+      description: getStatusField(1, /^Description: (.*)$/),
+      bricks: Number(getStatusField(2, /^Bricks: (\d+)$/, '0')),
+      components: Number(getStatusField(3, /^Components: (\d+)$/, '0')),
+      time: time.parseDuration(getStatusField(4, /^Time: (.*)$/, '0s')),
       // extract players using the generated table regex
-      players: tableLines.map(l => {
-        // match the player row with the generated regex
-        const {
-          groups: { name, ping, time: online, roles, address, id },
-        } = l.match(columnRegExp);
-        // trim and parse the matched data
-        return {
-          name: name.trim(),
-          ping: time.parseDuration(ping.trim()),
-          time: time.parseDuration(online.trim()),
-          roles: roles
-            .trim()
-            .split(', ')
-            .filter(r => r.length > 0), // roles are split by ', '
-          address: address.replace('(Owner)', '').trim(),
-          id: id.trim(),
-        };
-      }),
+      players,
     };
-
-    const fallback = getWindowsStatusFallback(this as LogWrangler);
     if (status.time <= 0 && fallback.uptimeMs > 0) {
       status.time = fallback.uptimeMs;
     }

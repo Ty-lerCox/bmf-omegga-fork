@@ -129,12 +129,14 @@ export class ProxyOmegga extends EventEmitter implements OmeggaLike {
   logWrangler: LogWrangler;
 
   getPlugin: (name: string) => Promise<PluginInterop>;
+  writelnAsync: (line: string) => Promise<void>;
 
   constructor(exec: (line: string) => void) {
     super();
     this.setMaxListeners(Infinity);
 
     this.writeln = exec;
+    this.writelnAsync = (line: string) => Promise.resolve(exec(line));
 
     this.version = -1;
 

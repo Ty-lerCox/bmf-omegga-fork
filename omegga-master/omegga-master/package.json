@@ -111,6 +111,7 @@
     "dts": "npx dts-bundle-generator --inline-declare-global --no-banner --no-check --external-inlines brs-js -o templates/safe-ts/omegga.d.ts -- ./src/plugin.ts",
     "lint:fix": "npx prettier --write \"src/\" \"frontend/src/\"",
     "lint": "npx prettier --check \"src/\" \"frontend/src\"",
+    "package:bmf": "node tools/package-bmf-omegga.js",
     "prepare": "ts-patch install",
     "start": "node --enable-source-maps index.js",
     "test:backend": "vitest --config vitest.backend.config.mts --dir ./src",
