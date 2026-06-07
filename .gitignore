@@ -41,6 +41,8 @@ omegga-master/omegga-master/omegga-config.json
 *.log
 *.stdout.log
 *.stderr.log
+*.ahk
+/run-join-brickadia-local.cmd
 *.dmp
 *.mdmp
 *.stackdump
