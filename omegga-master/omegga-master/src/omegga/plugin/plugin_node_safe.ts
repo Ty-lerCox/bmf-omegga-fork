@@ -19,6 +19,20 @@ const MAIN_FILE_TS = 'omegga.plugin.ts';
 const DOC_FILE = 'doc.json';
 const ACCESS_FILE = 'access.json';
 const PLUGIN_FILE = 'plugin.json';
+const SAFE_WORKER_ENV_PREFIXES = ['OMEGGA_BMF_', 'OMEGGA_UE4SS_', 'CITYRPG_'];
+
+function getForwardedSafeWorkerEnv(): Record<string, string> {
+  const forwarded: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (
+      typeof value === 'string' &&
+      SAFE_WORKER_ENV_PREFIXES.some(prefix => key.startsWith(prefix))
+    ) {
+      forwarded[key] = value;
+    }
+  }
+  return forwarded;
+}
 
 export default class NodeVmPlugin extends Plugin {
   #worker: Worker;
@@ -94,6 +108,23 @@ export default class NodeVmPlugin extends Plugin {
         this.notify(resp);
       }
     });
+    this.plugin.on(
+      'execControlCommandWithOutput',
+      async (resp, command, timeoutMs) => {
+        try {
+          const output = await omegga.execControlCommandWithOutput(
+            String(command ?? ''),
+            Number.isFinite(Number(timeoutMs)) ? Number(timeoutMs) : undefined,
+          );
+          this.notify(resp, { ok: true, output });
+        } catch (err) {
+          this.notify(resp, {
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      },
+    );
 
     // storage interface
     this.plugin.on('store.get', async (resp, key) => {
@@ -439,6 +470,7 @@ export default class NodeVmPlugin extends Plugin {
       {
         stdout: true,
         env: {
+          ...getForwardedSafeWorkerEnv(),
           VERBOSE: Logger.VERBOSE + '',
         },
       },

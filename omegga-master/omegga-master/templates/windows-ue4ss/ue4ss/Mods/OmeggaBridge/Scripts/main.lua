@@ -2713,6 +2713,14 @@ local function get_player_state_record(player_state, index, uptime_seconds)
         unique_id = tostring(numeric_id)
     end
 
+    local owner = try_get_property_value(player_state, "Owner")
+    local pawn = try_get_property_value(player_state, "PawnPrivate")
+        or try_get_property_value(player_state, "Pawn")
+        or try_get_property_value(player_state, "Character")
+        or (is_valid_object(owner) and try_get_property_value(owner, "Pawn") or nil)
+        or (is_valid_object(owner) and try_get_property_value(owner, "AcknowledgedPawn") or nil)
+        or (is_valid_object(owner) and try_get_property_value(owner, "Character") or nil)
+
     return {
         index = index,
         player_name = player_name,
@@ -2723,6 +2731,10 @@ local function get_player_state_record(player_state, index, uptime_seconds)
         unique_id = unique_id,
         state_name = "BP_PlayerState_C_" .. tostring(SYNTHETIC_STATE_BASE + numeric_id),
         controller_name = "BP_PlayerController_C_" .. tostring(SYNTHETIC_CONTROLLER_BASE + numeric_id),
+        pawn_name = "BP_FigureV2_C_" .. tostring(SYNTHETIC_CONTROLLER_BASE + 1000 + numeric_id),
+        player_state = player_state,
+        owner = owner,
+        pawn = pawn,
     }
 end
 
@@ -2881,12 +2893,7 @@ function build_status_output_unsafe()
 end
 
 local function build_brplayerstate_username_output()
-    local objects, object_error = get_cached_game_objects()
-    if not objects then
-        return nil, object_error
-    end
-
-    local player_records = get_cached_player_state_records(objects.game_state, objects.world)
+    local player_records = get_omegga_compat_player_state_records()
     local lines = {}
     for _, player in ipairs(player_records) do
         table.insert(
@@ -2903,12 +2910,7 @@ local function build_brplayerstate_username_output()
 end
 
 local function build_brplayerstate_owner_output(target_state_name)
-    local objects, object_error = get_cached_game_objects()
-    if not objects then
-        return nil, object_error
-    end
-
-    local player_records = get_cached_player_state_records(objects.game_state, objects.world)
+    local player_records = get_omegga_compat_player_state_records()
     local lines = {}
     for _, player in ipairs(player_records) do
         if target_state_name == nil or target_state_name == player.state_name then
@@ -2922,6 +2924,102 @@ local function build_brplayerstate_owner_output(target_state_name)
                     .. player.controller_name
                     .. "'"
             )
+        end
+    end
+
+    return table.concat(lines, "\n")
+end
+
+function get_omegga_compat_player_state_records()
+    if os.getenv("OMEGGA_UE4SS_PLAYER_COMPAT_USE_GAME_OBJECTS") == "1" then
+        local objects = select(1, get_cached_game_objects())
+        if objects then
+            return get_cached_player_state_records(objects.game_state, objects.world)
+        end
+    end
+    return get_cached_player_state_records(nil, nil)
+end
+
+function build_bp_playercontroller_pawn_output(target_controller_name)
+    local player_records = get_omegga_compat_player_state_records()
+    local lines = {}
+    for _, player in ipairs(player_records) do
+        if target_controller_name == nil or target_controller_name == "" or target_controller_name == player.controller_name then
+            local pawn_text = "None"
+            if is_valid_object(player.pawn) then
+                pawn_text = "BP_FigureV2_C'" .. SYNTHETIC_PATH_PREFIX .. player.pawn_name .. "'"
+            end
+            table.insert(
+                lines,
+                tostring(player.index - 1)
+                    .. ") BP_PlayerController_C "
+                    .. SYNTHETIC_PATH_PREFIX
+                    .. player.controller_name
+                    .. ".Pawn = "
+                    .. pawn_text
+            )
+        end
+    end
+
+    return table.concat(lines, "\n")
+end
+
+function build_bp_figure_dead_output(target_pawn_name)
+    local player_records = get_omegga_compat_player_state_records()
+    local lines = {}
+    for _, player in ipairs(player_records) do
+        if is_valid_object(player.pawn)
+            and (target_pawn_name == nil or target_pawn_name == "" or target_pawn_name == player.pawn_name) then
+            local dead_value = try_get_property_value(player.pawn, "bIsDead")
+            local dead_text = "False"
+            if dead_value == true or tostring(dead_value) == "true" or tostring(dead_value) == "True" then
+                dead_text = "True"
+            end
+            table.insert(
+                lines,
+                tostring(player.index - 1)
+                    .. ") BP_FigureV2_C "
+                    .. SYNTHETIC_PATH_PREFIX
+                    .. player.pawn_name
+                    .. ".bIsDead = "
+                    .. dead_text
+            )
+        end
+    end
+
+    return table.concat(lines, "\n")
+end
+
+function build_collision_cylinder_location_output(target_pawn_name)
+    if os.getenv("OMEGGA_UE4SS_ALLOW_UNSAFE_POSITION_PROBES") ~= "1" then
+        return nil, "position probes are disabled"
+    end
+
+    local player_records = get_omegga_compat_player_state_records()
+    local lines = {}
+    for _, player in ipairs(player_records) do
+        if is_valid_object(player.pawn)
+            and (target_pawn_name == nil or target_pawn_name == "" or target_pawn_name == player.pawn_name) then
+            local vector = nil
+            if type(OmeggaResolveObjectLocationForSpawn) == "function" then
+                vector = select(1, OmeggaResolveObjectLocationForSpawn(player.pawn))
+            end
+            if vector then
+                table.insert(
+                    lines,
+                    tostring(player.index - 1)
+                        .. ") CapsuleComponent "
+                        .. SYNTHETIC_PATH_PREFIX
+                        .. player.pawn_name
+                        .. ".CollisionCylinder.RelativeLocation = (X="
+                        .. string.format("%.3f", value_to_number(vector.x) or 0)
+                        .. ",Y="
+                        .. string.format("%.3f", value_to_number(vector.y) or 0)
+                        .. ",Z="
+                        .. string.format("%.3f", value_to_number(vector.z) or 0)
+                        .. ")"
+                )
+            end
         end
     end
 
@@ -5466,6 +5564,53 @@ local function try_emulate_command(command)
         return nil, nil, nil
     end
 
+    local controller_pawn_target = command:match("^GetAll BP_PlayerController_C Pawn Name=(.+)$")
+    if controller_pawn_target then
+        local output, detail = build_bp_playercontroller_pawn_output(trim(controller_pawn_target))
+        if output then
+            return true, "emulated-bp-playercontroller-pawn", output
+        end
+        bridge_log("warn", "BP_PlayerController_C Pawn emulation unavailable: " .. tostring(detail))
+        return nil, nil, nil
+    end
+
+    if command == "GetAll BP_PlayerController_C Pawn" then
+        local output, detail = build_bp_playercontroller_pawn_output("")
+        if output then
+            return true, "emulated-bp-playercontroller-pawns", output
+        end
+        bridge_log("warn", "BP_PlayerController_C Pawn list emulation unavailable: " .. tostring(detail))
+        return nil, nil, nil
+    end
+
+    local position_target = command:match("^GetAll SceneComponent RelativeLocation Name=CollisionCylinder Outer=(.+)$")
+    if position_target then
+        local output, detail = build_collision_cylinder_location_output(trim(position_target))
+        if output then
+            return true, "emulated-collision-cylinder-location", output
+        end
+        bridge_log("warn", "CollisionCylinder RelativeLocation emulation unavailable: " .. tostring(detail))
+        return nil, nil, nil
+    end
+
+    if command == "GetAll SceneComponent RelativeLocation Name=CollisionCylinder" then
+        local output, detail = build_collision_cylinder_location_output("")
+        if output then
+            return true, "emulated-collision-cylinder-locations", output
+        end
+        bridge_log("warn", "CollisionCylinder RelativeLocation list emulation unavailable: " .. tostring(detail))
+        return nil, nil, nil
+    end
+
+    if command == "GetAll BP_FigureV2_C bIsDead" then
+        local output, detail = build_bp_figure_dead_output("")
+        if output then
+            return true, "emulated-bp-figure-dead", output
+        end
+        bridge_log("warn", "BP_FigureV2_C bIsDead emulation unavailable: " .. tostring(detail))
+        return nil, nil, nil
+    end
+
     return nil, nil, nil
 end
 
@@ -5935,8 +6080,9 @@ local function handle_message(line)
     end
 
     if message.method == "players.list" then
-        local format = trim(message.format or "records")
-        local state_name = trim(base64_decode(message.state_name_b64 or ""))
+        local params = type(message.params) == "table" and message.params or {}
+        local format = trim(params.format or message.format or "records")
+        local state_name = trim(base64_decode(params.state_name_b64 or message.state_name_b64 or ""))
 
         if format == "usernames" then
             local output, detail = build_brplayerstate_username_output()
@@ -8392,6 +8538,135 @@ function OmeggaTryPlayerLocationObject(lines, label, object)
     return nil, nil
 end
 
+function OmeggaPushLivePlayerLocationSource(results, seen, label, controller, player_name)
+    if not is_valid_object(controller) then
+        return
+    end
+
+    local key = get_object_address_key(controller, label)
+    if seen[key] then
+        return
+    end
+    seen[key] = true
+
+    local player_state = try_get_property_value(controller, "PlayerState")
+    local resolved_player_name = trim(tostring(player_name or ""))
+    if resolved_player_name == "" and is_valid_object(player_state) then
+        resolved_player_name = get_player_state_chat_name(player_state)
+    end
+    if resolved_player_name == "" then
+        resolved_player_name = trim(safe_value_to_string(select(1, try_get_first_property_value(controller, {
+            "UserName",
+            "PlayerNamePrivate",
+            "PlayerName",
+            "DisplayName",
+        }))))
+    end
+
+    local pawn = try_get_property_value(controller, "Pawn")
+        or try_get_property_value(controller, "AcknowledgedPawn")
+        or try_get_property_value(controller, "Character")
+        or try_get_property_value(player_state, "PawnPrivate")
+        or try_get_property_value(player_state, "Pawn")
+        or try_get_property_value(player_state, "Character")
+
+    table.insert(results, {
+        label = tostring(label or "player_controller"),
+        controller = controller,
+        player_state = player_state,
+        pawn = pawn,
+        player_name = resolved_player_name,
+    })
+end
+
+function OmeggaCollectLivePlayerLocationSources(requested_name)
+    local results = {}
+    local seen = {}
+    local requested = trim(tostring(requested_name or ""))
+
+    local cached_source = get_cached_chat_whisper_player_source(requested)
+    if cached_source and is_valid_object(cached_source.object) then
+        OmeggaPushLivePlayerLocationSource(
+            results,
+            seen,
+            "cached_whisper_player_controller",
+            cached_source.object,
+            cached_source.player_name
+        )
+    end
+
+    for _, class_name in ipairs({ "BRPlayerController", "BP_PlayerController_C", "PlayerController" }) do
+        OmeggaPushLivePlayerLocationSource(
+            results,
+            seen,
+            "FindFirstOf(" .. tostring(class_name) .. ")",
+            find_first_valid(class_name),
+            nil
+        )
+    end
+
+    return results
+end
+
+function OmeggaTryLivePlayerControllerLocation(lines, requested_name)
+    local requested_lower = string.lower(trim(tostring(requested_name or "")))
+    local sources = OmeggaCollectLivePlayerLocationSources(requested_name)
+    local selected = {}
+
+    table.insert(lines, "live_controller_sources=" .. tostring(#sources))
+    for index, source in ipairs(sources) do
+        local player_name = trim(tostring(source.player_name or ""))
+        table.insert(
+            lines,
+            "live_controller_" .. tostring(index) .. "_label=" .. tostring(source.label or "")
+        )
+        table.insert(
+            lines,
+            "live_controller_" .. tostring(index) .. "_name=" .. tostring(player_name)
+        )
+
+        if requested_lower == ""
+            or (player_name ~= "" and string.lower(player_name) == requested_lower) then
+            table.insert(selected, source)
+        end
+    end
+
+    if #selected == 0 and #sources == 1 then
+        selected = sources
+        table.insert(lines, "selected_by=single-live-controller-fallback")
+    end
+
+    table.insert(lines, "selected_live_controller_sources=" .. tostring(#selected))
+    for index, source in ipairs(selected) do
+        table.insert(lines, "selected_live_controller_" .. tostring(index) .. "=" .. tostring(source.label or ""))
+
+        local candidates = {
+            { "live_controller." .. tostring(index) .. ".pawn", source.pawn },
+            { "live_controller." .. tostring(index) .. ".controller.Pawn", try_get_property_value(source.controller, "Pawn") },
+            {
+                "live_controller." .. tostring(index) .. ".controller.AcknowledgedPawn",
+                try_get_property_value(source.controller, "AcknowledgedPawn"),
+            },
+            { "live_controller." .. tostring(index) .. ".controller.Character", try_get_property_value(source.controller, "Character") },
+            {
+                "live_controller." .. tostring(index) .. ".player_state.PawnPrivate",
+                try_get_property_value(source.player_state, "PawnPrivate"),
+            },
+            { "live_controller." .. tostring(index) .. ".controller", source.controller },
+            { "live_controller." .. tostring(index) .. ".player_state", source.player_state },
+        }
+
+        for _, candidate in ipairs(candidates) do
+            local vector, source_label = OmeggaTryPlayerLocationObject(lines, candidate[1], candidate[2])
+            if vector then
+                return vector, source_label
+            end
+        end
+    end
+
+    return nil, nil
+end
+
 function OmeggaDescribePlayerLocation(spec)
     if os.getenv("OMEGGA_UE4SS_ALLOW_UNSAFE_PLAYER_LOCATION") ~= "1" then
         return table.concat({
@@ -8407,6 +8682,30 @@ function OmeggaDescribePlayerLocation(spec)
         "Player location",
         "requested_name=" .. requested_name,
     }
+
+    if type(BMFSocketPlayerLocation) == "function" then
+        local native_ok, native_output = pcall(BMFSocketPlayerLocation, requested_name)
+        if native_ok and type(native_output) == "string" and native_output ~= "" then
+            return native_output
+        end
+        table.insert(lines, "native_detail=" .. tostring(native_output or "native location helper returned empty output"))
+    end
+
+    if os.getenv("OMEGGA_UE4SS_PLAYER_LOCATION_USE_LUA_UOBJECTS") ~= "1" then
+        table.insert(lines, "ok=false")
+        table.insert(lines, "detail=native location helper unavailable")
+        return table.concat(lines, "\n")
+    end
+
+    local live_vector, live_source = OmeggaTryLivePlayerControllerLocation(lines, requested_name)
+    if live_vector then
+        table.insert(lines, "ok=true")
+        table.insert(lines, "source=" .. tostring(live_source or "live-controller"))
+        table.insert(lines, "x=" .. tostring(live_vector.x))
+        table.insert(lines, "y=" .. tostring(live_vector.y))
+        table.insert(lines, "z=" .. tostring(live_vector.z))
+        return table.concat(lines, "\n")
+    end
 
     local objects = select(1, get_cached_game_objects())
     local player_states = {}

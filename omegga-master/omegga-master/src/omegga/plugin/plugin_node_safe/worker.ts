@@ -71,9 +71,28 @@ const emit = (action: string, ...args: any[]) => {
 // tell omegga to exec a command
 const exec = (cmd: string) => emit('exec', cmd);
 
+const execControlCommandWithOutput = async (
+  command: string,
+  timeoutMs?: number,
+) => {
+  const payload = (await emit(
+    'execControlCommandWithOutput',
+    command,
+    timeoutMs,
+  )) as
+    | { ok: true; output: unknown }
+    | { ok: false; error: string }
+    | undefined;
+
+  if (!payload?.ok) {
+    throw new Error(payload?.error || 'execControlCommandWithOutput failed');
+  }
+  return payload.output;
+};
+
 // create the proxy omegga
 injectOmeggaPrototypes(ProxyOmegga, Omegga);
-const omegga = new ProxyOmegga(exec);
+const omegga = new ProxyOmegga(exec, execControlCommandWithOutput);
 
 // add plugin fetcher
 omegga.getPlugin = async name => {

@@ -61,6 +61,34 @@ const join: MatchGenerator<Player> = omegga => {
       omegga.players.map(p => p.raw()),
     );
 
+  const requestPlayerStateLookup = () => {
+    omegga.writeln('GetAll BRPlayerState UserName');
+  };
+
+  const schedulePlayerStateLookup = () => {
+    requestPlayerStateLookup();
+    setTimeout(requestPlayerStateLookup, 250).unref?.();
+    setTimeout(requestPlayerStateLookup, 1000).unref?.();
+  };
+
+  const ensurePendingStateLookup = (player: Player) => {
+    if (player.controller && player.state) return;
+    const pending = joiningPlayers.find(
+      p => p.id === player.id || p.name === player.name,
+    );
+    if (pending) {
+      pending.player = pending.player ?? player;
+    } else {
+      joiningPlayers.push({
+        displayName: player.displayName,
+        name: player.name,
+        id: player.id,
+        player,
+      });
+    }
+    schedulePlayerStateLookup();
+  };
+
   return {
     // listen for join events and wait for PlayerController info
     pattern(line, logMatch) {
@@ -118,7 +146,10 @@ const join: MatchGenerator<Player> = omegga => {
             const existingPlayer = omegga.players.find(
               p => p.id === joinData.UserId || p.name === name,
             );
-            if (existingPlayer) return;
+            if (existingPlayer) {
+              ensurePendingStateLookup(existingPlayer);
+              return;
+            }
 
             const player = new Player(
               omegga,
@@ -139,7 +170,7 @@ const join: MatchGenerator<Player> = omegga => {
 
             // get the state of all players so we can determine which is this player
             // TODO: maybe also use the ReplicatedJoinTime, which matches the time for these logs
-            omegga.writeln('GetAll BRPlayerState UserName');
+            schedulePlayerStateLookup();
 
             // return the player now so plugins can resolve them by id immediately
             return player;
@@ -214,12 +245,14 @@ const join: MatchGenerator<Player> = omegga => {
         existingPlayer.id = player.id;
         if (player.controller) existingPlayer.controller = player.controller;
         if (player.state) existingPlayer.state = player.state;
+        ensurePendingStateLookup(existingPlayer);
         emitRawPlayers();
         return;
       }
 
       omegga.emit('join', player);
       omegga.players.push(player);
+      ensurePendingStateLookup(player);
       emitRawPlayers();
     },
   };

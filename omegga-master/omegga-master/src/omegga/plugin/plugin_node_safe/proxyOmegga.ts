@@ -130,13 +130,26 @@ export class ProxyOmegga extends EventEmitter implements OmeggaLike {
 
   getPlugin: (name: string) => Promise<PluginInterop>;
   writelnAsync: (line: string) => Promise<void>;
+  execControlCommandWithOutput: (
+    command: string,
+    timeoutMs?: number,
+  ) => Promise<unknown>;
 
-  constructor(exec: (line: string) => void) {
+  constructor(
+    exec: (line: string) => void,
+    execControlCommandWithOutput?: (
+      command: string,
+      timeoutMs?: number,
+    ) => Promise<unknown>,
+  ) {
     super();
     this.setMaxListeners(Infinity);
 
     this.writeln = exec;
     this.writelnAsync = (line: string) => Promise.resolve(exec(line));
+    this.execControlCommandWithOutput =
+      execControlCommandWithOutput ??
+      (() => Promise.reject(badBorrow('execControlCommandWithOutput')));
 
     this.version = -1;
 

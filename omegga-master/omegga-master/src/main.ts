@@ -333,7 +333,7 @@ const program = commander
 
     // start the server
     Logger.verbose('Starting Omegga');
-    server.start();
+    await server.start();
   });
 
 program
@@ -573,7 +573,7 @@ program
     const startedPromise = waitForEvent(server, 'start', 45000);
 
     try {
-      server.start();
+      await server.start();
       await server.waitUntilControlReady(20000);
       await startedPromise;
       const buildInfo = readBrickadiaBuildInfo(

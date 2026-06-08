@@ -68,6 +68,92 @@ const DEFAULT_WINDOWS_UE4SS_WRITE_SPACING_MS = 75;
 const delay = (ms: number) =>
   new Promise<void>(resolve => setTimeout(resolve, ms));
 
+const encodeBmfCommandArg = (value: string) =>
+  encodeURIComponent(value).replace(/[!'()*]/g, char =>
+    `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+
+const parseConsoleArgs = (value: string) => {
+  const args: string[] = [];
+  let current = '';
+  let quoted = false;
+  let escaped = false;
+
+  for (const char of value.trim()) {
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+    if (quoted && char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (!quoted && /\s/.test(char)) {
+      if (current) {
+        args.push(current);
+        current = '';
+      }
+      continue;
+    }
+    current += char;
+  }
+
+  if (current) args.push(current);
+  return args;
+};
+
+const getBmfCommandFromOmeggaLine = (line: string) => {
+  const bmfBridgeMatch = line.match(/^Omegga\.Bridge\.BMF\s+(.+)$/i);
+  if (bmfBridgeMatch) return bmfBridgeMatch[1].trim();
+
+  if (/^bmf\.[A-Za-z0-9_.-]+(?:\s|$)/.test(line)) {
+    return line.trim();
+  }
+
+  const minigameMatch = line.match(/^Server\.Minigames\.(\w+)\b\s*(.*)$/i);
+  if (minigameMatch) {
+    const action = minigameMatch[1].toLowerCase();
+    const args = parseConsoleArgs(minigameMatch[2] || '');
+    switch (action) {
+      case 'savepreset':
+        if (args[0] && args[1]) {
+          return `bmf.minigames.savepreset index=${encodeBmfCommandArg(args[0])} preset=${encodeBmfCommandArg(args[1])}`;
+        }
+        break;
+      case 'delete':
+        if (args[0]) return `bmf.minigames.delete index=${encodeBmfCommandArg(args[0])}`;
+        break;
+      case 'reset':
+        if (args[0]) return `bmf.minigames.reset index=${encodeBmfCommandArg(args[0])}`;
+        break;
+      case 'nextround':
+        if (args[0]) return `bmf.minigames.nextround index=${encodeBmfCommandArg(args[0])}`;
+        break;
+      case 'loadpreset':
+        if (args[0]) {
+          const owner = args[1] ? ` owner=${encodeBmfCommandArg(args[1])}` : '';
+          return `bmf.minigames.loadpreset preset=${encodeBmfCommandArg(args[0])}${owner}`;
+        }
+        break;
+    }
+  }
+
+  const setTeamMatch = line.match(/^Server\.Players\.SetTeam\b\s*(.*)$/i);
+  if (setTeamMatch) {
+    const args = parseConsoleArgs(setTeamMatch[1] || '');
+    if (args[0] && args[1]) {
+      return `bmf.minigames.live.assign-team player=${encodeBmfCommandArg(args[0])} team=${encodeBmfCommandArg(args[1])} method=servercallbyname`;
+    }
+  }
+
+  return '';
+};
+
 const getWindowsUe4ssWriteSpacingMs = () => {
   const value = Number(
     env.OMEGGA_UE4SS_WRITE_SPACING_MS ??
@@ -441,7 +527,50 @@ export default class BrickadiaServer extends EventEmitter {
     }
 
     const normalizedLine = line.replace(/\r?\n$/, '');
+    const execBmfCommand = async (
+      command: string,
+      options: {
+        timeoutMs?: number;
+        fallbackToFile?: boolean;
+        fallbackLogLabel?: string;
+      } = {},
+    ) => {
+      const timeoutMs = Math.max(
+        100,
+        Number(
+          options.timeoutMs ??
+            process.env.OMEGGA_BMF_SOCKET_COMMAND_TIMEOUT_MS ??
+            1200,
+        ),
+      );
+      if (this.#bmfSocketBridge?.hasBmfClients) {
+        try {
+          return await this.#bmfSocketBridge.execCommand(command, timeoutMs);
+        } catch (error) {
+          if (options.fallbackToFile === false) throw error;
+          Logger.warnp(
+            (options.fallbackLogLabel ||
+              'BMF socket command failed; falling back to file bridge').yellow,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
+
+      if (options.fallbackToFile === false) {
+        throw new Error('BMF socket bridge has no connected native client.');
+      }
+
+      await this.#ue4ssBridge.execCommand(`Omegga.Bridge.BMF ${command}`);
+      return null;
+    };
+
     const runBridgeBookkeepingCommand = async () => {
+      const bmfCommand = getBmfCommandFromOmeggaLine(normalizedLine);
+      if (bmfCommand) {
+        await execBmfCommand(bmfCommand);
+        return true;
+      }
+
       if (
         normalizedLine === 'Server.Status' &&
         this.#ue4ssBridge.hasCapability('server_status')
@@ -497,10 +626,10 @@ export default class BrickadiaServer extends EventEmitter {
     const allowUnsafePositionProbes =
       process.env.OMEGGA_UE4SS_ALLOW_UNSAFE_POSITION_PROBES === '1';
     const isDegradedSafePositionProbe =
-      allowUnsafePositionProbes &&
-      /^GetAll BP_PlayerController_C Pawn Name=BP_PlayerController_C_\d+$/.test(
-        normalizedLine,
-      ) ||
+      (allowUnsafePositionProbes &&
+        /^GetAll BP_PlayerController_C Pawn Name=BP_PlayerController_C_\d+$/.test(
+          normalizedLine,
+        )) ||
       (allowUnsafePositionProbes &&
         /^GetAll SceneComponent RelativeLocation Name=CollisionCylinder Outer=BP_FigureV2_C_\d+$/.test(
           normalizedLine,
@@ -544,14 +673,50 @@ export default class BrickadiaServer extends EventEmitter {
         }
         return value;
       };
+      const shouldRouteBmfChat =
+        process.env.OMEGGA_BMF_CHAT_BRIDGE !== '0';
+      const routeBmfChatCommand = (command: string) =>
+        execBmfCommand(command, {
+          timeoutMs: Number(process.env.OMEGGA_BMF_CHAT_SOCKET_TIMEOUT_MS || 1200),
+          fallbackLogLabel: 'BMF chat socket bridge failed; falling back to file bridge',
+        });
 
       const broadcastMatch = normalizedLine.match(/^Chat\.Broadcast\s+(.+)$/);
+      if (broadcastMatch && shouldRouteBmfChat) {
+        const message = decodeConsoleChatText(broadcastMatch[1]);
+        try {
+          await routeBmfChatCommand(
+            `bmf.chat.broadcast message=${encodeBmfCommandArg(message)}`,
+          );
+        } catch (error) {
+          Logger.warnp(
+            'BMF chat broadcast bridge failed'.yellow,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return true;
+      }
       if (broadcastMatch && this.#ue4ssBridge.hasCapability('chat_broadcast')) {
         await this.#ue4ssBridge.broadcast(decodeConsoleChatText(broadcastMatch[1]));
         return true;
       }
 
       const whisperMatch = normalizedLine.match(/^Chat\.Whisper\s+"([^"]+)"\s+(.+)$/);
+      if (whisperMatch && shouldRouteBmfChat) {
+        const target = whisperMatch[1];
+        const message = decodeConsoleChatText(whisperMatch[2]);
+        try {
+          await routeBmfChatCommand(
+            `bmf.chat.whisper target=${encodeBmfCommandArg(target)} message=${encodeBmfCommandArg(message)}`,
+          );
+        } catch (error) {
+          Logger.warnp(
+            'BMF chat whisper bridge failed'.yellow,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return true;
+      }
       if (whisperMatch && this.#ue4ssBridge.hasCapability('chat_whisper')) {
         await this.#ue4ssBridge.whisper(
           whisperMatch[1],
@@ -563,6 +728,21 @@ export default class BrickadiaServer extends EventEmitter {
       const statusMessageMatch = normalizedLine.match(
         /^Chat\.StatusMessage\s+"([^"]+)"\s+(.+)$/,
       );
+      if (statusMessageMatch && shouldRouteBmfChat) {
+        const target = statusMessageMatch[1];
+        const message = decodeConsoleChatText(statusMessageMatch[2]);
+        try {
+          await routeBmfChatCommand(
+            `bmf.chat.statusmessage target=${encodeBmfCommandArg(target)} message=${encodeBmfCommandArg(message)}`,
+          );
+        } catch (error) {
+          Logger.warnp(
+            'BMF chat status bridge failed'.yellow,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return true;
+      }
       if (
         statusMessageMatch &&
         this.#ue4ssBridge.hasCapability('chat_status_message')
@@ -592,10 +772,18 @@ export default class BrickadiaServer extends EventEmitter {
       const noopUnsafeConsoleCommands =
         env.OMEGGA_UE4SS_NOOP_UNSAFE_CONSOLE_COMMANDS === '1' ||
         this.#ue4ssStagedObjectControlOverride;
+      if (noopUnsafeConsoleCommands && /^Chat\./i.test(normalizedLine)) {
+        Logger.warnp(
+          'UE4SS bridge skipped unsafe chat console command'.yellow,
+          normalizedLine,
+        );
+        return;
+      }
       if (
         noopUnsafeConsoleCommands &&
         /^GetAll\s+/i.test(normalizedLine) &&
-        !allowMinigameGetAll
+        !allowMinigameGetAll &&
+        !isDegradedSafePositionProbe
       ) {
         Logger.verbose(
           'UE4SS bridge skipping unsafe console probe',
@@ -663,6 +851,31 @@ export default class BrickadiaServer extends EventEmitter {
     if (!IS_WINDOWS || this.#windowsBackend !== 'ue4ss' || !this.#ue4ssBridge) {
       await this.writelnAsync(command);
       return null;
+    }
+
+    const normalizedCommand = command.replace(/\r?\n$/, '');
+    const bmfCommand = getBmfCommandFromOmeggaLine(normalizedCommand);
+    if (bmfCommand) {
+      if (this.#bmfSocketBridge?.hasBmfClients) {
+        try {
+          const response = await this.#bmfSocketBridge.execCommand(
+            bmfCommand,
+            timeoutMs,
+          );
+          return response.response ?? '';
+        } catch (error) {
+          Logger.warnp(
+            'BMF socket command with output failed; falling back to file bridge'
+              .yellow,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
+
+      return this.#ue4ssBridge.execCommandWithOutput(
+        `Omegga.Bridge.BMF ${bmfCommand}`,
+        timeoutMs,
+      );
     }
 
     return this.#ue4ssBridge.execCommandWithOutput(command, timeoutMs);
@@ -755,7 +968,7 @@ export default class BrickadiaServer extends EventEmitter {
   }
 
   // start the server child process
-  start() {
+  async start() {
     const {
       email,
       password,
@@ -973,7 +1186,10 @@ export default class BrickadiaServer extends EventEmitter {
       if (env.OMEGGA_BMF_SOCKET_ENABLED !== '0') {
         this.#bmfSocketBridge = new BmfSocketBridgeHost();
         this.#bmfSocketBridge.on('ready', info => {
-          Logger.verbose('BMF socket bridge ready', info);
+          Logger.logp(
+            'BMF socket bridge ready',
+            `${info.host}:${info.port}`.yellow,
+          );
         });
         this.#bmfSocketBridge.on('client', info => {
           Logger.verbose('BMF socket bridge client', info);
@@ -984,11 +1200,18 @@ export default class BrickadiaServer extends EventEmitter {
               ? payload
               : String(
                   (payload as { message?: string })?.message ??
-                    JSON.stringify(payload),
+                  JSON.stringify(payload),
                 );
-          Logger.verbose('BMF socket bridge', message);
+          const level = (payload as { level?: string })?.level;
+          if (level === 'error') {
+            Logger.errorp('BMF socket bridge', message);
+          } else if (level === 'warn') {
+            Logger.warnp('BMF socket bridge', message);
+          } else {
+            Logger.verbose('BMF socket bridge', message);
+          }
         });
-        const bmfSocketEnv = this.#bmfSocketBridge.start();
+        const bmfSocketEnv = await this.#bmfSocketBridge.start();
         Object.assign(spawnEnv, bmfSocketEnv);
         Object.assign(process.env, bmfSocketEnv);
       }
