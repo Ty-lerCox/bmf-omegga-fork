@@ -25,6 +25,7 @@ const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT_MIN = 26000;
 const DEFAULT_PORT_MAX = 61000;
 const DEFAULT_COMMAND_TIMEOUT_MS = 3000;
+const RETRYABLE_BIND_ERROR_CODES = new Set(['EADDRINUSE', 'EACCES']);
 
 export default class BmfSocketBridgeHost extends EventEmitter {
   readonly token = randomBytes(16).toString('hex');
@@ -90,11 +91,12 @@ export default class BmfSocketBridgeHost extends EventEmitter {
           // The listener may not be fully running when bind fails.
         }
         this.#server = null;
-        if (!this.#configuredPort && (lastError as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+        const errorCode = (lastError as NodeJS.ErrnoException).code;
+        if (!this.#configuredPort && RETRYABLE_BIND_ERROR_CODES.has(errorCode)) {
           this.emit('log', {
             level: 'warn',
             message:
-              `BMF socket bridge port ${this.host}:${port} was already in use; ` +
+              `BMF socket bridge port ${this.host}:${port} failed with ${errorCode}; ` +
               `retrying (${attempt}/${maxAttempts}).`,
           });
           continue;

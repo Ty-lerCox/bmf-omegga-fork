@@ -2,9 +2,10 @@ import { MatchGenerator } from './types';
 import { OmeggaPlayer } from '@/plugin';
 import Logger from '@/logger';
 
-const leave: MatchGenerator<Promise<OmeggaPlayer>> = omegga => {
+const leave: MatchGenerator<Promise<OmeggaPlayer> | OmeggaPlayer | null> = omegga => {
   // pattern to get PlayerController from a leave message
   const ownerRegExp = /Owner: (BP_PlayerController_C_\d+)/;
+  const leftRegExp = /^(.+?) left the game\.\s*$/;
 
   return {
     // listen for leave events and wait for PlayerController info
@@ -13,6 +14,18 @@ const leave: MatchGenerator<Promise<OmeggaPlayer>> = omegga => {
       if (!logMatch) return;
 
       const { generator, data } = logMatch.groups;
+      if (generator === 'LogChat') {
+        const match = data.match(leftRegExp);
+        if (!match) return;
+
+        const name = match[1].trim();
+        return (
+          omegga.players.find(
+            p => p.name === name || p.displayName === name,
+          ) || null
+        );
+      }
+
       // check if log is a disconnect log
       if (generator !== 'LogNet' || !data.startsWith('UChannel::Close:'))
         return;
@@ -44,11 +57,13 @@ const leave: MatchGenerator<Promise<OmeggaPlayer>> = omegga => {
     },
     // when there's a match, remove the player from the player list, emit a leave event
     async callback(res) {
-      if (!(res instanceof Promise)) return;
+      if (!res) return;
 
       try {
-        const player = await res;
-        omegga.players.splice(omegga.players.indexOf(player), 1);
+        const player = res instanceof Promise ? await res : res;
+        const index = omegga.players.indexOf(player);
+        if (index < 0) return;
+        omegga.players.splice(index, 1);
         omegga.emit('leave', player);
         omegga.emit(
           'plugin:players:raw',
