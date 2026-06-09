@@ -24,6 +24,13 @@ CityRPG validation used this path to assign a minigame team over the socket in
 about 51ms, replacing the earlier multi-second file-polling workflow for that
 gameplay path.
 
+Environment preset reloads are also part of the supported Windows runtime
+contract. `loadEnvironment(...)` and `loadEnvironmentData(...)` are asynchronous
+in this fork. On UE4SS-backed Windows launches, direct
+`Server.Environment.LoadPreset ...` and `Server.Environment.Reset` commands are
+routed through `Omegga.Bridge.ForceConsoleExecutor consolemanager ...` because
+the normal console-exec completion path can stall for environment reloads.
+
 The generic install instructions below are upstream Omegga documentation. Use
 them for non-Windows or generic plugin development. For BMF Windows runtime
 work, clone and run the forked repository instead of installing `omegga` from

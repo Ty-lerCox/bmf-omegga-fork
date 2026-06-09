@@ -167,6 +167,8 @@ local last_hook_game_session = nil
 local last_hook_command = ""
 local last_hook_source = ""
 local retained_callbacks = {}
+local retained_once_callback_order = {}
+local retained_once_callback_limit = 65536
 local retained_callback_serial = 0
 local scheduler_probe_fired = {}
 local chat_trace_sequence = 0
@@ -228,10 +230,14 @@ end
 local function retain_once_callback(prefix, callback)
     retained_callback_serial = retained_callback_serial + 1
     local key = tostring(prefix or "callback") .. ":" .. tostring(retained_callback_serial)
+    retained_once_callback_order[#retained_once_callback_order + 1] = key
+    while #retained_once_callback_order > retained_once_callback_limit do
+        release_callback(table.remove(retained_once_callback_order, 1))
+    end
+
     local wrapped
     wrapped = retain_callback(key, function(...)
         local results = table.pack(pcall(callback, ...))
-        release_callback(key)
 
         if not results[1] then
             error(results[2])
@@ -6211,29 +6217,29 @@ local function schedule_scheduler_probes()
     end
 
     if type(ExecuteWithDelay) == "function" then
-        ExecuteWithDelay(1000, function()
+        ExecuteWithDelay(1000, select(1, retain_once_callback("scheduler_probe_execute_with_delay", function()
             bridge_log("info", "Scheduler probe fired via ExecuteWithDelay")
-        end)
+        end)))
     end
 
     if type(ExecuteInGameThread) == "function"
         and type(EGameThreadMethod) == "table"
         and EGameThreadMethod.EngineTick ~= nil then
-        ExecuteInGameThread(function()
+        ExecuteInGameThread(select(1, retain_once_callback("scheduler_probe_execute_in_game_thread", function()
             bridge_log("info", "Scheduler probe fired via ExecuteInGameThread")
-        end, EGameThreadMethod.EngineTick)
+        end)), EGameThreadMethod.EngineTick)
     end
 
     if type(ExecuteInGameThreadWithDelay) == "function" then
-        ExecuteInGameThreadWithDelay(1000, function()
+        ExecuteInGameThreadWithDelay(1000, select(1, retain_once_callback("scheduler_probe_in_game_thread_delay", function()
             bridge_log("info", "Scheduler probe fired via ExecuteInGameThreadWithDelay")
-        end)
+        end)))
     end
 
     if type(ExecuteInGameThreadAfterFrames) == "function" then
-        ExecuteInGameThreadAfterFrames(6, function()
+        ExecuteInGameThreadAfterFrames(6, select(1, retain_once_callback("scheduler_probe_after_frames", function()
             bridge_log("info", "Scheduler probe fired via ExecuteInGameThreadAfterFrames")
-        end)
+        end)))
     end
 
     if type(LoopInGameThreadWithDelay) == "function" then
@@ -6242,7 +6248,6 @@ local function schedule_scheduler_probes()
                 "scheduler_probe_loop_game_thread_delay",
                 "Scheduler probe fired via LoopInGameThreadWithDelay"
             )
-            release_callback("scheduler_probe_loop_game_thread_delay")
             return true
         end))
     end
@@ -6253,7 +6258,6 @@ local function schedule_scheduler_probes()
                 "scheduler_probe_loop_game_thread_frames",
                 "Scheduler probe fired via LoopInGameThreadAfterFrames"
             )
-            release_callback("scheduler_probe_loop_game_thread_frames")
             return true
         end))
     end
@@ -6261,7 +6265,6 @@ local function schedule_scheduler_probes()
     if type(LoopAsync) == "function" then
         LoopAsync(1000, retain_callback("scheduler_probe_loop_async", function()
             bridge_log_once("scheduler_probe_loop_async", "Scheduler probe fired via LoopAsync")
-            release_callback("scheduler_probe_loop_async")
             return true
         end))
     end
@@ -10573,9 +10576,9 @@ local function register_bridge_console_features()
     end
 end
 
-local poll_inbox
+poll_inbox = nil
 
-local function start_async_inbox_poller()
+function start_async_inbox_poller()
     local function run_poll_cycle()
         local ok, keep_running_or_error = pcall(poll_inbox)
         if not ok then
@@ -10605,7 +10608,6 @@ local function start_async_inbox_poller()
                     if type(CancelDelayedAction) == "function" then
                         pcall(CancelDelayedAction, action_handle)
                     end
-                    release_callback(callback_key)
                     return
                 end
 
@@ -10617,7 +10619,6 @@ local function start_async_inbox_poller()
 
         local callback = retain_callback(callback_key, function()
             if not run_poll_cycle() then
-                release_callback(callback_key)
                 return
             end
 
@@ -10653,7 +10654,6 @@ local function start_async_inbox_poller()
             return true
         end
 
-        release_callback(callback_key)
         return false
     end
 

@@ -225,12 +225,16 @@ local function safe_relative_path(value, label)
 end
 
 local function json_escape(value)
-  return tostring(value or "")
-    :gsub("\\", "\\\\")
-    :gsub("\"", "\\\"")
-    :gsub("\r", "\\r")
-    :gsub("\n", "\\n")
-    :gsub("\t", "\\t")
+  local ok, text = pcall(tostring, value or "")
+  if not ok or type(text) ~= "string" then
+    text = "<unstringifiable:" .. type(value) .. ">"
+  end
+  text = text:gsub("\\", "\\\\")
+  text = text:gsub("\"", "\\\"")
+  text = text:gsub("\r", "\\r")
+  text = text:gsub("\n", "\\n")
+  text = text:gsub("\t", "\\t")
+  return text
 end
 
 local function json_string(value)
@@ -1135,16 +1139,24 @@ local function run_on_game_thread(callback)
     state.game_thread_callbacks[id] = function()
       local retained = state.game_thread_callbacks[id]
       if retained then
-        callback()
+        local ok, err = pcall(callback)
+        if not ok then
+          log("error", "game-thread callback failed: " .. tostring(err))
+        end
       end
     end
-    ExecuteInGameThread(state.game_thread_callbacks[id], EGameThreadMethod.EngineTick)
-    return
+    local scheduled = pcall(ExecuteInGameThread, state.game_thread_callbacks[id], EGameThreadMethod.EngineTick)
+    if scheduled then
+      return
+    end
+    state.game_thread_callbacks[id] = nil
   end
 
   if type(ExecuteInGameThreadWithDelay) == "function" then
-    ExecuteInGameThreadWithDelay(0, callback)
-    return
+    local scheduled = pcall(ExecuteInGameThreadWithDelay, 0, callback)
+    if scheduled then
+      return
+    end
   end
 
   callback()
@@ -8959,6 +8971,72 @@ function minigame_cached_single_player_match(query)
   return false, "player_cache.single_no_match"
 end
 
+function minigame_live_controller_candidates_for_assignment()
+  local candidates = {}
+  local seen = {}
+  local classes = { "BP_PlayerController_C", "BRPlayerController", "PlayerController" }
+
+  local function add(controller, source)
+    if not minigame_object_valid(controller) then
+      return
+    end
+    local key = minigame_object_address(controller)
+    if key == "" then
+      key = minigame_object_full_name(controller)
+    end
+    if key == "" then
+      key = tostring(controller or "")
+    end
+    if key == "" or seen[key] then
+      return
+    end
+    seen[key] = true
+    candidates[#candidates + 1] = {
+      object = controller,
+      source = tostring(source or ""),
+      address = minigame_object_address(controller),
+      name = minigame_object_name(controller),
+      fullName = minigame_object_full_name(controller),
+    }
+  end
+
+  if type(FindAllOf) == "function" then
+    for _, class_name in ipairs(classes) do
+      local ok, found = pcall(FindAllOf, class_name)
+      if ok and type(found) == "table" then
+        for index, controller in ipairs(found) do
+          add(controller, "FindAllOf(" .. class_name .. ")[" .. tostring(index) .. "]")
+        end
+      end
+    end
+  end
+
+  if #candidates == 0 and type(FindFirstOf) == "function" then
+    for _, class_name in ipairs(classes) do
+      local ok, controller = pcall(FindFirstOf, class_name)
+      if ok then
+        add(controller, "FindFirstOf(" .. class_name .. ")")
+      end
+    end
+  end
+
+  return candidates
+end
+
+function minigame_live_resolve_controller_for_assignment(query)
+  local single_cached_player, cache_source = minigame_cached_single_player_match(query)
+  if not single_cached_player then
+    return nil, "", cache_source
+  end
+
+  local candidates = minigame_live_controller_candidates_for_assignment()
+  if #candidates == 1 then
+    return candidates[1].object, "live_controller." .. tostring(candidates[1].source or ""), cache_source .. ".single_live_controller"
+  end
+
+  return nil, "", cache_source .. ".live_controllers=" .. tostring(#candidates)
+end
+
 function minigame_live_first_player_state_for_assignment(source_hint)
   local errors = {}
   local source = "FindFirstOf"
@@ -9083,6 +9161,8 @@ BMF.minigames.assignTeam = function(player_query, team_index, options)
 
   local player_state = player_item.object
   local controller = minigame_try_property(player_state, "Owner")
+  local controller_source = "player_state.Owner"
+  local controller_fallback = ""
   local ruleset, ruleset_source = minigame_live_resolve_ruleset_for_assignment(player_state)
   local requested_method = trim_string(opts.method or opts.assignMethod or opts.nativeMethod or ""):lower()
   local method = requested_method
@@ -9109,6 +9189,15 @@ BMF.minigames.assignTeam = function(player_query, team_index, options)
         "supported_methods=joinrulesetteam|serverrpc|handleplayerswitchteam|servercallbyname|joincallbyname",
       },
     })
+  end
+
+  if method ~= "handleplayerswitchteam" and not minigame_object_valid(controller) then
+    local fallback_controller, fallback_source, fallback_detail = minigame_live_resolve_controller_for_assignment(query)
+    controller_fallback = tostring(fallback_detail or fallback_source or "")
+    if minigame_object_valid(fallback_controller) then
+      controller = fallback_controller
+      controller_source = tostring(fallback_source or "live_controller")
+    end
   end
 
   local flag1 = opts.flag1
@@ -9164,6 +9253,8 @@ BMF.minigames.assignTeam = function(player_query, team_index, options)
     "player_state_name=" .. minigame_object_name(player_state),
     "controller=" .. minigame_object_address(controller),
     "controller_name=" .. minigame_object_name(controller),
+    "controller_source=" .. tostring(controller_source or ""),
+    "controller_fallback=" .. tostring(controller_fallback or ""),
     "ruleset=" .. minigame_object_address(ruleset),
     "ruleset_name=" .. minigame_object_name(ruleset),
     "ruleset_source=" .. tostring(ruleset_source or ""),
@@ -9206,6 +9297,8 @@ BMF.minigames.assignTeam = function(player_query, team_index, options)
       teamIndex = team,
       playerState = minigame_object_address(player_state),
       controller = minigame_object_address(controller),
+      controllerSource = controller_source,
+      controllerFallback = controller_fallback,
       ruleset = minigame_object_address(ruleset),
       context = minigame_object_address(call_context),
       contextKind = call_context_kind,
@@ -9255,6 +9348,8 @@ BMF.minigames.assignTeam = function(player_query, team_index, options)
       teamIndex = team,
       playerState = minigame_object_address(player_state),
       controller = minigame_object_address(controller),
+      controllerSource = controller_source,
+      controllerFallback = controller_fallback,
       ruleset = minigame_object_address(ruleset),
       context = minigame_object_address(call_context),
       contextKind = call_context_kind,
@@ -9299,13 +9394,15 @@ BMF.minigames.assignTeam = function(player_query, team_index, options)
   end
 
   return result(assigned, assigned and "OK" or "PROCESS_EVENT_FAILED", assigned and "Minigame team assignment invoked" or "Minigame team assignment failed", {
-    player = query,
-    teamIndex = team,
-    playerState = minigame_object_address(player_state),
-    controller = minigame_object_address(controller),
-    ruleset = minigame_object_address(ruleset),
-    context = minigame_object_address(call_context),
-    contextKind = call_context_kind,
+      player = query,
+      teamIndex = team,
+      playerState = minigame_object_address(player_state),
+      controller = minigame_object_address(controller),
+      controllerSource = controller_source,
+      controllerFallback = controller_fallback,
+      ruleset = minigame_object_address(ruleset),
+      context = minigame_object_address(call_context),
+      contextKind = call_context_kind,
     method = method,
     functionName = function_name,
     paramHex = buffer_hex,

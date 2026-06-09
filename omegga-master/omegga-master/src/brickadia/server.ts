@@ -621,6 +621,16 @@ export default class BrickadiaServer extends EventEmitter {
         return true;
       }
 
+      const directEnvironmentCommand = normalizedLine.match(
+        /^(Server\.Environment\.(?:LoadPreset|Reset)\b.*)$/i,
+      );
+      if (directEnvironmentCommand) {
+        await this.#ue4ssBridge.execCommand(
+          `Omegga.Bridge.ForceConsoleExecutor consolemanager ${directEnvironmentCommand[1]}`,
+        );
+        return true;
+      }
+
       return false;
     };
     const allowUnsafePositionProbes =

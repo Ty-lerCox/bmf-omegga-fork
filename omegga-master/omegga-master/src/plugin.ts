@@ -650,7 +650,7 @@ export interface OmeggaCore {
    * Load an environment preset
    * @param presetName preset name
    */
-  loadEnvironment(presetName: string): void;
+  loadEnvironment(presetName: string): void | Promise<void>;
 
   /**
    * Load some environment preset data
@@ -658,7 +658,7 @@ export interface OmeggaCore {
    */
   loadEnvironmentData(
     preset: EnvironmentPreset | EnvironmentPreset['data']['groups'],
-  ): void;
+  ): void | Promise<void>;
 
   /**
    * Get all presets in the environment folder and child folders

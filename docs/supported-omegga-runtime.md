@@ -19,6 +19,13 @@ that version skew as part of the runtime contract: BMF Windows bridge templates,
 UE4SS staging, `OmeggaBridge`, and the helper scripts are validated against the
 forked runtime, not against the newest upstream Omegga release.
 
+The runtime also owns specific Omegga console-command compatibility shims. In
+particular, environment reload commands such as
+`Server.Environment.LoadPreset ...` and `Server.Environment.Reset` are routed
+through `Omegga.Bridge.ForceConsoleExecutor consolemanager ...` on Windows
+UE4SS launches so weather/environment changes can apply without a server
+restart.
+
 For non-Windows or generic Omegga plugin development, upstream Omegga
 documentation may still be useful. For BMF Windows server automation, install,
 run, debug, and report issues against the fork above.

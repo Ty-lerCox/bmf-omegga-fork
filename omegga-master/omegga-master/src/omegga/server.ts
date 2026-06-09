@@ -3427,13 +3427,13 @@ export default class Omegga extends OmeggaWrapper implements OmeggaLike {
     return null;
   }
 
-  loadEnvironment(presetName: string) {
-    this.writeln(`Server.Environment.LoadPreset ${presetName}`);
+  async loadEnvironment(presetName: string): Promise<void> {
+    await this.writelnAsync(`Server.Environment.LoadPreset ${presetName}`);
   }
 
-  loadEnvironmentData(
+  async loadEnvironmentData(
     preset: EnvironmentPreset | EnvironmentPreset['data']['groups'],
-  ) {
+  ): Promise<void> {
     if ('data' in preset) preset = preset.data.groups;
 
     const saveFile =
@@ -3455,11 +3455,17 @@ export default class Omegga extends OmeggaWrapper implements OmeggaLike {
       }),
     );
 
-    this.loadEnvironment(saveFile);
+    await this.loadEnvironment(saveFile);
 
     // this is lazy, but environments should load much faster than builds
     // do, so it's not really worth keeping track of logs for this
-    setTimeout(() => unlinkSync(path), 5000);
+    setTimeout(() => {
+      try {
+        if (existsSync(path)) unlinkSync(path);
+      } catch (err) {
+        Logger.verbose('Failed to remove temporary environment preset', path, err);
+      }
+    }, 5000);
   }
 
   getEnvironmentPresets(): string[] {

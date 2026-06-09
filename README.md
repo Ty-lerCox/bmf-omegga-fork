@@ -62,11 +62,18 @@ When updating this fork, keep these BMF-facing surfaces intact unless the BMF
 repo is updated and validated at the same time:
 
 - `Omegga.Bridge.BMF`
+- `Omegga.Bridge.ForceConsoleExecutor`
 - `OmeggaBridge`
 - `OmeggaExecuteConsoleManagerInput`
 - `OmeggaExecuteKismetConsoleCommand`
 - `OmeggaExecuteCachedConsoleExec`
 - `OmeggaCallFunctionByNameWithArguments`
+
+Environment preset reloads are part of this contract. The Omegga fork routes
+`Server.Environment.LoadPreset ...` and `Server.Environment.Reset` through
+`Omegga.Bridge.ForceConsoleExecutor consolemanager ...` on the Windows UE4SS
+runtime so plugins can apply weather/environment files without restarting the
+Brickadia server.
 
 Do not replace this fork with a newer upstream Omegga build until BMF has
 validated that build against the Windows UE4SS bridge, player-sync adapters,
