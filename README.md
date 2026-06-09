@@ -19,6 +19,8 @@ bridge surfaces in this repository.
 - UE4SS bridge templates, including `OmeggaBridge`.
 - BMF command routing through `Omegga.Bridge.BMF`.
 - Helper surfaces used by BMF canaries and live-player APIs.
+- Prometheus `/metrics` export and Grafana Cloud/Alloy observability docs for
+  local performance telemetry.
 - Packaging hooks for BMF/Omegga integration work.
 
 This repository is not a general replacement for upstream Omegga. Use upstream
@@ -55,6 +57,11 @@ npm run build:bridge
 
 Run package or BMF validation from the BMF repository when the change affects
 BMF behavior. Keep BMF documentation and this fork's runtime contract aligned.
+
+Observability setup lives in
+`omegga-master/omegga-master/docs/observability-grafana-cloud.md`. That guide
+covers the local `/metrics` endpoint, Grafana Alloy remote-write setup,
+dashboard import, BMF command-worker metrics, and native frame-time telemetry.
 
 ## Runtime Contract
 
