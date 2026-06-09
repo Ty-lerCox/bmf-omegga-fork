@@ -15,6 +15,7 @@ import { Server as SocketIo } from 'socket.io';
 import setupApi from './api';
 import Database from './database';
 import setupMetrics from './metrics';
+import setupPrometheusExporter from './prometheus';
 import { IStoreUser, OmeggaSocketIo } from './types';
 import * as util from './util';
 
@@ -42,6 +43,8 @@ export default class Webserver {
 
   serverStatusInterval: ReturnType<typeof setInterval>;
   lastReportedStatus: IServerStatus;
+  lastReportedStatusAt: number;
+  lastServerStatusPollDurationMs: number;
 
   rooms: string[];
 
@@ -179,6 +182,9 @@ export default class Webserver {
 
     // setup the api
     setupApi(this, this.io);
+
+    // unauthenticated localhost scrape target for Grafana Alloy / Prometheus
+    setupPrometheusExporter(this);
 
     // setup metrics and tracking
     setupMetrics(this, this.io);

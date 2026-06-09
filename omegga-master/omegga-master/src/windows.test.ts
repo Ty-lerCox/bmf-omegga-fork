@@ -391,6 +391,19 @@ windowsDescribe('Windows platform support', () => {
       'return nil\n',
     );
     fs.writeFileSync(path.join(bmfSource, 'override-marker.txt'), 'override\n');
+    const frameTelemetrySource = path.join(
+      path.dirname(bmfSource),
+      'BMFFrameTelemetry',
+    );
+    fs.mkdirSync(path.join(frameTelemetrySource, 'dlls'), { recursive: true });
+    fs.writeFileSync(
+      path.join(frameTelemetrySource, 'dlls', 'main.dll'),
+      'frame telemetry dll\n',
+    );
+    fs.writeFileSync(
+      path.join(frameTelemetrySource, 'README.md'),
+      'frame telemetry\n',
+    );
 
     process.env.OMEGGA_UE4SS_SOURCE = sourceRoot;
     process.env.OMEGGA_UE4SS_RE_ROOT = compatibilityWorkspace.workspaceRoot;
@@ -410,6 +423,35 @@ windowsDescribe('Windows platform support', () => {
         'utf8',
       ),
     ).toContain('BMF : 1');
+    expect(
+      fs.readFileSync(
+        path.join(
+          targetRoot,
+          'ue4ss',
+          'Mods',
+          'BMFFrameTelemetry',
+          'README.md',
+        ),
+        'utf8',
+      ),
+    ).toBe('frame telemetry\n');
+    expect(
+      fs.readFileSync(
+        path.join(targetRoot, 'ue4ss', 'Mods', 'mods.txt'),
+        'utf8',
+      ),
+    ).toContain('BMFFrameTelemetry : 1');
+    expect(
+      JSON.parse(
+        fs.readFileSync(
+          path.join(targetRoot, 'ue4ss', 'Mods', 'mods.json'),
+          'utf8',
+        ),
+      ),
+    ).toContainEqual({
+      mod_name: 'BMFFrameTelemetry',
+      mod_enabled: true,
+    });
   });
 
   it('parses UE4SS compatibility diagnostics', () => {

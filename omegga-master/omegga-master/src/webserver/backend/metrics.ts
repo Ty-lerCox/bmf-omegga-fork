@@ -182,11 +182,15 @@ export default function (server: Webserver, io: OmeggaSocketIo) {
   }
 
   server.lastReportedStatus = null;
+  server.lastReportedStatusAt = 0;
+  server.lastServerStatusPollDurationMs = 0;
   server.serverStatusInterval = setInterval(async () => {
     if (!omegga.started) return;
+    const statusPollStartedAt = Date.now();
     try {
       // get the server status
       const status = await omegga.getServerStatus();
+      server.lastServerStatusPollDurationMs = Date.now() - statusPollStartedAt;
       if (!status) return;
 
       try {
@@ -200,6 +204,7 @@ export default function (server: Webserver, io: OmeggaSocketIo) {
 
       // send the unaltered status to the frontend
       server.lastReportedStatus = status;
+      server.lastReportedStatusAt = Date.now();
       io.to('status').emit('server.status', status);
       try {
         omegga.emit('metrics:heartbeat', status);
@@ -248,6 +253,7 @@ export default function (server: Webserver, io: OmeggaSocketIo) {
       // hand the server status off to the database
       await database.addHeartbeat(data);
     } catch (e) {
+      server.lastServerStatusPollDurationMs = Date.now() - statusPollStartedAt;
       const message =
         e instanceof Error && e.message ? e.message : String(e ?? 'unknown');
       const detail =
@@ -276,7 +282,9 @@ export default function (server: Webserver, io: OmeggaSocketIo) {
   omegga.on('chat', async (name, message, id) => {
     const p =
       omegga.getPlayer(name) ??
-      (typeof id === 'string' ? omegga.players.find(player => player.id === id) : null);
+      (typeof id === 'string'
+        ? omegga.players.find(player => player.id === id)
+        : null);
     const user = {
       id: p?.id ?? (typeof id === 'string' ? id : name),
       name: p?.name ?? name,

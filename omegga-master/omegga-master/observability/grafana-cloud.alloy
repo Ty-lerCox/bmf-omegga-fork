@@ -1,0 +1,40 @@
+prometheus.remote_write "grafana_cloud" {
+  external_labels = {
+    service     = "brickadia",
+    environment = sys.env("BRICKADIA_METRICS_ENVIRONMENT"),
+    instance    = sys.env("BRICKADIA_METRICS_INSTANCE"),
+  }
+
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_PROMETHEUS_RW_URL")
+
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_PROMETHEUS_USERNAME")
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+
+    metadata_config {
+      send = false
+    }
+
+    queue_config {
+      min_shards          = 1
+      max_shards          = 1
+      batch_send_deadline = "30s"
+      retry_on_http_429   = true
+    }
+  }
+}
+
+prometheus.scrape "brickadia_omegga" {
+  targets = [
+    {
+      "__address__" = sys.env("OMEGGA_METRICS_TARGET"),
+      "job"         = "brickadia-omegga",
+    },
+  ]
+
+  metrics_path    = "/metrics"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}

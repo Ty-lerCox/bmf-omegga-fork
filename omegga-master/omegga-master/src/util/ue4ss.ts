@@ -32,6 +32,7 @@ const UE4SS_BRIDGE_MOD_NAME = 'OmeggaBridge';
 const UE4SS_PROBE_MOD_NAME = 'OmeggaBridgeProbe';
 const BMF_MOD_NAME = 'BMF';
 const BMF_SOCKET_MOD_NAME = 'BMFSocket';
+const BMF_FRAME_TELEMETRY_MOD_NAME = 'BMFFrameTelemetry';
 const BMF_SOURCE_ENV = 'OMEGGA_BMF_SOURCE_DIR';
 const TEMPLATE_ROOT = path.resolve(
   __dirname,
@@ -558,13 +559,21 @@ function getManagedBmfMod() {
 }
 
 function getManagedBmfSocketMod() {
+  return getManagedBmfNativeMod(BMF_SOCKET_MOD_NAME);
+}
+
+function getManagedBmfFrameTelemetryMod() {
+  return getManagedBmfNativeMod(BMF_FRAME_TELEMETRY_MOD_NAME);
+}
+
+function getManagedBmfNativeMod(modName: string) {
   const overrideSourceDir = process.env[BMF_SOURCE_ENV]?.trim();
   const configuredSourceDir = overrideSourceDir
     ? path.resolve(overrideSourceDir)
     : path.join(TEMPLATE_ROOT, UE4SS_DIRNAME, 'Mods', BMF_MOD_NAME);
   const sourceDir = resolveSiblingManagedModSourceDir(
     configuredSourceDir,
-    BMF_SOCKET_MOD_NAME,
+    modName,
   );
   const dllPath = path.join(sourceDir, 'dlls', 'main.dll');
 
@@ -573,7 +582,7 @@ function getManagedBmfSocketMod() {
   }
 
   return {
-    name: BMF_SOCKET_MOD_NAME,
+    name: modName,
     sourceDir,
     enabled: true,
   };
@@ -624,6 +633,10 @@ function getManagedMods() {
   const bmfSocketMod = getManagedBmfSocketMod();
   if (bmfSocketMod) {
     mods.push(bmfSocketMod);
+  }
+  const bmfFrameTelemetryMod = getManagedBmfFrameTelemetryMod();
+  if (bmfFrameTelemetryMod) {
+    mods.push(bmfFrameTelemetryMod);
   }
   return mods;
 }
