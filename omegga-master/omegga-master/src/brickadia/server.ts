@@ -4,10 +4,7 @@
 */
 
 import Logger from '@/logger';
-import {
-  ACTIVE_WORLD_FILE,
-  CONFIG_SAVED_DIR,
-} from '@/softconfig';
+import { ACTIVE_WORLD_FILE, CONFIG_SAVED_DIR } from '@/softconfig';
 import { getGlobalToken } from '@cli/auth';
 import { IConfig } from '@config/types';
 import { terminateChildProcess } from '@util/process';
@@ -64,13 +61,25 @@ const WINDOWS_BRIDGE_CONTROL_PORT_MIN = 20000;
 const WINDOWS_BRIDGE_CONTROL_PORT_MAX = 60000;
 const WINDOWS_UE4SS_READY_TIMEOUT_MS = 15000;
 const DEFAULT_WINDOWS_UE4SS_WRITE_SPACING_MS = 75;
+const SYNTHETIC_PLAYER_STATE_BASE = 2147483000;
+const SYNTHETIC_PLAYER_CONTROLLER_BASE = 2147484000;
+const SYNTHETIC_PATH_PREFIX = 'Omegga:PersistentLevel.';
+
+type SyntheticPlayerLookup = {
+  name?: string;
+  displayName?: string;
+  id?: string;
+  state?: string;
+  controller?: string;
+};
 
 const delay = (ms: number) =>
   new Promise<void>(resolve => setTimeout(resolve, ms));
 
 const encodeBmfCommandArg = (value: string) =>
-  encodeURIComponent(value).replace(/[!'()*]/g, char =>
-    `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
   );
 
 const parseConsoleArgs = (value: string) => {
@@ -126,13 +135,16 @@ const getBmfCommandFromOmeggaLine = (line: string) => {
         }
         break;
       case 'delete':
-        if (args[0]) return `bmf.minigames.delete index=${encodeBmfCommandArg(args[0])}`;
+        if (args[0])
+          return `bmf.minigames.delete index=${encodeBmfCommandArg(args[0])}`;
         break;
       case 'reset':
-        if (args[0]) return `bmf.minigames.reset index=${encodeBmfCommandArg(args[0])}`;
+        if (args[0])
+          return `bmf.minigames.reset index=${encodeBmfCommandArg(args[0])}`;
         break;
       case 'nextround':
-        if (args[0]) return `bmf.minigames.nextround index=${encodeBmfCommandArg(args[0])}`;
+        if (args[0])
+          return `bmf.minigames.nextround index=${encodeBmfCommandArg(args[0])}`;
         break;
       case 'loadpreset':
         if (args[0]) {
@@ -156,8 +168,7 @@ const getBmfCommandFromOmeggaLine = (line: string) => {
 
 const getWindowsUe4ssWriteSpacingMs = () => {
   const value = Number(
-    env.OMEGGA_UE4SS_WRITE_SPACING_MS ??
-      DEFAULT_WINDOWS_UE4SS_WRITE_SPACING_MS,
+    env.OMEGGA_UE4SS_WRITE_SPACING_MS ?? DEFAULT_WINDOWS_UE4SS_WRITE_SPACING_MS,
   );
 
   return Number.isFinite(value) && value > 0 ? value : 0;
@@ -175,7 +186,8 @@ const MINIGAME_GETALL_COMMANDS = new Set([
 const isAllowedMinigameGetAllCommand = (line: string) =>
   MINIGAME_GETALL_COMMANDS.has(line);
 
-const STAGED_PLAYER_MUTATION_COMMAND = /^Server\.Players\.(?:SetTeam|SetMinigame|SetLeaderboardValue|GiveItem|RemoveItem)\b/;
+const STAGED_PLAYER_MUTATION_COMMAND =
+  /^Server\.Players\.(?:SetTeam|SetMinigame|SetLeaderboardValue|GiveItem|RemoveItem)\b/;
 
 /** Start a brickadia server */
 export default class BrickadiaServer extends EventEmitter {
@@ -257,7 +269,9 @@ export default class BrickadiaServer extends EventEmitter {
 
         if (Date.now() - startedAt >= timeoutMs) {
           clearInterval(timer);
-          reject(new Error('Timed out waiting for the Windows control socket.'));
+          reject(
+            new Error('Timed out waiting for the Windows control socket.'),
+          );
         }
       }, 100);
       timer.unref?.();
@@ -362,7 +376,10 @@ export default class BrickadiaServer extends EventEmitter {
 
       if (!this.#child || this.#child.exitCode !== null) return;
 
-      if (err.code === 'ECONNREFUSED' && attempt < WINDOWS_BRIDGE_CONNECT_RETRIES) {
+      if (
+        err.code === 'ECONNREFUSED' &&
+        attempt < WINDOWS_BRIDGE_CONNECT_RETRIES
+      ) {
         this.#windowsControlRetryTimer = setTimeout(
           () => this.connectWindowsControlSocket(port, attempt + 1),
           WINDOWS_BRIDGE_CONNECT_RETRY_MS,
@@ -466,10 +483,103 @@ export default class BrickadiaServer extends EventEmitter {
     this.emit('line', this.formatSyntheticConsoleLine(line));
   }
 
+  getSyntheticPlayerLookups(): SyntheticPlayerLookup[] {
+    const runtime = this as unknown as { players?: SyntheticPlayerLookup[] };
+    return Array.isArray(runtime.players) ? runtime.players : [];
+  }
+
+  getSyntheticPlayerNames(player: SyntheticPlayerLookup, index: number) {
+    const seed = `${player.id ?? ''}:${player.name ?? ''}:${index}`;
+    let hash = 0;
+
+    for (let i = 0; i < seed.length; i += 1) {
+      hash = (hash * 31 + seed.charCodeAt(i)) % 100000;
+    }
+
+    const numericId = index + 1 + hash;
+
+    return {
+      state:
+        player.state ||
+        `BP_PlayerState_C_${SYNTHETIC_PLAYER_STATE_BASE + numericId}`,
+      controller:
+        player.controller ||
+        `BP_PlayerController_C_${SYNTHETIC_PLAYER_CONTROLLER_BASE + numericId}`,
+    };
+  }
+
+  getSyntheticPlayerStateUserNameLines() {
+    const lines: string[] = [];
+
+    for (const [index, player] of this.getSyntheticPlayerLookups().entries()) {
+      const { state } = this.getSyntheticPlayerNames(player, index);
+      const name = String(
+        player.name || player.displayName || `Player ${index + 1}`,
+      )
+        .replace(/[\r\n]+/g, ' ')
+        .trim();
+
+      lines.push(
+        `${index}) BP_PlayerState_C ${SYNTHETIC_PATH_PREFIX}${state}.UserName = ${name}`,
+      );
+    }
+
+    return lines;
+  }
+
+  emitSyntheticPlayerStateUserNames() {
+    for (const line of this.getSyntheticPlayerStateUserNameLines()) {
+      this.emitSyntheticConsoleLine(line);
+    }
+  }
+
+  getSyntheticPlayerStateOwnerLines(stateName: string) {
+    const players = this.getSyntheticPlayerLookups();
+
+    for (const [index, player] of players.entries()) {
+      const names = this.getSyntheticPlayerNames(player, index);
+
+      if (names.state !== stateName) continue;
+
+      return [
+        `${index}) BP_PlayerState_C ${SYNTHETIC_PATH_PREFIX}${names.state}.Owner = BP_PlayerController_C'${SYNTHETIC_PATH_PREFIX}${names.controller}'`,
+      ];
+    }
+
+    return [];
+  }
+
+  emitSyntheticPlayerStateOwner(stateName: string) {
+    for (const line of this.getSyntheticPlayerStateOwnerLines(stateName)) {
+      this.emitSyntheticConsoleLine(line);
+    }
+  }
+
+  buildSyntheticControlOutput(
+    command: string,
+    executor: string,
+    lines: string[],
+  ) {
+    return {
+      result: {
+        accepted: true,
+        command,
+        executor,
+      },
+      chunks: lines.map((line, index) => ({
+        chunk_index: index + 1,
+        line,
+      })),
+      complete: {
+        success: true,
+        executor,
+        line_count: lines.length,
+      },
+    };
+  }
+
   formatSyntheticConsoleLine(line: string) {
-    if (
-      /^\[\d{4}\.\d\d.\d\d-\d\d.\d\d.\d\d:\d{3}\]\[\s*\d+\]/.test(line)
-    ) {
+    if (/^\[\d{4}\.\d\d.\d\d-\d\d.\d\d.\d\d:\d{3}\]\[\s*\d+\]/.test(line)) {
       return line;
     }
 
@@ -490,7 +600,11 @@ export default class BrickadiaServer extends EventEmitter {
   }
 
   handleUe4ssDegraded(reason: string) {
-    if (!IS_WINDOWS || this.#windowsBackend !== 'ue4ss' || this.#ue4ssDegraded) {
+    if (
+      !IS_WINDOWS ||
+      this.#windowsBackend !== 'ue4ss' ||
+      this.#ue4ssDegraded
+    ) {
       return;
     }
 
@@ -549,8 +663,10 @@ export default class BrickadiaServer extends EventEmitter {
         } catch (error) {
           if (options.fallbackToFile === false) throw error;
           Logger.warnp(
-            (options.fallbackLogLabel ||
-              'BMF socket command failed; falling back to file bridge').yellow,
+            (
+              options.fallbackLogLabel ||
+              'BMF socket command failed; falling back to file bridge'
+            ).yellow,
             error instanceof Error ? error.message : String(error),
           );
         }
@@ -579,6 +695,19 @@ export default class BrickadiaServer extends EventEmitter {
         return true;
       }
 
+      if (normalizedLine === 'GetAll BRPlayerState UserName') {
+        this.emitSyntheticPlayerStateUserNames();
+        return true;
+      }
+
+      const syntheticOwnerMatch = normalizedLine.match(
+        /^GetAll BRPlayerState Owner Name=(.+)$/,
+      );
+      if (syntheticOwnerMatch) {
+        this.emitSyntheticPlayerStateOwner(syntheticOwnerMatch[1]);
+        return true;
+      }
+
       const allowUnsafePlayersList =
         process.env.OMEGGA_UE4SS_ALLOW_UNSAFE_PLAYERS_LIST === '1';
       if (
@@ -598,22 +727,24 @@ export default class BrickadiaServer extends EventEmitter {
         ownerMatch &&
         this.#ue4ssBridge.hasCapability('players_list')
       ) {
-        await this.#ue4ssBridge.requestPlayers(
-          'owners',
-          { stateName: ownerMatch[1] },
-        );
+        await this.#ue4ssBridge.requestPlayers('owners', {
+          stateName: ownerMatch[1],
+        });
         return true;
       }
 
       const allowDegradedWorldCommands =
         process.env.OMEGGA_UE4SS_ALLOW_DEGRADED_WORLD_COMMANDS === '1';
       const forceWorldCommand = normalizedLine.match(
-        /^Omegga\.Bridge\.ForceConsoleExecutor\s+(?:consolemanager|console)\s+((?:BR\.World\.(?:SaveAs|LoadAdditive)|Bricks\.(?:Save|SaveRegion|Load))\b.*)$/,
+        /^Omegga\.Bridge\.ForceConsoleExecutor\s+(?:consolemanager|console)\s+((?:BR\.World\.(?:SaveAs|LoadAdditive)|Bricks\.(?:Save|SaveRegion|Load|ClearRegion))\b.*)$/,
       );
       const directWorldCommand = normalizedLine.match(
-        /^(?:BR\.World\.(?:SaveAs|LoadAdditive)|Bricks\.(?:Save|SaveRegion|Load))\b.*$/,
+        /^(?:BR\.World\.(?:SaveAs|LoadAdditive)|Bricks\.(?:Save|SaveRegion|Load|ClearRegion))\b.*$/,
       );
-      if (allowDegradedWorldCommands && (forceWorldCommand || directWorldCommand)) {
+      if (
+        allowDegradedWorldCommands &&
+        (forceWorldCommand || directWorldCommand)
+      ) {
         const command = forceWorldCommand
           ? normalizedLine
           : `Omegga.Bridge.ForceConsoleExecutor consolemanager ${normalizedLine}`;
@@ -649,8 +780,7 @@ export default class BrickadiaServer extends EventEmitter {
     const looksLikeConsoleCommand =
       /^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+(?:\s|$)/.test(
         normalizedLine,
-      ) ||
-      /^(?:GetAll|ServerTravel|exit|quit)\b/i.test(normalizedLine);
+      ) || /^(?:GetAll|ServerTravel|exit|quit)\b/i.test(normalizedLine);
     const buildInfo = readBrickadiaBuildInfo(
       getBrickadiaLogPath(
         this.path,
@@ -683,12 +813,14 @@ export default class BrickadiaServer extends EventEmitter {
         }
         return value;
       };
-      const shouldRouteBmfChat =
-        process.env.OMEGGA_BMF_CHAT_BRIDGE !== '0';
+      const shouldRouteBmfChat = process.env.OMEGGA_BMF_CHAT_BRIDGE !== '0';
       const routeBmfChatCommand = (command: string) =>
         execBmfCommand(command, {
-          timeoutMs: Number(process.env.OMEGGA_BMF_CHAT_SOCKET_TIMEOUT_MS || 1200),
-          fallbackLogLabel: 'BMF chat socket bridge failed; falling back to file bridge',
+          timeoutMs: Number(
+            process.env.OMEGGA_BMF_CHAT_SOCKET_TIMEOUT_MS || 1200,
+          ),
+          fallbackLogLabel:
+            'BMF chat socket bridge failed; falling back to file bridge',
         });
 
       const broadcastMatch = normalizedLine.match(/^Chat\.Broadcast\s+(.+)$/);
@@ -707,11 +839,15 @@ export default class BrickadiaServer extends EventEmitter {
         return true;
       }
       if (broadcastMatch && this.#ue4ssBridge.hasCapability('chat_broadcast')) {
-        await this.#ue4ssBridge.broadcast(decodeConsoleChatText(broadcastMatch[1]));
+        await this.#ue4ssBridge.broadcast(
+          decodeConsoleChatText(broadcastMatch[1]),
+        );
         return true;
       }
 
-      const whisperMatch = normalizedLine.match(/^Chat\.Whisper\s+"([^"]+)"\s+(.+)$/);
+      const whisperMatch = normalizedLine.match(
+        /^Chat\.Whisper\s+"([^"]+)"\s+(.+)$/,
+      );
       if (whisperMatch && shouldRouteBmfChat) {
         const target = whisperMatch[1];
         const message = decodeConsoleChatText(whisperMatch[2]);
@@ -864,6 +1000,25 @@ export default class BrickadiaServer extends EventEmitter {
     }
 
     const normalizedCommand = command.replace(/\r?\n$/, '');
+    if (normalizedCommand === 'GetAll BRPlayerState UserName') {
+      return this.buildSyntheticControlOutput(
+        normalizedCommand,
+        'synthetic-brplayerstate-username',
+        this.getSyntheticPlayerStateUserNameLines(),
+      );
+    }
+
+    const syntheticOwnerMatch = normalizedCommand.match(
+      /^GetAll BRPlayerState Owner Name=(.+)$/,
+    );
+    if (syntheticOwnerMatch) {
+      return this.buildSyntheticControlOutput(
+        normalizedCommand,
+        'synthetic-brplayerstate-owner',
+        this.getSyntheticPlayerStateOwnerLines(syntheticOwnerMatch[1]),
+      );
+    }
+
     const bmfCommand = getBmfCommandFromOmeggaLine(normalizedCommand);
     if (bmfCommand) {
       if (this.#bmfSocketBridge?.hasBmfClients) {
@@ -998,13 +1153,8 @@ export default class BrickadiaServer extends EventEmitter {
       );
     }
 
-    const {
-      gameBinary,
-      isSteam,
-      overrideBinary,
-      steamBinary,
-      steamBeta,
-    } = resolveGameBinary(this.config);
+    const { gameBinary, isSteam, overrideBinary, steamBinary, steamBeta } =
+      resolveGameBinary(this.config);
 
     if (overrideBinary) {
       if (!existsSync(overrideBinary)) {
@@ -1139,12 +1289,10 @@ export default class BrickadiaServer extends EventEmitter {
       );
       Logger.verbose(
         'Using Brickadia UE4SS compatibility bundle',
-          `${install.compatibilityBundle.bundleId} (${install.compatibilityBundle.manifest.validated ? 'validated' : allowStagedObjectControl ? 'staged, local override' : 'staged'})`
-            .yellow,
+        `${install.compatibilityBundle.bundleId} (${install.compatibilityBundle.manifest.validated ? 'validated' : allowStagedObjectControl ? 'staged, local override' : 'staged'})`
+          .yellow,
       );
-      if (
-        this.#ue4ssStagedObjectControlOverride
-      ) {
+      if (this.#ue4ssStagedObjectControlOverride) {
         Logger.warnp(
           'Brickadia UE4SS compatibility bundle'.yellow,
           install.compatibilityBundle.bundleId.yellow,
@@ -1160,7 +1308,9 @@ export default class BrickadiaServer extends EventEmitter {
         );
       }
 
-      this.#ue4ssBridge = new Ue4ssBridgeHost(path.join(this.path, 'ue4ss-bridge'));
+      this.#ue4ssBridge = new Ue4ssBridgeHost(
+        path.join(this.path, 'ue4ss-bridge'),
+      );
       this.#ue4ssBridge.on('ready', info => {
         Logger.verbose('UE4SS bridge ready', info);
         this.emit('control:ready', {
@@ -1210,7 +1360,7 @@ export default class BrickadiaServer extends EventEmitter {
               ? payload
               : String(
                   (payload as { message?: string })?.message ??
-                  JSON.stringify(payload),
+                    JSON.stringify(payload),
                 );
           const level = (payload as { level?: string })?.level;
           if (level === 'error') {
@@ -1357,12 +1507,14 @@ export default class BrickadiaServer extends EventEmitter {
     Logger.verbose('Stopping server process');
     if (IS_WINDOWS && this.#windowsBackend === 'ue4ss') {
       if (this.#ue4ssBridge) {
-        void this.#ue4ssBridge.execCommand('exit', 2000).catch(error =>
-          Logger.verbose(
-            'UE4SS exit command failed',
-            error instanceof Error ? error.message : String(error),
-          ),
-        );
+        void this.#ue4ssBridge
+          .execCommand('exit', 2000)
+          .catch(error =>
+            Logger.verbose(
+              'UE4SS exit command failed',
+              error instanceof Error ? error.message : String(error),
+            ),
+          );
       }
       void terminateChildProcess(this.#child, {
         forceAfterMs: 5000,

@@ -29,6 +29,7 @@ const join: MatchGenerator<Player> = omegga => {
     /BP_PlayerState_C .+?PersistentLevel\.(?<state>BP_PlayerState_C_\d+)\.Owner = .*?BP_PlayerController_C'.+?:PersistentLevel.(?<controller>BP_PlayerController_C_\d+)'/;
   const checkpointRegExp =
     /^Ruleset .+? (?:loading|no) saved checkpoint for player (?<name>.+) \((?<id>.+)\)$/;
+  let playerStateLookupScheduled = false;
 
   const getJoinInfo = (counter: string) => {
     let joinData = userJoinInfo.find(l => l.counter === counter);
@@ -62,13 +63,19 @@ const join: MatchGenerator<Player> = omegga => {
     );
 
   const requestPlayerStateLookup = () => {
+    if (!joiningPlayers.length) return;
     omegga.writeln('GetAll BRPlayerState UserName');
   };
 
   const schedulePlayerStateLookup = () => {
+    if (!joiningPlayers.length || playerStateLookupScheduled) return;
+    playerStateLookupScheduled = true;
     requestPlayerStateLookup();
     setTimeout(requestPlayerStateLookup, 250).unref?.();
-    setTimeout(requestPlayerStateLookup, 1000).unref?.();
+    setTimeout(() => {
+      requestPlayerStateLookup();
+      playerStateLookupScheduled = false;
+    }, 1000).unref?.();
   };
 
   const ensurePendingStateLookup = (player: Player) => {

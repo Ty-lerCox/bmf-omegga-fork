@@ -15,6 +15,72 @@ const error = (...args: any[]) => Logger.error(...args);
 let lastRestart = 0;
 
 const sleep = t => new Promise(resolve => setTimeout(resolve, t));
+const envFlagEnabled = (name: string, fallback = true) => {
+  const value = process.env[name]?.trim();
+  if (value === undefined || value === '') return fallback;
+  return !['0', 'false', 'no', 'off'].includes(value.toLowerCase());
+};
+
+const resolveMetricHeartbeatIntervalMs = () => {
+  const configured = Number(process.env.OMEGGA_METRIC_HEARTBEAT_INTERVAL_MS);
+  if (Number.isFinite(configured) && configured > 0) {
+    return Math.max(1000, configured);
+  }
+  return soft.METRIC_HEARTBEAT_INTERVAL;
+};
+
+const recordServerStatusPoll = (
+  server: Webserver,
+  ok: boolean,
+  durationMs: number,
+) => {
+  const metrics = server.serverStatusPollMetrics;
+  metrics.count += 1;
+  if (ok) metrics.ok += 1;
+  else metrics.error += 1;
+  metrics.durationMsSum += durationMs;
+  metrics.durationMsMax = Math.max(metrics.durationMsMax, durationMs);
+  metrics.lastMs = durationMs;
+  metrics.lastAtMs = Date.now();
+};
+
+const buildCachedServerStatus = (server: Webserver): IServerStatus | null => {
+  const omegga = server.omegga as typeof server.omegga & {
+    _startedAtMs?: number;
+    _playerJoinedAt?: Map<string, number>;
+  };
+  const previous = server.lastReportedStatus;
+  const startedAtMs = Number(omegga._startedAtMs ?? 0);
+  const uptimeMs =
+    startedAtMs > 0 ? Math.max(0, Date.now() - startedAtMs) : previous?.time ?? 0;
+  const joinedAt = omegga._playerJoinedAt;
+  const players = (omegga.players ?? []).map(player => {
+    let roles: string[] = [];
+    try {
+      roles = [...player.getRoles()];
+    } catch (_error) {}
+    return {
+      name: player.name,
+      ping: 0,
+      time:
+        joinedAt instanceof Map && typeof joinedAt.get(player.id) === 'number'
+          ? Math.max(0, Date.now() - Number(joinedAt.get(player.id)))
+          : 0,
+      roles,
+      address: '',
+      id: player.id,
+    };
+  });
+
+  return {
+    serverName: previous?.serverName ?? '',
+    description: previous?.description ?? '',
+    bricks: previous?.bricks ?? 0,
+    components: previous?.components ?? 0,
+    time: uptimeMs,
+    players,
+  };
+};
 
 export default function (server: Webserver, io: OmeggaSocketIo) {
   const { database, omegga } = server;
@@ -184,13 +250,38 @@ export default function (server: Webserver, io: OmeggaSocketIo) {
   server.lastReportedStatus = null;
   server.lastReportedStatusAt = 0;
   server.lastServerStatusPollDurationMs = 0;
+  server.serverStatusPollEnabled = envFlagEnabled(
+    'OMEGGA_SERVER_STATUS_POLL_ENABLED',
+    true,
+  );
+  const metricHeartbeatIntervalMs = resolveMetricHeartbeatIntervalMs();
+  if (!server.serverStatusPollEnabled) {
+    Logger.warn(
+      'Omegga Server.Status polling disabled; using cached player heartbeat data.',
+    );
+  }
   server.serverStatusInterval = setInterval(async () => {
     if (!omegga.started) return;
     const statusPollStartedAt = Date.now();
     try {
       // get the server status
-      const status = await omegga.getServerStatus();
-      server.lastServerStatusPollDurationMs = Date.now() - statusPollStartedAt;
+      let status;
+      if (server.serverStatusPollEnabled) {
+        try {
+          status = await omegga.getServerStatus();
+          const durationMs = Date.now() - statusPollStartedAt;
+          server.lastServerStatusPollDurationMs = durationMs;
+          recordServerStatusPoll(server, true, durationMs);
+        } catch (statusError) {
+          const durationMs = Date.now() - statusPollStartedAt;
+          server.lastServerStatusPollDurationMs = durationMs;
+          recordServerStatusPoll(server, false, durationMs);
+          throw statusError;
+        }
+      } else {
+        server.lastServerStatusPollDurationMs = 0;
+        status = buildCachedServerStatus(server);
+      }
       if (!status) return;
 
       try {
@@ -276,7 +367,7 @@ export default function (server: Webserver, io: OmeggaSocketIo) {
         lastStatusErrorAt = now;
       }
     }
-  }, soft.METRIC_HEARTBEAT_INTERVAL);
+  }, metricHeartbeatIntervalMs);
 
   // chat events
   omegga.on('chat', async (name, message, id) => {

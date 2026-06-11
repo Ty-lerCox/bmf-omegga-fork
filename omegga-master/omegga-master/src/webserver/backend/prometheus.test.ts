@@ -82,6 +82,22 @@ describe('buildPrometheusMetrics', () => {
           slow_50_total: 1,
           slow_100_total: 0,
         },
+        spikes: {
+          threshold_ms: 100,
+          total: 1,
+          last: {
+            sequence: 1,
+            observed_at_unix_ms: Date.now(),
+            sample: 590,
+            delta_ms: 125.5,
+            idle: false,
+            slow_16_67_total: 120,
+            slow_33_33_total: 3,
+            slow_50_total: 1,
+            slow_100_total: 1,
+          },
+          recent: [],
+        },
       }),
       'utf8',
     );
@@ -192,9 +208,31 @@ describe('buildPrometheusMetrics', () => {
         stopping: false,
         path: dir,
         config: { server: { steambeta: 'main' } },
+        consoleCommandMetrics: {
+          'Server.Status': {
+            command: 'Server.Status',
+            count: 2,
+            lastAtMs: Date.now(),
+          },
+          'Chat.Command /TP': {
+            command: 'Chat.Command /TP',
+            count: 1,
+            lastAtMs: Date.now(),
+          },
+        },
       },
       lastReportedStatusAt: Date.now(),
       lastServerStatusPollDurationMs: 123,
+      serverStatusPollEnabled: true,
+      serverStatusPollMetrics: {
+        count: 3,
+        ok: 2,
+        error: 1,
+        durationMsSum: 375,
+        durationMsMax: 200,
+        lastMs: 123,
+        lastAtMs: Date.now(),
+      },
       lastReportedStatus: {
         serverName: 'Test Server',
         description: 'ignored',
@@ -222,6 +260,19 @@ describe('buildPrometheusMetrics', () => {
     expect(output).toContain(
       'omegga_server_status_poll_duration_seconds 0.123',
     );
+    expect(output).toContain('omegga_server_status_poll_enabled 1');
+    expect(output).toContain(
+      'omegga_server_status_poll_total{status="ok"} 2',
+    );
+    expect(output).toContain(
+      'omegga_server_status_poll_duration_stat_seconds{statistic="avg"} 0.125',
+    );
+    expect(output).toContain(
+      'omegga_console_command_sent_total{command="Server.Status"} 2',
+    );
+    expect(output).toContain(
+      'omegga_console_command_sent_total{command="Chat.Command /TP"} 1',
+    );
     expect(output).toContain('bmf_runtime_status_up 1');
     expect(output).toContain('bmf_telemetry_up 1');
     expect(output).toContain('bmf_telemetry_schema_version 1');
@@ -240,6 +291,8 @@ describe('buildPrometheusMetrics', () => {
     expect(output).toContain(
       'brickadia_frame_slow_total{threshold_ms="33.33"} 3',
     );
+    expect(output).toContain('brickadia_frame_spikes_total{threshold_ms="100"} 1');
+    expect(output).toContain('brickadia_frame_spike_last_delta_milliseconds 125.5');
     expect(output).toContain('bmf_plugins_loaded 2');
     expect(output).toContain('bmf_plugin_errors_total 1');
     expect(output).toContain('bmf_plugin_tick_total 42');

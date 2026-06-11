@@ -26,6 +26,16 @@ const ASSETS_PATH = path.join(__dirname, '../../../public/assets');
 const log = (...args: any[]) => Logger.log(...args);
 const error = (...args: any[]) => Logger.error(...args);
 
+export type OmeggaServerStatusPollMetrics = {
+  count: number;
+  ok: number;
+  error: number;
+  durationMsSum: number;
+  durationMsMax: number;
+  lastMs: number;
+  lastAtMs: number;
+};
+
 // the webserver servers an authenticated
 export default class Webserver {
   database: Database;
@@ -42,9 +52,11 @@ export default class Webserver {
   created: Promise<boolean>;
 
   serverStatusInterval: ReturnType<typeof setInterval>;
-  lastReportedStatus: IServerStatus;
+  lastReportedStatus: IServerStatus | null;
   lastReportedStatusAt: number;
   lastServerStatusPollDurationMs: number;
+  serverStatusPollEnabled: boolean;
+  serverStatusPollMetrics: OmeggaServerStatusPollMetrics;
 
   rooms: string[];
 
@@ -67,6 +79,19 @@ export default class Webserver {
     this.https = false;
     // started status of the server
     this.started = false;
+    this.lastReportedStatus = null;
+    this.lastReportedStatusAt = 0;
+    this.lastServerStatusPollDurationMs = 0;
+    this.serverStatusPollEnabled = true;
+    this.serverStatusPollMetrics = {
+      count: 0,
+      ok: 0,
+      error: 0,
+      durationMsSum: 0,
+      durationMsMax: 0,
+      lastMs: 0,
+      lastAtMs: 0,
+    };
     this.created = this.createServer();
   }
 

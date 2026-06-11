@@ -361,6 +361,30 @@ export function buildPrometheusMetrics(server: Webserver) {
   const lastStatusAt = finiteNumber(server.lastReportedStatusAt, 0);
   const statusPollDurationSeconds =
     finiteNumber(server.lastServerStatusPollDurationMs, 0) / 1000;
+  const statusPollMetrics = server.serverStatusPollMetrics;
+  const statusPollCount = finiteNumber(statusPollMetrics?.count, 0);
+  const statusPollDurationStatLines: MetricLine[] = [
+    {
+      name: 'omegga_server_status_poll_duration_stat_seconds',
+      labels: { statistic: 'avg' },
+      value:
+        statusPollCount > 0
+          ? finiteNumber(statusPollMetrics.durationMsSum, 0) /
+            statusPollCount /
+            1000
+          : NaN,
+    },
+    {
+      name: 'omegga_server_status_poll_duration_stat_seconds',
+      labels: { statistic: 'max' },
+      value: finiteMetricValue(statusPollMetrics?.durationMsMax) / 1000,
+    },
+    {
+      name: 'omegga_server_status_poll_duration_stat_seconds',
+      labels: { statistic: 'last' },
+      value: finiteMetricValue(statusPollMetrics?.lastMs) / 1000,
+    },
+  ];
   const now = Date.now();
   const memory = process.memoryUsage();
   const cpu = process.cpuUsage();
@@ -389,6 +413,11 @@ export function buildPrometheusMetrics(server: Webserver) {
         compatibility_status: String(bmfStatus.compatibility_status || ''),
       }
     : undefined;
+  const bmfCommandWorkerLabels = bmfStatus
+    ? {
+        mode: String(bmfStatus.command_worker_mode || 'unknown'),
+      }
+    : undefined;
   const bmfCommands = objectRecord(bmfTelemetryRecord.commands);
   const bmfCommandByName = objectRecord(bmfCommands.by_name);
   const bmfCommandByTransport = objectRecord(bmfCommands.by_transport);
@@ -402,6 +431,36 @@ export function buildPrometheusMetrics(server: Webserver) {
   const bmfWorkers = objectRecord(bmfTelemetryRecord.workers);
   const bmfFrameWindow = objectRecord(bmfFrameTelemetryRecord.window);
   const bmfFrameLifetime = objectRecord(bmfFrameTelemetryRecord.lifetime);
+  const bmfFrameSpikes = objectRecord(bmfFrameTelemetryRecord.spikes);
+  const bmfFrameLastSpike = objectRecord(bmfFrameSpikes.last);
+  const bmfFrameLastSpikeAtMs = finiteNumber(
+    bmfFrameLastSpike.observed_at_unix_ms,
+    0,
+  );
+  const omeggaConsoleCommands = objectRecord(
+    server.omegga.consoleCommandMetrics,
+  );
+  const omeggaConsoleCommandSentLines = Object.entries(
+    omeggaConsoleCommands,
+  ).map(([key, value]) => {
+    const record = objectRecord(value);
+    return {
+      name: 'omegga_console_command_sent_total',
+      labels: { command: String(record.command ?? key) },
+      value: finiteMetricValue(record.count),
+    };
+  });
+  const omeggaConsoleCommandAgeLines = Object.entries(
+    omeggaConsoleCommands,
+  ).map(([key, value]) => {
+    const record = objectRecord(value);
+    const lastAtMs = finiteNumber(record.lastAtMs, 0);
+    return {
+      name: 'omegga_console_command_last_sent_age_seconds',
+      labels: { command: String(record.command ?? key) },
+      value: lastAtMs > 0 ? Math.max(0, (now - lastAtMs) / 1000) : NaN,
+    };
+  });
 
   const bmfCommandProcessedLines = Object.entries(bmfCommandByName).flatMap(
     ([key, value]) => {
@@ -742,6 +801,49 @@ export function buildPrometheusMetrics(server: Webserver) {
         },
       ],
     ),
+    ...metricBlock(
+      'omegga_server_status_poll_enabled',
+      'Whether Omegga sends Server.Status console polls for heartbeat data.',
+      [
+        {
+          name: 'omegga_server_status_poll_enabled',
+          value: boolGauge(server.serverStatusPollEnabled),
+        },
+      ],
+    ),
+    ...metricBlock(
+      'omegga_server_status_poll_total',
+      'Brickadia server status poll outcomes.',
+      [
+        {
+          name: 'omegga_server_status_poll_total',
+          labels: { status: 'ok' },
+          value: finiteMetricValue(statusPollMetrics?.ok),
+        },
+        {
+          name: 'omegga_server_status_poll_total',
+          labels: { status: 'error' },
+          value: finiteMetricValue(statusPollMetrics?.error),
+        },
+      ],
+      'counter',
+    ),
+    ...metricBlock(
+      'omegga_server_status_poll_duration_stat_seconds',
+      'Aggregate Brickadia server status poll durations.',
+      statusPollDurationStatLines,
+    ),
+    ...metricBlock(
+      'omegga_console_command_sent_total',
+      'Omegga console commands sent to Brickadia by normalized command family.',
+      omeggaConsoleCommandSentLines,
+      'counter',
+    ),
+    ...metricBlock(
+      'omegga_console_command_last_sent_age_seconds',
+      'Age of the latest Omegga console command by normalized command family.',
+      omeggaConsoleCommandAgeLines,
+    ),
     ...metricBlock('omegga_process_uptime_seconds', 'Omegga process uptime.', [
       { name: 'omegga_process_uptime_seconds', value: process.uptime() },
     ]),
@@ -806,6 +908,49 @@ export function buildPrometheusMetrics(server: Webserver) {
           name: 'bmf_runtime_info',
           labels: bmfInfoLabels,
           value: bmfStatus ? 1 : 0,
+        },
+      ],
+    ),
+    ...metricBlock(
+      'bmf_command_worker_info',
+      'BMF command worker scheduler mode.',
+      [
+        {
+          name: 'bmf_command_worker_info',
+          labels: bmfCommandWorkerLabels,
+          value: bmfStatus ? 1 : 0,
+        },
+      ],
+    ),
+    ...metricBlock(
+      'bmf_command_worker_poll_interval_milliseconds',
+      'BMF command worker async poll interval.',
+      [
+        {
+          name: 'bmf_command_worker_poll_interval_milliseconds',
+          value: finiteMetricValue(bmfStatus?.command_worker_poll_interval_ms),
+        },
+      ],
+    ),
+    ...metricBlock(
+      'bmf_command_worker_fallback_poll_interval_milliseconds',
+      'BMF command worker game-thread fallback poll interval.',
+      [
+        {
+          name: 'bmf_command_worker_fallback_poll_interval_milliseconds',
+          value: finiteMetricValue(
+            bmfStatus?.command_worker_fallback_poll_interval_ms,
+          ),
+        },
+      ],
+    ),
+    ...metricBlock(
+      'bmf_command_worker_max_files_per_poll',
+      'Maximum BMF command request files scheduled per worker poll.',
+      [
+        {
+          name: 'bmf_command_worker_max_files_per_poll',
+          value: finiteMetricValue(bmfStatus?.command_worker_max_files_per_poll),
         },
       ],
     ),
@@ -891,6 +1036,43 @@ export function buildPrometheusMetrics(server: Webserver) {
       'Native frame samples at or above each frame-time threshold.',
       bmfFrameSlowLines,
       'counter',
+    ),
+    ...metricBlock(
+      'brickadia_frame_spikes_total',
+      'Native frame spikes recorded by the BMF frame sampler.',
+      [
+        {
+          name: 'brickadia_frame_spikes_total',
+          labels: {
+            threshold_ms: finiteNumber(bmfFrameSpikes.threshold_ms, 100),
+          },
+          value: finiteMetricValue(bmfFrameSpikes.total),
+        },
+      ],
+      'counter',
+    ),
+    ...metricBlock(
+      'brickadia_frame_spike_last_delta_milliseconds',
+      'Most recent native frame spike delta in milliseconds.',
+      [
+        {
+          name: 'brickadia_frame_spike_last_delta_milliseconds',
+          value: finiteMetricValue(bmfFrameLastSpike.delta_ms),
+        },
+      ],
+    ),
+    ...metricBlock(
+      'brickadia_frame_spike_last_age_seconds',
+      'Age of the most recent native frame spike.',
+      [
+        {
+          name: 'brickadia_frame_spike_last_age_seconds',
+          value:
+            bmfFrameLastSpikeAtMs > 0
+              ? Math.max(0, (now - bmfFrameLastSpikeAtMs) / 1000)
+              : NaN,
+        },
+      ],
     ),
     ...metricBlock(
       'bmf_command_processed_total',

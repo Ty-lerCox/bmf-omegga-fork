@@ -595,6 +595,18 @@ local function should_handle_emulated_immediately(command)
         return true
     end
 
+    if normalized == "Server.Status" then
+        return true
+    end
+
+    if normalized == "GetAll BRPlayerState UserName" then
+        return true
+    end
+
+    if normalized:match("^GetAll BRPlayerState Owner Name=") then
+        return true
+    end
+
     if normalized:match("^Omegga%.Bridge%.ProbeConsoleExec%s+") then
         return true
     end
@@ -2943,7 +2955,12 @@ function get_omegga_compat_player_state_records()
             return get_cached_player_state_records(objects.game_state, objects.world)
         end
     end
-    return get_cached_player_state_records(nil, nil)
+
+    if os.getenv("OMEGGA_UE4SS_PLAYER_COMPAT_USE_FINDALL") == "1" then
+        return get_cached_player_state_records(nil, nil)
+    end
+
+    return {}
 end
 
 function build_bp_playercontroller_pawn_output(target_controller_name)

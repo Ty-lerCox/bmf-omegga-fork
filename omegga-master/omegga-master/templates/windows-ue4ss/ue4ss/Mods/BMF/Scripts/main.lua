@@ -5,6 +5,7 @@ local RUNTIME_DIR = ROOT .. "/runtime"
 local PLUGINS_DIR = ROOT .. "/plugins"
 local CONFIG_PATH = ROOT .. "/config.json"
 local STATUS_PATH = RUNTIME_DIR .. "/status.json"
+BMF_TELEMETRY_PATH = RUNTIME_DIR .. "/telemetry.json"
 local LOG_PATH = RUNTIME_DIR .. "/bmf.log"
 local EVENT_LOG_PATH = RUNTIME_DIR .. "/events.jsonl"
 local AUDIT_LOG_PATH = RUNTIME_DIR .. "/audit.jsonl"
@@ -19,6 +20,9 @@ local TARGET_PLATFORM = "windows-dedicated-server"
 local BUILD_DETECTION_MODE = "declared-target-only"
 local UNSUPPORTED_BUILD_POLICY = "report-only"
 local COMMAND_EMPTY_READ_RETRY_LIMIT = 5
+BMF_COMMAND_WORKER_DEFAULT_POLL_MS = 250
+BMF_COMMAND_WORKER_FALLBACK_POLL_MS = 1000
+BMF_COMMAND_WORKER_DEFAULT_MAX_FILES_PER_POLL = 1
 local SOCKET_DEFAULT_POLL_MS = 25
 
 local state = {
@@ -40,6 +44,65 @@ local state = {
     recent = {},
     max_recent = 50,
     last = nil,
+  },
+  telemetry = {
+    schema_version = 1,
+    started_at = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    updated_at = "",
+    last_write_epoch = 0,
+    write_interval_seconds = 5,
+    commands = {
+      total = 0,
+      ok = 0,
+      error = 0,
+      by_name = {},
+      by_transport = {},
+      last = nil,
+    },
+    events = {
+      total = 0,
+      ok = 0,
+      error = 0,
+      handler_calls = 0,
+      handler_errors = 0,
+      by_event = {},
+      last = nil,
+    },
+    plugins = {
+      hook_total = 0,
+      hook_ok = 0,
+      hook_error = 0,
+      by_plugin = {},
+      by_hook = {},
+      last = nil,
+    },
+    scheduler = {
+      callback_total = 0,
+      callback_ok = 0,
+      callback_error = 0,
+      by_key = {},
+      last = nil,
+    },
+    workers = {
+      command_polls = {
+        count = 0,
+        ok = 0,
+        error = 0,
+        duration_ms_sum = 0,
+        duration_ms_max = 0,
+        last_ms = 0,
+        files_processed = 0,
+      },
+      socket_drains = {
+        count = 0,
+        ok = 0,
+        error = 0,
+        duration_ms_sum = 0,
+        duration_ms_max = 0,
+        last_ms = 0,
+        messages = 0,
+      },
+    },
   },
   minigame_data = {
     updated_at = "",
@@ -65,11 +128,21 @@ local state = {
   rate_limits = {},
   game_thread_callbacks = {},
   game_thread_callback_order = {},
-  game_thread_callback_retention_limit = 8192,
+  game_thread_callback_retention_limit = 65536,
   next_game_thread_callback_id = 1,
+  delayed_callbacks = {},
+  delayed_callback_order = {},
+  delayed_callback_retention_limit = 65536,
+  next_delayed_callback_id = 1,
   commands = {},
   console_command_callbacks = {},
   command_worker_started = false,
+  command_worker_mode = "stopped",
+  command_worker_poll_interval_ms = BMF_COMMAND_WORKER_DEFAULT_POLL_MS,
+  command_worker_fallback_poll_interval_ms = BMF_COMMAND_WORKER_FALLBACK_POLL_MS,
+  command_worker_max_files_per_poll = BMF_COMMAND_WORKER_DEFAULT_MAX_FILES_PER_POLL,
+  command_dir_ensured = false,
+  command_inflight_files = {},
   socket_worker_started = false,
   command_empty_reads = {},
   socket = {
@@ -84,6 +157,9 @@ local state = {
     sent_responses = 0,
     received_commands = 0,
     received_messages = 0,
+    poll_count = 0,
+    last_poll_at = "",
+    last_drain_count = 0,
     last_error = "",
     last_status = "",
     last_started_at = "",
@@ -116,6 +192,43 @@ local state = {
       component_cache_notes = {},
       last_error = "",
       last_event = nil,
+    },
+    tree_cut_trace = {
+      enabled = false,
+      registered = false,
+      registering = false,
+      include_apply_damage = true,
+      include_melee = false,
+      hooks = {},
+      events = {},
+      max_events = 100,
+      sample_limit = 200,
+      sample_count = 0,
+      total_events = 0,
+      apply_damage_events = 0,
+      melee_events = 0,
+      handaxe_events = 0,
+      tree_like_events = 0,
+      candidate_events = 0,
+      last_error = "",
+      last_event = nil,
+      last_enabled_at = "",
+      last_disabled_at = "",
+    },
+    tree_cut_native = {
+      enabled = false,
+      available = false,
+      started = false,
+      total_events = 0,
+      drained_events = 0,
+      emitted_events = 0,
+      decode_errors = 0,
+      last_event = nil,
+      last_started_at = "",
+      last_handaxe_resolved_at = "",
+      last_target_refresh_at = "",
+      last_error = "",
+      last_status = "",
     },
   },
   config = {
@@ -702,6 +815,267 @@ local function plugin_unsafe_global_denial_count()
   return count
 end
 
+function BMF_telemetry_now()
+  return os.date("!%Y-%m-%dT%H:%M:%SZ")
+end
+
+function BMF_telemetry_duration_ms(start_clock)
+  local started = tonumber(start_clock)
+  if not started then
+    return 0
+  end
+  local duration = (os.clock() - started) * 1000
+  if duration < 0 then
+    duration = 0
+  end
+  return math.floor(duration + 0.5)
+end
+
+function BMF_telemetry_key(value, fallback)
+  local text = tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if text == "" then
+    text = tostring(fallback or "unknown")
+  end
+  return text
+end
+
+function BMF_telemetry_series(map, key, fields)
+  if type(map) ~= "table" then
+    return nil
+  end
+  local normalized_key = BMF_telemetry_key(key, "unknown")
+  local item = map[normalized_key]
+  if type(item) ~= "table" then
+    item = {}
+    map[normalized_key] = item
+  end
+  if type(fields) == "table" then
+    for field, value in pairs(fields) do
+      item[field] = value
+    end
+  end
+  return item
+end
+
+function BMF_telemetry_observe(item, duration_ms, ok)
+  if type(item) ~= "table" then
+    return
+  end
+  local ms = tonumber(duration_ms) or 0
+  if ms < 0 then
+    ms = 0
+  end
+  item.count = (tonumber(item.count) or 0) + 1
+  if ok == false then
+  item.error = (tonumber(item.error) or 0) + 1
+  else
+    item.ok = (tonumber(item.ok) or 0) + 1
+  end
+  item.duration_ms_sum = (tonumber(item.duration_ms_sum) or 0) + ms
+  item.duration_ms_max = math.max(tonumber(item.duration_ms_max) or 0, ms)
+  item.last_ms = ms
+  item.last_at = BMF_telemetry_now()
+end
+
+function BMF_telemetry_add(item, field, value)
+  if type(item) ~= "table" then
+    return
+  end
+  item[field] = (tonumber(item[field]) or 0) + (tonumber(value) or 0)
+end
+
+function BMF_telemetry_snapshot()
+  local telemetry = state.telemetry
+  telemetry.updated_at = BMF_telemetry_now()
+  telemetry.paths = {
+    status = STATUS_PATH,
+    telemetry = BMF_TELEMETRY_PATH,
+  }
+  telemetry.runtime = {
+    plugins_loaded = plugin_count(),
+    plugin_errors = #state.plugin_errors,
+    plugin_tick_active = state.plugin_tick_timer_id ~= nil,
+    plugin_tick_count = state.plugin_tick_count,
+    server_ready = state.server_ready and true or false,
+  }
+  telemetry.socket = {
+    started = state.socket.started and true or false,
+    received_messages = tonumber(state.socket.received_messages) or 0,
+    received_commands = tonumber(state.socket.received_commands) or 0,
+    sent_responses = tonumber(state.socket.sent_responses) or 0,
+    poll_count = tonumber(state.socket.poll_count) or 0,
+    last_drain_count = tonumber(state.socket.last_drain_count) or 0,
+  }
+  return telemetry
+end
+
+function BMF_telemetry_write(force)
+  local telemetry = state.telemetry
+  local now_epoch = os.time()
+  local interval = tonumber(telemetry.write_interval_seconds) or 5
+  if not force and tonumber(telemetry.last_write_epoch or 0) > 0 and (now_epoch - telemetry.last_write_epoch) < interval then
+    return false
+  end
+  telemetry.last_write_epoch = now_epoch
+  return write_file(BMF_TELEMETRY_PATH, json_encode(BMF_telemetry_snapshot()) .. "\n")
+end
+
+function BMF_telemetry_record_command(command_name, transport, ok, detail, duration_ms, dispatch_ms, request_age_ms)
+  local telemetry = state.telemetry.commands
+  local normalized_command = BMF_telemetry_key(command_name, "unknown"):lower()
+  local normalized_transport = BMF_telemetry_key(transport, "file"):lower()
+  telemetry.total = (tonumber(telemetry.total) or 0) + 1
+  if ok == false then
+    telemetry.error = (tonumber(telemetry.error) or 0) + 1
+  else
+    telemetry.ok = (tonumber(telemetry.ok) or 0) + 1
+  end
+
+  BMF_telemetry_observe(BMF_telemetry_series(telemetry.by_name, normalized_command, {
+    command = normalized_command,
+  }), duration_ms, ok)
+  BMF_telemetry_observe(BMF_telemetry_series(telemetry.by_transport, normalized_transport, {
+    transport = normalized_transport,
+  }), duration_ms, ok)
+
+  telemetry.last = {
+    command = normalized_command,
+    transport = normalized_transport,
+    ok = ok ~= false,
+    detail = tostring(detail or ""),
+    duration_ms = tonumber(duration_ms) or 0,
+    dispatch_ms = tonumber(dispatch_ms) or 0,
+    request_age_ms = tonumber(request_age_ms) or 0,
+    at = BMF_telemetry_now(),
+  }
+  BMF_telemetry_write(true)
+end
+
+function BMF_telemetry_record_event_handler(event_name, owner, duration_ms, ok)
+  local telemetry = state.telemetry.events
+  local normalized_event = BMF_telemetry_key(event_name, "unknown")
+  local item = BMF_telemetry_series(telemetry.by_event, normalized_event, {
+    event = normalized_event,
+  })
+  BMF_telemetry_add(item, "handler_calls", 1)
+  if ok == false then
+    telemetry.handler_errors = (tonumber(telemetry.handler_errors) or 0) + 1
+    BMF_telemetry_add(item, "handler_errors", 1)
+  end
+  BMF_telemetry_add(item, "handler_duration_ms_sum", duration_ms)
+  item.handler_duration_ms_max = math.max(tonumber(item.handler_duration_ms_max) or 0, tonumber(duration_ms) or 0)
+  item.handler_last_ms = tonumber(duration_ms) or 0
+
+  if owner then
+    BMF_telemetry_record_plugin_hook(owner, "event:" .. normalized_event, duration_ms, ok)
+  end
+end
+
+function BMF_telemetry_record_event(event_name, handlers, errors, duration_ms)
+  local telemetry = state.telemetry.events
+  local normalized_event = BMF_telemetry_key(event_name, "unknown")
+  local error_count = tonumber(errors) or 0
+  local ok = error_count == 0
+  telemetry.total = (tonumber(telemetry.total) or 0) + 1
+  telemetry.handler_calls = (tonumber(telemetry.handler_calls) or 0) + (tonumber(handlers) or 0)
+  if ok then
+    telemetry.ok = (tonumber(telemetry.ok) or 0) + 1
+  else
+    telemetry.error = (tonumber(telemetry.error) or 0) + 1
+  end
+
+  local item = BMF_telemetry_series(telemetry.by_event, normalized_event, {
+    event = normalized_event,
+  })
+  BMF_telemetry_observe(item, duration_ms, ok)
+  BMF_telemetry_add(item, "handlers", handlers)
+  telemetry.last = {
+    event = normalized_event,
+    ok = ok,
+    handlers = tonumber(handlers) or 0,
+    errors = error_count,
+    duration_ms = tonumber(duration_ms) or 0,
+    at = BMF_telemetry_now(),
+  }
+  BMF_telemetry_write(true)
+end
+
+function BMF_telemetry_record_plugin_hook(plugin_name, hook, duration_ms, ok)
+  local telemetry = state.telemetry.plugins
+  local normalized_plugin = BMF_telemetry_key(plugin_name, "unknown")
+  local normalized_hook = BMF_telemetry_key(hook, "unknown")
+  telemetry.hook_total = (tonumber(telemetry.hook_total) or 0) + 1
+  if ok == false then
+    telemetry.hook_error = (tonumber(telemetry.hook_error) or 0) + 1
+  else
+    telemetry.hook_ok = (tonumber(telemetry.hook_ok) or 0) + 1
+  end
+
+  BMF_telemetry_observe(BMF_telemetry_series(telemetry.by_plugin, normalized_plugin, {
+    plugin = normalized_plugin,
+  }), duration_ms, ok)
+  BMF_telemetry_observe(BMF_telemetry_series(telemetry.by_hook, normalized_plugin .. "|" .. normalized_hook, {
+    plugin = normalized_plugin,
+    hook = normalized_hook,
+  }), duration_ms, ok)
+
+  telemetry.last = {
+    plugin = normalized_plugin,
+    hook = normalized_hook,
+    ok = ok ~= false,
+    duration_ms = tonumber(duration_ms) or 0,
+    at = BMF_telemetry_now(),
+  }
+  BMF_telemetry_write(false)
+end
+
+function BMF_telemetry_record_scheduler(kind, name, duration_ms, ok)
+  local telemetry = state.telemetry.scheduler
+  local normalized_kind = BMF_telemetry_key(kind, "callback")
+  local normalized_name = BMF_telemetry_key(name, "unknown")
+  telemetry.callback_total = (tonumber(telemetry.callback_total) or 0) + 1
+  if ok == false then
+    telemetry.callback_error = (tonumber(telemetry.callback_error) or 0) + 1
+  else
+    telemetry.callback_ok = (tonumber(telemetry.callback_ok) or 0) + 1
+  end
+
+  BMF_telemetry_observe(BMF_telemetry_series(telemetry.by_key, normalized_kind .. "|" .. normalized_name, {
+    kind = normalized_kind,
+    name = normalized_name,
+  }), duration_ms, ok)
+  telemetry.last = {
+    kind = normalized_kind,
+    name = normalized_name,
+    ok = ok ~= false,
+    duration_ms = tonumber(duration_ms) or 0,
+    at = BMF_telemetry_now(),
+  }
+  BMF_telemetry_write(false)
+end
+
+function BMF_telemetry_record_worker(name, duration_ms, ok, count_field, count_value)
+  local workers = state.telemetry.workers
+  local normalized_name = BMF_telemetry_key(name, "worker")
+  local item = workers[normalized_name]
+  if type(item) ~= "table" then
+    item = {
+      count = 0,
+      ok = 0,
+      error = 0,
+      duration_ms_sum = 0,
+      duration_ms_max = 0,
+      last_ms = 0,
+    }
+    workers[normalized_name] = item
+  end
+  BMF_telemetry_observe(item, duration_ms, ok)
+  if count_field then
+    BMF_telemetry_add(item, count_field, count_value)
+  end
+  BMF_telemetry_write(false)
+end
+
 local function unsafe_plugin_global_names()
   local names = {}
   for _, name in ipairs(UNSAFE_PLUGIN_GLOBAL_NAMES) do
@@ -862,9 +1236,15 @@ write_status = function()
     "\"runtime_missing_required_helper_groups\":" .. tostring(#(compatibility.ue4ss.missingRequiredGroups or {})),
     "\"started_at\":" .. json_string(state.started_at),
     "\"updated_at\":" .. json_string(os.date("!%Y-%m-%dT%H:%M:%SZ")),
+    "\"telemetry_path\":" .. json_string(BMF_TELEMETRY_PATH),
     "\"plugins_loaded\":" .. tostring(plugin_count()),
     "\"plugin_errors\":" .. tostring(#state.plugin_errors),
     "\"server_ready\":" .. tostring(state.server_ready and true or false),
+    "\"command_worker_started\":" .. tostring(state.command_worker_started and true or false),
+    "\"command_worker_mode\":" .. json_string(state.command_worker_mode or "unknown"),
+    "\"command_worker_poll_interval_ms\":" .. tostring(state.command_worker_poll_interval_ms or 0),
+    "\"command_worker_fallback_poll_interval_ms\":" .. tostring(state.command_worker_fallback_poll_interval_ms or 0),
+    "\"command_worker_max_files_per_poll\":" .. tostring(state.command_worker_max_files_per_poll or 0),
     "\"plugin_tick_count\":" .. tostring(state.plugin_tick_count),
     "\"plugin_tick_active\":" .. tostring(state.plugin_tick_timer_id ~= nil),
     "\"audit_records\":" .. tostring(#state.audit_records),
@@ -934,6 +1314,39 @@ local function trim_string(value)
   return (text:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
+function BMF_env_string(name)
+  if type(os.getenv) ~= "function" then
+    return ""
+  end
+  return trim_string(os.getenv(name) or "")
+end
+
+function BMF_env_bool(name, default_value)
+  local value = BMF_env_string(name)
+  if value == "" then
+    return default_value == true
+  end
+  local normalized = value:lower()
+  if normalized == "0" or normalized == "false" or normalized == "no" or normalized == "off" then
+    return false
+  end
+  if normalized == "1" or normalized == "true" or normalized == "yes" or normalized == "on" then
+    return true
+  end
+  return default_value == true
+end
+
+function BMF_env_number(name, default_value, minimum)
+  local value = tonumber(BMF_env_string(name))
+  if value == nil or value ~= value or value == math.huge or value == -math.huge then
+    value = tonumber(default_value) or 0
+  end
+  if minimum ~= nil and value < minimum then
+    value = minimum
+  end
+  return math.floor(value + 0.5)
+end
+
 local function join_path(base, child)
   local left = tostring(base or ""):gsub("\\", "/"):gsub("/+$", "")
   local right = tostring(child or ""):gsub("\\", "/"):gsub("^/+", "")
@@ -985,10 +1398,7 @@ local function table_count(values)
 end
 
 function BMF_socket_env(name)
-  if type(os.getenv) ~= "function" then
-    return ""
-  end
-  return trim_string(os.getenv(name) or "")
+  return BMF_env_string(name)
 end
 
 function BMF_socket_enabled_from_env()
@@ -1072,6 +1482,10 @@ function BMF_socket_status_snapshot()
     sentResponses = state.socket.sent_responses,
     receivedCommands = state.socket.received_commands,
     receivedMessages = state.socket.received_messages,
+    pollCount = state.socket.poll_count,
+    lastPollAt = state.socket.last_poll_at,
+    lastDrainCount = state.socket.last_drain_count,
+    workerStarted = state.socket_worker_started,
     lastError = state.socket.last_error,
     lastStatus = state.socket.last_status,
     lastStartedAt = state.socket.last_started_at,
@@ -1162,6 +1576,143 @@ local function run_on_game_thread(callback)
   callback()
 end
 
+function BMF_retain_delayed_callback(prefix, callback)
+  local key = tostring(prefix or "delay") .. ":" .. tostring(state.next_delayed_callback_id)
+  state.next_delayed_callback_id = state.next_delayed_callback_id + 1
+  state.delayed_callback_order[#state.delayed_callback_order + 1] = key
+  while #state.delayed_callback_order > state.delayed_callback_retention_limit do
+    local old_key = table.remove(state.delayed_callback_order, 1)
+    state.delayed_callbacks[old_key] = nil
+  end
+
+  local wrapped
+  wrapped = function(...)
+    local ok, err = pcall(callback, ...)
+    if not ok then
+      log("error", "delayed callback failed: " .. tostring(err))
+    end
+  end
+  state.delayed_callbacks[key] = wrapped
+  return wrapped, key
+end
+
+function BMF_schedule_delayed_callback(prefix, delay_ms, callback)
+  if type(callback) ~= "function" then
+    return false
+  end
+
+  local delay = tonumber(delay_ms) or 0
+  local wrapped, key = BMF_retain_delayed_callback(prefix, callback)
+
+  if type(ExecuteWithDelay) == "function" then
+    local scheduled = pcall(ExecuteWithDelay, delay, wrapped)
+    if scheduled then
+      return true
+    end
+  end
+
+  if type(ExecuteInGameThreadWithDelay) == "function" then
+    local scheduled = pcall(ExecuteInGameThreadWithDelay, delay, wrapped)
+    if scheduled then
+      return true
+    end
+  end
+
+  if type(MakeActionHandle) == "function" and type(ExecuteInGameThreadWithDelay) == "function" then
+    local ok, action_handle = pcall(MakeActionHandle)
+    if ok and action_handle ~= nil then
+      local scheduled = pcall(ExecuteInGameThreadWithDelay, action_handle, delay, wrapped)
+      if scheduled then
+        return true
+      end
+    end
+  end
+
+  state.delayed_callbacks[key] = nil
+  return false
+end
+
+function BMF_start_async_loop(prefix, interval_ms, callback, default_enabled)
+  if type(callback) ~= "function" or type(LoopAsync) ~= "function" then
+    return false
+  end
+  local explicit_loop_async = BMF_env_string("BMF_ALLOW_LOOPASYNC")
+  local allow_loop_async = default_enabled == true
+  if explicit_loop_async ~= "" then
+    allow_loop_async = BMF_env_bool("BMF_ALLOW_LOOPASYNC", false)
+  end
+  if not allow_loop_async then
+    return false
+  end
+
+  local key = "loop:" .. tostring(prefix or "worker")
+  local interval = tonumber(interval_ms) or 250
+  local wrapped
+  wrapped = function()
+    local ok, should_stop_or_error = pcall(callback)
+    if not ok then
+      log("error", tostring(prefix or "worker") .. " loop failed: " .. tostring(should_stop_or_error))
+      return true
+    end
+    if should_stop_or_error == true then
+      return true
+    end
+    return false
+  end
+
+  state.delayed_callbacks[key] = wrapped
+  local scheduled = pcall(LoopAsync, interval, wrapped)
+  if scheduled then
+    return true
+  end
+
+  state.delayed_callbacks[key] = nil
+  return false
+end
+
+function BMF_start_game_thread_loop(prefix, interval_ms, callback)
+  if type(callback) ~= "function" then
+    return false
+  end
+  if not BMF_env_bool("BMF_ALLOW_GAME_THREAD_LOOP", false) then
+    return false
+  end
+
+  local key = "game_loop:" .. tostring(prefix or "worker")
+  local interval = tonumber(interval_ms) or 250
+  local wrapped
+  wrapped = function()
+    local ok, should_stop_or_error = pcall(callback)
+    if not ok then
+      log("error", tostring(prefix or "worker") .. " game-thread loop failed: " .. tostring(should_stop_or_error))
+      return true
+    end
+    if should_stop_or_error == true then
+      return true
+    end
+    return false
+  end
+
+  state.delayed_callbacks[key] = wrapped
+  if type(LoopInGameThreadWithDelay) == "function" then
+    local scheduled = pcall(LoopInGameThreadWithDelay, interval, wrapped)
+    if scheduled then
+      return true
+    end
+  end
+
+  if type(LoopInGameThreadAfterFrames) == "function" then
+    local frames = math.max(1, math.floor((interval / 16) + 0.5))
+    local scheduled = pcall(LoopInGameThreadAfterFrames, frames, wrapped)
+    if scheduled then
+      return true
+    end
+  end
+
+  state.delayed_callbacks[key] = nil
+  return false
+end
+
 local BMF = {
   version = VERSION,
   started_at = state.started_at,
@@ -1239,6 +1790,7 @@ API_REGISTRY = {
   { name = "BMF.players.resolve", namespace = "players", kind = "function", stability = "scaffold", risk = "live-player", validation = "L0 Fixture + L2 Headless negative; L3 Live Player for real records", requiresPlayer = true, capability = "", summary = "Resolve direct or current-list player query." },
   { name = "BMF.players.getName", namespace = "players", kind = "function", stability = "scaffold", risk = "live-player", validation = "L0 Fixture + L2 Headless negative; L3 Live Player for real records", requiresPlayer = true, capability = "", summary = "Return normalized identity fields." },
   { name = "BMF.players.summary", namespace = "players", kind = "function", stability = "experimental", risk = "low", validation = "L0 Static + L2 Headless; L3 Live Player for whispered delivery", requiresPlayer = false, capability = "", summary = "Resolve one player and include known-player/live-controller counts." },
+  { name = "BMF.players.positions", namespace = "players", kind = "function", stability = "experimental", risk = "live-player", validation = "L0 Static + L3 Live Player", requiresPlayer = true, capability = "", summary = "Read live player pawn positions from safe PlayerState/Controller references." },
   { name = "BMF.players.whisperSummary", namespace = "players", kind = "function", stability = "experimental", risk = "live-player", validation = "L0 Static + L3 Live Player for visible delivery", requiresPlayer = true, capability = "chat.whisper", summary = "Whisper a cached identity summary back to the selected player." },
   { name = "BMF.permissions.describeRole", namespace = "permissions", kind = "function", stability = "stable", risk = "low", validation = "L0 Fixture + L2 Headless", requiresPlayer = false, capability = "", summary = "Normalize a RoleSetup2-style role permission map." },
   { name = "BMF.permissions.evaluateNoSpawnItemApplicator", namespace = "permissions", kind = "function", stability = "stable", risk = "medium", validation = "L0 Fixture + L2 Headless; L3 Live Player + L5 Negative for runtime exploit denial", requiresPlayer = false, capability = "", summary = "Evaluate the default-role policy that keeps applicator access but forbids spawn items." },
@@ -1251,6 +1803,21 @@ API_REGISTRY = {
   { name = "BMF.tools.applicator.nativeTargets", namespace = "tools", kind = "function", stability = "experimental", risk = "unsafe-native", validation = "L3 Live Server pre-injection target discovery", requiresPlayer = false, capability = "", summary = "Resolve native addresses used by the ServerAddComponent function-slot blocker." },
   { name = "BMF.tools.applicator.scanObjects", namespace = "tools", kind = "function", stability = "experimental", risk = "low", validation = "L3 Live Server read-only reflection scan", requiresPlayer = false, capability = "", summary = "Scan live UE objects for applicator/component function discovery." },
   { name = "BMF.tools.applicator.refreshComponentCache", namespace = "tools", kind = "function", stability = "experimental", risk = "unsafe-native", validation = "L2 Headless safe failure; L3 Live Player for reflected component type addresses", requiresPlayer = false, capability = "", summary = "Resolve denied Brickadia component type objects such as ItemSpawn for live applicator enforcement." },
+  { name = "BMF.tools.uobject.describe", namespace = "tools", kind = "function", stability = "diagnostic", risk = "low", validation = "L3 Live Server address-only native diagnostic", requiresPlayer = false, capability = "", summary = "Describe one explicit live UObject pointer without global scans; used to decode native trace context pointers." },
+  { name = "BMF.tools.treeCutTrace.enable", namespace = "tools", kind = "function", stability = "diagnostic", risk = "unsafe-native", validation = "L3 Live Player handaxe/tree trace", requiresPlayer = true, capability = "", summary = "Temporarily register bounded native hooks that summarize handaxe/tree-cut evidence." },
+  { name = "BMF.tools.treeCutTrace.disable", namespace = "tools", kind = "function", stability = "diagnostic", risk = "unsafe-native", validation = "L3 Live Server cleanup", requiresPlayer = false, capability = "", summary = "Unregister active tree-cut trace hooks." },
+  { name = "BMF.tools.treeCutTrace.status", namespace = "tools", kind = "function", stability = "diagnostic", risk = "low", validation = "L2 Headless command; L3 Live Player for event counts", requiresPlayer = false, capability = "", summary = "Inspect tree-cut trace hook state and counters." },
+  { name = "BMF.tools.treeCutTrace.recent", namespace = "tools", kind = "function", stability = "diagnostic", risk = "low", validation = "L3 Live Player trace review", requiresPlayer = false, capability = "", summary = "List recent tree-cut trace records." },
+  { name = "BMF.tools.treeCutTrace.clear", namespace = "tools", kind = "function", stability = "diagnostic", risk = "low", validation = "L2 Headless reset", requiresPlayer = false, capability = "", summary = "Clear tree-cut trace counters and recent events." },
+  { name = "BMF.tools.treeCutNative.start", namespace = "tools", kind = "function", stability = "experimental", risk = "unsafe-native", validation = "L3 Live Player handaxe/tree hit event", requiresPlayer = true, capability = "", summary = "Install and enable the native melee-hit queue used for CityRPG tree-cut events." },
+  { name = "BMF.tools.treeCutNative.stop", namespace = "tools", kind = "function", stability = "experimental", risk = "unsafe-native", validation = "L3 Live Server cleanup", requiresPlayer = false, capability = "", summary = "Disable native tree-cut event capture without unloading the native detour." },
+  { name = "BMF.tools.treeCutNative.status", namespace = "tools", kind = "function", stability = "experimental", risk = "low", validation = "L2 Headless safe failure; L3 Live Player event counts", requiresPlayer = false, capability = "", summary = "Inspect native tree-cut hook install state, counters, and queue depth." },
+  { name = "BMF.tools.treeCutNative.resolveHandaxe", namespace = "tools", kind = "function", stability = "experimental", risk = "medium", validation = "L3 Live Server game-thread asset resolve", requiresPlayer = false, capability = "", summary = "Load and resolve the handaxe generated class for strict native tree-cut item checks." },
+  { name = "BMF.tools.treeCutNative.refreshTargets", namespace = "tools", kind = "function", stability = "diagnostic", risk = "unsafe-native", validation = "Disabled by default; manual native diagnostics only", requiresPlayer = false, capability = "", summary = "Opt-in unsafe native tree actor cache refresh for diagnostics; CityRPG should prefer bounded runtime anchors." },
+  { name = "BMF.tools.treeCutNative.drain", namespace = "tools", kind = "function", stability = "experimental", risk = "medium", validation = "L3 Live Player socket relay", requiresPlayer = false, capability = "", summary = "Drain queued native tree-cut hit events and emit them into the BMF event bus." },
+  { name = "BMF.tools.treeCutProbe.start", namespace = "tools", kind = "function", stability = "diagnostic", risk = "unsafe-native", validation = "L3 Live Player handaxe/tree function attribution", requiresPlayer = true, capability = "", summary = "Install and enable bounded native counters for likely Brickadia melee/tree-hit UFunctions." },
+  { name = "BMF.tools.treeCutProbe.stop", namespace = "tools", kind = "function", stability = "diagnostic", risk = "low", validation = "L3 Live Server cleanup", requiresPlayer = false, capability = "", summary = "Disable tree-cut probe counting without unloading the native detours." },
+  { name = "BMF.tools.treeCutProbe.status", namespace = "tools", kind = "function", stability = "diagnostic", risk = "low", validation = "L3 Live Player handaxe/tree function attribution", requiresPlayer = false, capability = "", summary = "Inspect native tree-cut probe candidate install state and hit counters." },
   { name = "BMF.interact.handleConsoleMessage", namespace = "interact", kind = "function", stability = "experimental", risk = "medium", validation = "L2 Headless command; L3 Live Player through Omegga interact forwarder", requiresPlayer = false, capability = "", summary = "Forward an Interactable Print-to-Console message into BMF's interactConsole event." },
   { name = "BMF.permissions.describeRoleAssignments", namespace = "permissions", kind = "function", stability = "stable", risk = "low", validation = "L0 Fixture + L2 Headless", requiresPlayer = false, capability = "", summary = "Normalize RoleAssignments.json-style player role records." },
   { name = "BMF.permissions.loadRoleAssignments", namespace = "permissions", kind = "function", stability = "file-backed", risk = "low", validation = "L2 Headless + L3 Live Player policy lookup", requiresPlayer = false, capability = "", summary = "Read and normalize the configured Brickadia RoleAssignments.json file." },
@@ -1674,6 +2241,7 @@ BMF.events.emit = function(name, data)
   if not event_name then
     return result(false, "INVALID_EVENT", event_error)
   end
+  local event_started_clock = os.clock()
   local handlers = state.event_handlers[event_name] or {}
   local calls = {}
   for id, entry in pairs(handlers) do
@@ -1689,7 +2257,9 @@ BMF.events.emit = function(name, data)
 
   local errors = {}
   for _, item in ipairs(calls) do
+    local handler_started_clock = os.clock()
     local ok, err = pcall(item.handler, copy_table(data or {}), event_name)
+    BMF_telemetry_record_event_handler(event_name, item.owner, BMF_telemetry_duration_ms(handler_started_clock), ok)
     if not ok then
       errors[#errors + 1] = {
         id = item.id,
@@ -1698,6 +2268,7 @@ BMF.events.emit = function(name, data)
       log("error", "event handler failed event=" .. event_name .. " id=" .. tostring(item.id) .. ": " .. tostring(err))
     end
   end
+  BMF_telemetry_record_event(event_name, #calls, #errors, BMF_telemetry_duration_ms(event_started_clock))
 
   write_log_event(os.date("!%Y-%m-%dT%H:%M:%SZ"), #errors == 0 and "info" or "error", "event emitted: " .. event_name, {
     source = "event",
@@ -1929,7 +2500,9 @@ local function run_plugin_hook(name, plugin, hook, data)
   if plugin_watchdog_isolated(name) then
     return false, "PLUGIN_ISOLATED"
   end
+  local hook_started_clock = os.clock()
   local ok, err = pcall(plugin[hook], plugin.bmf_api or BMF, copy_table(data or {}))
+  BMF_telemetry_record_plugin_hook(name, hook, BMF_telemetry_duration_ms(hook_started_clock), ok)
   if not ok then
     record_plugin_error(name, hook, err, data, plugin)
     return false, err
@@ -1951,9 +2524,24 @@ BMF.health = function()
     runtime_required_helper_groups_available = compatibility.ue4ss.requiredGroupsAvailable,
     runtime_missing_required_helper_groups = #(compatibility.ue4ss.missingRequiredGroups or {}),
     status_path = STATUS_PATH,
+    telemetry_path = BMF_TELEMETRY_PATH,
     log_path = LOG_PATH,
     audit_path = AUDIT_LOG_PATH,
     audit_records = #state.audit_records,
+  })
+end
+
+BMF.telemetry = function()
+  BMF_telemetry_write(true)
+  local telemetry = BMF_telemetry_snapshot()
+  return result(true, "OK", "BMF telemetry collected", {
+    telemetry_path = BMF_TELEMETRY_PATH,
+    schema_version = telemetry.schema_version,
+    commands_total = telemetry.commands.total,
+    events_total = telemetry.events.total,
+    plugin_hook_total = telemetry.plugins.hook_total,
+    scheduler_callback_total = telemetry.scheduler.callback_total,
+    telemetry = telemetry,
   })
 end
 
@@ -2131,6 +2719,7 @@ BMF.server.status = function()
     bmfStatus = "running",
     paths = {
       status = STATUS_PATH,
+      telemetry = BMF_TELEMETRY_PATH,
       log = LOG_PATH,
       events = EVENT_LOG_PATH,
       audit = AUDIT_LOG_PATH,
@@ -2615,7 +3204,12 @@ BMF.commands.dispatch = function(name, args, ar)
   end
 
   command_output(ar, "BMF " .. command_name .. " begin")
+  local handler_started_clock = os.clock()
   local ok, response_or_error = pcall(command.handler, args or "", ar)
+  local handler_duration_ms = BMF_telemetry_duration_ms(handler_started_clock)
+  if command.owner then
+    BMF_telemetry_record_plugin_hook(command.owner, "command:" .. command_name, handler_duration_ms, ok)
+  end
   if not ok then
     if command.owner then
       record_plugin_error(command.owner, "command:" .. command_name, response_or_error, {
@@ -2769,6 +3363,7 @@ local function register_builtin_commands()
         "plugins_loaded=" .. tostring(health.data.plugins_loaded),
         "plugin_errors=" .. tostring(health.data.plugin_errors),
         "status_path=" .. tostring(health.data.status_path),
+        "telemetry_path=" .. tostring(health.data.telemetry_path),
         "log_path=" .. tostring(health.data.log_path),
       },
     })
@@ -2802,6 +3397,40 @@ local function register_builtin_commands()
 
   BMF.commands.register("bmf.health", "Show BMF runtime health.", function()
     return health_command_response()
+  end)
+
+  BMF.commands.register("bmf.telemetry", "Show BMF aggregate telemetry.", function(args)
+    local options = parse_command_options(args)
+    local telemetry = BMF.telemetry()
+    local data = telemetry.data or {}
+    local snapshot = data.telemetry or {}
+    local commands = snapshot.commands or {}
+    local events = snapshot.events or {}
+    local plugins = snapshot.plugins or {}
+    local scheduler = snapshot.scheduler or {}
+    local last_command = commands.last or {}
+    local lines = {
+      "telemetry_path=" .. tostring(data.telemetry_path or BMF_TELEMETRY_PATH),
+      "schema_version=" .. tostring(data.schema_version or 0),
+      "commands_total=" .. tostring(commands.total or 0),
+      "commands_ok=" .. tostring(commands.ok or 0),
+      "commands_error=" .. tostring(commands.error or 0),
+      "events_total=" .. tostring(events.total or 0),
+      "event_handler_calls=" .. tostring(events.handler_calls or 0),
+      "event_handler_errors=" .. tostring(events.handler_errors or 0),
+      "plugin_hook_total=" .. tostring(plugins.hook_total or 0),
+      "plugin_hook_error=" .. tostring(plugins.hook_error or 0),
+      "scheduler_callback_total=" .. tostring(scheduler.callback_total or 0),
+      "scheduler_callback_error=" .. tostring(scheduler.callback_error or 0),
+      "last_command=" .. tostring(last_command.command or ""),
+      "last_command_total_ms=" .. tostring(last_command.duration_ms or 0),
+      "last_command_dispatch_ms=" .. tostring(last_command.dispatch_ms or 0),
+    }
+    if option_boolean(options, "json", false) then
+      lines[#lines + 1] = "telemetry_json=" .. json_encode(snapshot)
+    end
+    telemetry.data.lines = lines
+    return telemetry
   end)
 
   BMF.commands.register("bmf.version", "Show BMF version and target build.", function()
@@ -2880,6 +3509,7 @@ local function register_builtin_commands()
       "unsafe_global_denials=" .. tostring((data.runtime and data.runtime.unsafeGlobalDenials) or 0),
       "unsafe_globals_allowed=" .. tostring((data.config and data.config.allowPluginUnsafeGlobals) == true),
       "status_path=" .. tostring((data.paths and data.paths.status) or ""),
+      "telemetry_path=" .. tostring((data.paths and data.paths.telemetry) or ""),
       "event_log_path=" .. tostring((data.paths and data.paths.events) or ""),
       "audit_log_path=" .. tostring((data.paths and data.paths.audit) or ""),
     }
@@ -3121,10 +3751,19 @@ local function register_builtin_commands()
         "sent_responses=" .. tostring(status.sentResponses),
         "received_commands=" .. tostring(status.receivedCommands),
         "received_messages=" .. tostring(status.receivedMessages),
+        "poll_count=" .. tostring(status.pollCount),
+        "last_poll_at=" .. tostring(status.lastPollAt),
+        "last_drain_count=" .. tostring(status.lastDrainCount),
+        "worker_started=" .. tostring(status.workerStarted),
         "last_error=" .. tostring(status.lastError),
         "native_status=" .. tostring(status.nativeStatus),
       },
     })
+  end)
+
+  BMF.commands.register("bmf.tools.uobject.describe", "Describe one explicit live UObject pointer without scanning.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.uobject.describe(options)
   end)
 
   BMF.commands.register("bmf.tools.applicator.status", "Show live applicator hook status.", function(args)
@@ -3175,6 +3814,98 @@ local function register_builtin_commands()
     })
   end)
 
+  BMF.commands.register("bmf.tools.treecut.trace.enable", "Enable bounded handaxe/tree-cut trace hooks.", function(args)
+    local options = parse_command_options(args)
+    local melee_only = option_boolean(options, "meleeonly", false)
+    return BMF.tools.treeCutTrace.enable({
+      includeApplyDamage = not (
+        melee_only
+        or option_boolean(options, "applydamage", true) == false
+        or option_boolean(options, "damage", true) == false
+      ),
+      includeMelee = melee_only or option_boolean(options, "melee", false) or option_boolean(options, "includemelee", false),
+      maxEvents = option_number(options, "maxevents", option_number(options, "max", 100)),
+      sampleLimit = option_number(options, "samplelimit", option_number(options, "samples", 200)),
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.trace.disable", "Disable handaxe/tree-cut trace hooks.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.treeCutTrace.disable({
+      reason = options.reason or "command",
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.trace.status", "Show handaxe/tree-cut trace hook status.", function()
+    return BMF.tools.treeCutTrace.status()
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.trace.recent", "Show recent handaxe/tree-cut trace events.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.treeCutTrace.recent({
+      limit = option_number(options, "limit", 10),
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.trace.clear", "Clear handaxe/tree-cut trace counters.", function()
+    return BMF.tools.treeCutTrace.clear()
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.native.start", "Start native CityRPG tree-cut hit event capture.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.treeCutNative.start({
+      reason = options.reason or "command",
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.native.stop", "Stop native CityRPG tree-cut hit event capture.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.treeCutNative.stop({
+      reason = options.reason or "command",
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.native.status", "Show native CityRPG tree-cut hit event capture status.", function()
+    return BMF.tools.treeCutNative.status()
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.native.resolve-handaxe", "Resolve the native handaxe class used by tree-cut hit capture.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.treeCutNative.resolveHandaxe({
+      reason = options.reason or "command",
+      loadAsset = option_boolean(options, "loadasset", false),
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.native.refresh-targets", "Refresh cached native tree actors used by tree-cut hit target resolution.", function()
+    return BMF.tools.treeCutNative.refreshTargets()
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.native.drain", "Drain native CityRPG tree-cut hit events into the BMF event bus.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.treeCutNative.drain({
+      limit = option_number(options, "limit", 64),
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.probe.start", "Start bounded native tree-cut function attribution counters.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.treeCutProbe.start({
+      reason = options.reason or "command",
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.probe.stop", "Stop native tree-cut function attribution counters.", function(args)
+    local options = parse_command_options(args)
+    return BMF.tools.treeCutProbe.stop({
+      reason = options.reason or "command",
+    })
+  end)
+
+  BMF.commands.register("bmf.tools.treecut.probe.status", "Show native tree-cut function attribution counters.", function()
+    return BMF.tools.treeCutProbe.status()
+  end)
+
   BMF.commands.register("bmf.unload", "Unload BMF plugins from memory.", function()
     local unloaded = BMF.unloadPlugins("command")
     return result(unloaded.ok, unloaded.code, unloaded.message, {
@@ -3211,10 +3942,14 @@ local function register_builtin_commands()
   end)
 
   BMF.commands.register("bmf.chat.broadcast", "Broadcast a server chat message.", function(args)
-    local message = trim_string(args or "")
-    local prefixed = message:match("^message=(.*)$")
+    local raw = trim_string(args or "")
+    local options = parse_command_options(raw)
+    local message = raw
+    local prefixed = raw:match("^message=(.*)$")
     if prefixed ~= nil then
-      message = trim_string(prefixed)
+      message = percent_decode(trim_string(prefixed))
+    elseif options.message ~= nil then
+      message = percent_decode(options.message)
     end
 
     local broadcast = BMF.chat.broadcast(message)
@@ -3236,8 +3971,13 @@ local function register_builtin_commands()
 
   BMF.commands.register("bmf.chat.whisper", "Send a private chat message to a player.", function(args)
     local text = tostring(args or "")
-    local target = text:match("target=([^%s]+)") or text:match("player=([^%s]+)") or text:match("uuid=([^%s]+)")
-    local message = text:match("message=(.*)$") or ""
+    local options = parse_command_options(text)
+    local target = options.target or options.player or options.uuid or text:match("target=([^%s]+)") or text:match("player=([^%s]+)") or text:match("uuid=([^%s]+)")
+    if target ~= nil then
+      target = percent_decode(target)
+    end
+    local message = text:match("message=(.*)$") or options.message or ""
+    message = percent_decode(message)
     local whispered = BMF.chat.whisper(target, trim_string(message))
     local lines = {
       "target=" .. tostring(target or ""),
@@ -3264,8 +4004,13 @@ local function register_builtin_commands()
 
   BMF.commands.register("bmf.chat.statusmessage", "Send a private status message to a player.", function(args)
     local text = tostring(args or "")
-    local target = text:match("target=([^%s]+)") or text:match("player=([^%s]+)") or text:match("uuid=([^%s]+)")
-    local message = text:match("message=(.*)$") or ""
+    local options = parse_command_options(text)
+    local target = options.target or options.player or options.uuid or text:match("target=([^%s]+)") or text:match("player=([^%s]+)") or text:match("uuid=([^%s]+)")
+    if target ~= nil then
+      target = percent_decode(target)
+    end
+    local message = text:match("message=(.*)$") or options.message or ""
+    message = percent_decode(message)
     local sent = BMF.chat.statusMessage(target, trim_string(message))
     local lines = {
       "target=" .. tostring(target or ""),
@@ -3290,8 +4035,11 @@ local function register_builtin_commands()
     return sent
   end)
 
-  BMF.commands.register("bmf.players.list", "List known BMF player records.", function()
-    local listed = BMF.players.list()
+  BMF.commands.register("bmf.players.list", "List known BMF player records.", function(args)
+    local options = parse_command_options(args)
+    local listed = BMF.players.list({
+      liveControllers = option_boolean(options, "livecontrollers", false) or option_boolean(options, "includelivecontrollers", false),
+    })
     local players = {}
     if listed.data and type(listed.data.players) == "table" then
       players = listed.data.players
@@ -3301,6 +4049,7 @@ local function register_builtin_commands()
       "players_count=" .. tostring(#players),
       "known_players_count=" .. tostring((listed.data and listed.data.knownPlayerCount) or #players),
       "live_controllers_count=" .. tostring((listed.data and listed.data.liveControllerCount) or 0),
+      "live_controllers_included=" .. tostring((listed.data and listed.data.liveControllersIncluded) == true),
       "adapter=" .. tostring((listed.data and listed.data.adapter) or "headless-empty"),
       "cache_path=" .. tostring((listed.data and listed.data.cachePath) or PLAYER_CACHE_PATH),
     }
@@ -3309,6 +4058,19 @@ local function register_builtin_commands()
     end
     if listed.data and listed.data.cacheError and tostring(listed.data.cacheError) ~= "" then
       lines[#lines + 1] = "cache_error=" .. tostring(listed.data.cacheError)
+    end
+    if listed.data and type(listed.data.liveControllers) == "table" then
+      for index, controller in ipairs(listed.data.liveControllers) do
+        lines[#lines + 1] =
+          "live_controller_" .. tostring(index) ..
+          "=label=" .. tostring(controller.label or "") ..
+          "|controller=" .. tostring(controller.controllerPath or "") ..
+          "|controller_name=" .. tostring(controller.controllerName or "") ..
+          "|controller_full_name=" .. tostring(controller.controllerFullName or "") ..
+          "|player_state=" .. tostring(controller.playerStatePath or "") ..
+          "|name=" .. tostring(controller.name or controller.userName or controller.displayName or "") ..
+          "|source=" .. tostring(controller.source or "")
+      end
     end
     for index, player in ipairs(players) do
       lines[#lines + 1] =
@@ -3320,6 +4082,33 @@ local function register_builtin_commands()
     end
     listed.data.lines = lines
     return listed
+  end)
+
+  BMF.commands.register("bmf.players.positions", "Read live player pawn positions.", function(args)
+    local options = parse_command_options(args)
+    local positional = type(options._positional) == "table" and options._positional or {}
+    local player_query = options.player or options.query or options.name or positional[1] or ""
+    local snapshot = BMF.players.positions({
+      player = player_query,
+      limit = option_number(options, "limit", 32),
+      nativeController = option_boolean(options, "nativecontroller", true),
+      nativeCache = option_boolean(options, "nativecache", true),
+      unsafe = option_boolean(options, "unsafe", false),
+      allowLivePawnRead = option_boolean(options, "allowlivepawnread", false),
+      liveController = option_boolean(options, "livecontroller", false),
+      callMethods = option_boolean(options, "methods", false) or option_boolean(options, "callmethods", false),
+      includeMissing = option_boolean(options, "includemissing", false),
+      fallbackFindAll = option_boolean(options, "fallbackfindall", true),
+    })
+    local data = snapshot.data or {}
+    data.lines = data.lines or {
+      "source=bmf.players.positions",
+      "query=" .. tostring(player_query or ""),
+      "players=0",
+      "returned=0",
+    }
+    snapshot.data = data
+    return snapshot
   end)
 
   BMF.commands.register("bmf.players.sync", "Sync safe external player identity records into BMF.", function(args)
@@ -6668,9 +7457,72 @@ end
 local remove_tool_handlers_for_owner
 
 BMF.tools = {}
+BMF.tools.uobject = {}
 BMF.tools.applicator = {}
+BMF.tools.treeCutTrace = {}
+BMF.tools.treeCutNative = {}
+BMF.tools.treeCutProbe = {}
 
 do
+
+local function native_uobject_parse_lines(text)
+  local lines = {}
+  local fields = {}
+  for line in tostring(text or ""):gmatch("[^\r\n]+") do
+    lines[#lines + 1] = line
+    local key, value = line:match("^([A-Za-z0-9_]+)=(.*)$")
+    if key ~= nil then
+      fields[key] = value or ""
+    end
+  end
+  return lines, fields
+end
+
+function BMF.tools.uobject.describe(options)
+  options = type(options) == "table" and options or {}
+  local positional = type(options._positional) == "table" and options._positional or {}
+  local address = trim_string(options.address or options.addr or options.pointer or positional[1] or "")
+  if address == "" then
+    return result(false, "NATIVE_UOBJECT_ADDRESS_REQUIRED", "Provide address=0x... for one live UObject pointer.", {
+      lines = {
+        "ok=false",
+        "code=NATIVE_UOBJECT_ADDRESS_REQUIRED",
+      },
+    })
+  end
+
+  if type(BMFSocketDescribeUObject) ~= "function" then
+    return result(false, "NATIVE_UOBJECT_DESCRIBE_UNAVAILABLE", "BMFSocketDescribeUObject native helper is unavailable.", {
+      address = address,
+      lines = {
+        "ok=false",
+        "code=NATIVE_UOBJECT_DESCRIBE_UNAVAILABLE",
+        "address=" .. tostring(address),
+      },
+    })
+  end
+
+  local ok, response = pcall(BMFSocketDescribeUObject, address)
+  if not ok then
+    return result(false, "NATIVE_UOBJECT_DESCRIBE_FAILED", tostring(response or "native helper failed"), {
+      address = address,
+      lines = {
+        "ok=false",
+        "code=NATIVE_UOBJECT_DESCRIBE_FAILED",
+        "address=" .. tostring(address),
+        "detail=" .. tostring(response or "native helper failed"),
+      },
+    })
+  end
+
+  local lines, fields = native_uobject_parse_lines(response)
+  local describe_ok = tostring(fields.ok or "") == "true"
+  return result(describe_ok, describe_ok and "OK" or "NATIVE_UOBJECT_DESCRIBE_FAILED", tostring(fields.detail or "Native UObject description"), {
+    address = address,
+    fields = fields,
+    lines = lines,
+  })
+end
 
 local APPLICATOR_TRACE_PATH = RUNTIME_DIR .. "/logs/applicator.jsonl"
 local APPLICATOR_HOOK_CANDIDATES = {
@@ -7778,6 +8630,1315 @@ function BMF.tools.applicator.status(options)
     componentCacheNotes = copy_table(app.component_cache_notes or {}),
     tracePath = APPLICATOR_TRACE_PATH,
     lastError = app.last_error or "",
+    lines = lines,
+  })
+end
+
+local TREE_CUT_TRACE_PATH = RUNTIME_DIR .. "/logs/treecut-trace.jsonl"
+local TREE_CUT_APPLY_DAMAGE_HOOK_CANDIDATES = {
+  "Function /Script/Engine.GameplayStatics.ApplyDamage",
+  "Function /Script/Engine.GameplayStatics:ApplyDamage",
+  "/Script/Engine.GameplayStatics:ApplyDamage",
+  "/Script/Engine.GameplayStatics.ApplyDamage",
+  "ApplyDamage",
+}
+
+local TREE_CUT_MELEE_HOOK_CANDIDATES = {
+  "Function /Script/Brickadia.BRWeaponBase.MulticastReplicateAcceleratedMeleeExplosion",
+  "Function /Script/Brickadia.BRWeaponBase:MulticastReplicateAcceleratedMeleeExplosion",
+  "/Script/Brickadia.BRWeaponBase:MulticastReplicateAcceleratedMeleeExplosion",
+  "/Script/Brickadia.BRWeaponBase.MulticastReplicateAcceleratedMeleeExplosion",
+  "MulticastReplicateAcceleratedMeleeExplosion",
+}
+local TREE_CUT_MELEE_LUA_HOOK_SUPPORTED = false
+local TREE_CUT_MELEE_LUA_HOOK_DISABLED_REASON =
+  "MulticastReplicateAcceleratedMeleeExplosion has struct parameters that crash UE4SS Lua RegisterHook; use raw ProcessEvent/native capture instead"
+
+local TREE_CUT_SUMMARY_PROPERTIES = {
+  "DamageType",
+  "DamageTypeClass",
+  "DamageClass",
+  "TargetComponent",
+  "Target",
+  "Owner",
+  "Instigator",
+  "Weapon",
+  "WeaponClass",
+  "Item",
+  "ItemClass",
+  "ItemType",
+  "DisplayName",
+  "Name",
+}
+
+local function tree_cut_trim_line(value, max_length)
+  local text = trim_string(value or "")
+  text = text:gsub("[\r\n|]", " ")
+  max_length = tonumber(max_length) or 180
+  if #text > max_length then
+    return text:sub(1, max_length - 3) .. "..."
+  end
+  return text
+end
+
+local function tree_cut_value_string(value)
+  local ok, text = pcall(tostring, value)
+  if ok then
+    return tree_cut_trim_line(text, 180)
+  end
+  return "<unstringifiable:" .. type(value) .. ">"
+end
+
+local function tree_cut_object_name(object)
+  if not tool_object_valid(object) or type(object.GetName) ~= "function" then
+    return ""
+  end
+  local ok, name = pcall(function()
+    return object:GetName()
+  end)
+  if ok and name ~= nil then
+    local text = tree_cut_trim_line(name, 160)
+    if text ~= "." and text ~= "" then
+      return text
+    end
+  end
+  return ""
+end
+
+local function tree_cut_value_label(value)
+  local resolved = tool_param_get(value)
+  local value_type = type(resolved)
+  if resolved == nil then
+    return ""
+  end
+  if value_type == "string" or value_type == "number" or value_type == "boolean" then
+    return tree_cut_value_string(resolved)
+  end
+  if value_type == "userdata" then
+    local parts = {}
+    local full_name = tool_object_full_name(resolved)
+    local name = tree_cut_object_name(resolved)
+    local class_name = tool_object_class_full_name(resolved)
+    local address = tool_object_address(resolved)
+    if full_name ~= "" then
+      parts[#parts + 1] = full_name
+    end
+    if name ~= "" and name ~= full_name then
+      parts[#parts + 1] = "name=" .. name
+    end
+    if class_name ~= "" then
+      parts[#parts + 1] = "class=" .. class_name
+    end
+    if address ~= "" then
+      parts[#parts + 1] = "addr=" .. address
+    end
+    if #parts > 0 then
+      return tree_cut_trim_line(table.concat(parts, " "), 220)
+    end
+  end
+  return tree_cut_value_string(resolved)
+end
+
+local function tree_cut_outer_summary(object)
+  if not tool_object_valid(object) or type(object.GetOuter) ~= "function" then
+    return nil
+  end
+  local ok, outer = pcall(function()
+    return object:GetOuter()
+  end)
+  if not ok or not tool_object_valid(outer) then
+    return nil
+  end
+  return {
+    address = tool_object_address(outer),
+    name = tree_cut_object_name(outer),
+    fullName = tool_object_full_name(outer),
+    className = tool_object_class_full_name(outer),
+  }
+end
+
+local function tree_cut_try_property(object, property_name)
+  if not tool_object_valid(object) or type(object.GetPropertyValue) ~= "function" then
+    return nil
+  end
+  local ok, value = pcall(function()
+    return object:GetPropertyValue(property_name)
+  end)
+  if ok and value ~= nil then
+    return value
+  end
+  return nil
+end
+
+local function tree_cut_collect_properties(object)
+  local properties = {}
+  if not tool_object_valid(object) then
+    return properties
+  end
+  for _, property_name in ipairs(TREE_CUT_SUMMARY_PROPERTIES) do
+    local value = tree_cut_try_property(object, property_name)
+    if value ~= nil then
+      properties[property_name] = tree_cut_value_label(value)
+    end
+  end
+  return properties
+end
+
+local function tree_cut_summary(value, label)
+  local raw_type = type(value)
+  local resolved, unwrapped = tool_param_get(value)
+  local resolved_type = type(resolved)
+  local summary = {
+    label = tostring(label or ""),
+    rawType = raw_type,
+    resolvedType = resolved_type,
+    unwrapped = unwrapped == true,
+    address = tool_object_address(resolved),
+    fullName = tool_object_full_name(resolved),
+    name = tree_cut_object_name(resolved),
+    className = tool_object_class_full_name(resolved),
+    outer = tree_cut_outer_summary(resolved),
+    properties = tree_cut_collect_properties(resolved),
+    valid = tool_object_valid(resolved),
+    text = "",
+  }
+
+  if resolved_type == "string" or resolved_type == "number" or resolved_type == "boolean" then
+    summary.text = tree_cut_value_string(resolved)
+  elseif summary.fullName == "" and summary.className == "" and summary.address == "" and summary.name == "" then
+    summary.text = tree_cut_value_string(resolved)
+  end
+
+  return summary
+end
+
+local function tree_cut_summary_text(summary)
+  if type(summary) ~= "table" then
+    return ""
+  end
+  if trim_string(summary.fullName or "") ~= "" then
+    return summary.fullName
+  end
+  if trim_string(summary.name or "") ~= "" then
+    return summary.name
+  end
+  if trim_string(summary.className or "") ~= "" then
+    return summary.className
+  end
+  if trim_string(summary.text or "") ~= "" then
+    return summary.text
+  end
+  return tostring(summary.address or "")
+end
+
+local function tree_cut_summary_has_terms(summary, terms)
+  local property_text = ""
+  if type(summary and summary.properties) == "table" then
+    local parts = {}
+    for key, value in pairs(summary.properties) do
+      parts[#parts + 1] = tostring(key or "") .. "=" .. tostring(value or "")
+    end
+    property_text = table.concat(parts, " ")
+  end
+  local outer = type(summary and summary.outer) == "table" and summary.outer or {}
+  local text = (
+    tostring(summary and summary.fullName or "") .. " " ..
+    tostring(summary and summary.name or "") .. " " ..
+    tostring(summary and summary.className or "") .. " " ..
+    tostring(summary and summary.text or "") .. " " ..
+    tostring(summary and summary.address or "") .. " " ..
+    tostring(outer.fullName or "") .. " " ..
+    tostring(outer.name or "") .. " " ..
+    tostring(outer.className or "") .. " " ..
+    property_text
+  ):lower()
+  for _, term in ipairs(terms or {}) do
+    if text:find(tostring(term):lower(), 1, true) then
+      return true
+    end
+  end
+  return false
+end
+
+local function tree_cut_hook_count()
+  local count = 0
+  for _ in ipairs(state.tools.tree_cut_trace.hooks or {}) do
+    count = count + 1
+  end
+  return count
+end
+
+local function tree_cut_has_hook(kind)
+  for _, hook in ipairs(state.tools.tree_cut_trace.hooks or {}) do
+    if tostring(hook.kind or "") == tostring(kind or "") then
+      return true
+    end
+  end
+  return false
+end
+
+local function tree_cut_set_limits(options)
+  local trace = state.tools.tree_cut_trace
+  local max_events = math.floor(finite_number(options and options.maxEvents, trace.max_events or 100))
+  if max_events < 10 then
+    max_events = 10
+  elseif max_events > 500 then
+    max_events = 500
+  end
+  trace.max_events = max_events
+
+  local sample_limit = math.floor(finite_number(options and options.sampleLimit, trace.sample_limit or 200))
+  if sample_limit < 1 then
+    sample_limit = 1
+  elseif sample_limit > 5000 then
+    sample_limit = 5000
+  end
+  trace.sample_limit = sample_limit
+end
+
+local function tree_cut_record_event(event)
+  local trace = state.tools.tree_cut_trace
+  trace.sample_count = (trace.sample_count or 0) + 1
+  trace.total_events = (trace.total_events or 0) + 1
+  event.sequence = trace.total_events
+  event.timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+
+  if event.kind == "applyDamage" then
+    trace.apply_damage_events = (trace.apply_damage_events or 0) + 1
+  elseif event.kind == "meleeExplosion" then
+    trace.melee_events = (trace.melee_events or 0) + 1
+  end
+  if event.handaxe == true then
+    trace.handaxe_events = (trace.handaxe_events or 0) + 1
+  end
+  if event.treeLike == true then
+    trace.tree_like_events = (trace.tree_like_events or 0) + 1
+  end
+  if event.candidate == true then
+    trace.candidate_events = (trace.candidate_events or 0) + 1
+  end
+
+  trace.last_event = copy_table(event)
+  trace.events[#trace.events + 1] = copy_table(event)
+  while #trace.events > trace.max_events do
+    table.remove(trace.events, 1)
+  end
+  append_file(TREE_CUT_TRACE_PATH, json_encode(event) .. "\n")
+
+  if trace.sample_count >= trace.sample_limit then
+    trace.enabled = false
+    trace.last_error = "sample limit reached; callbacks are idle until bmf.tools.treecut.trace.enable or disable"
+    log("warn", "tree-cut trace sample limit reached; trace callbacks idled", {
+      sampleLimit = trace.sample_limit,
+      totalEvents = trace.total_events,
+    })
+  end
+end
+
+local function tree_cut_build_apply_damage_event(Context, DamagedActor, BaseDamage, EventInstigator, DamageCauser, DamageTypeClass)
+  local event = {
+    kind = "applyDamage",
+    hitEvent = false,
+    damageEvent = true,
+    context = tree_cut_summary(Context, "context"),
+    damagedActor = tree_cut_summary(DamagedActor, "damagedActor"),
+    baseDamage = tree_cut_summary(BaseDamage, "baseDamage"),
+    eventInstigator = tree_cut_summary(EventInstigator, "eventInstigator"),
+    damageCauser = tree_cut_summary(DamageCauser, "damageCauser"),
+    damageTypeClass = tree_cut_summary(DamageTypeClass, "damageTypeClass"),
+  }
+  event.handaxe = tree_cut_summary_has_terms(event.damageTypeClass, { "handaxe", "hand axe" })
+    or tree_cut_summary_has_terms(event.damageCauser, { "handaxe", "hand axe" })
+  event.treeLike = tree_cut_summary_has_terms(event.damagedActor, { "tree", "target" })
+  event.candidate = event.handaxe == true and event.treeLike == true
+  return event
+end
+
+local function tree_cut_handle_apply_damage(Context, DamagedActor, BaseDamage, EventInstigator, DamageCauser, DamageTypeClass)
+  local trace = state.tools.tree_cut_trace
+  if trace.enabled ~= true then
+    return nil
+  end
+  local ok, event_or_error = pcall(tree_cut_build_apply_damage_event, Context, DamagedActor, BaseDamage, EventInstigator, DamageCauser, DamageTypeClass)
+  if ok and type(event_or_error) == "table" then
+    tree_cut_record_event(event_or_error)
+  else
+    trace.last_error = tostring(event_or_error or "ApplyDamage trace callback failed")
+  end
+  return nil
+end
+
+local function tree_cut_build_melee_event(Context, ParamA, ParamB, ParamC, ParamD)
+  local event = {
+    kind = "meleeExplosion",
+    hitEvent = true,
+    damageEvent = false,
+    context = tree_cut_summary(Context, "context"),
+    paramA = tree_cut_summary(ParamA, "paramA"),
+    paramB = tree_cut_summary(ParamB, "paramB"),
+    paramC = tree_cut_summary(ParamC, "paramC"),
+    paramD = tree_cut_summary(ParamD, "paramD"),
+  }
+  event.handaxe = tree_cut_summary_has_terms(event.context, { "handaxe", "hand axe" })
+    or tree_cut_summary_has_terms(event.paramA, { "handaxe", "hand axe" })
+    or tree_cut_summary_has_terms(event.paramB, { "handaxe", "hand axe" })
+  event.treeLike = tree_cut_summary_has_terms(event.context, { "tree", "target" })
+    or tree_cut_summary_has_terms(event.paramA, { "tree", "target" })
+    or tree_cut_summary_has_terms(event.paramB, { "tree", "target" })
+  event.candidate = event.handaxe == true and event.treeLike == true
+  return event
+end
+
+local function tree_cut_handle_melee(Context, ParamA, ParamB, ParamC, ParamD)
+  local trace = state.tools.tree_cut_trace
+  if trace.enabled ~= true then
+    return nil
+  end
+  local ok, event_or_error = pcall(tree_cut_build_melee_event, Context, ParamA, ParamB, ParamC, ParamD)
+  if ok and type(event_or_error) == "table" then
+    tree_cut_record_event(event_or_error)
+  else
+    trace.last_error = tostring(event_or_error or "melee trace callback failed")
+  end
+  return nil
+end
+
+local function tree_cut_register_hook(kind, candidates, callback)
+  if type(RegisterHook) ~= "function" then
+    return nil, { "RegisterHook unavailable" }
+  end
+  local errors = {}
+  for _, hook_path in ipairs(candidates or {}) do
+    local ok, pre_id, post_id = pcall(RegisterHook, hook_path, callback)
+    if ok and type(pre_id) == "number" and type(post_id) == "number" then
+      return {
+        kind = kind,
+        path = hook_path,
+        preId = pre_id,
+        postId = post_id,
+        callback = callback,
+      }, errors
+    end
+    errors[#errors + 1] = hook_path .. ":" .. tostring(pre_id or "unknown")
+  end
+  return nil, errors
+end
+
+local function tree_cut_recent_events(limit)
+  limit = tonumber(limit) or 10
+  if limit < 1 then
+    limit = 1
+  elseif limit > state.tools.tree_cut_trace.max_events then
+    limit = state.tools.tree_cut_trace.max_events
+  end
+  local events = {}
+  local source = state.tools.tree_cut_trace.events or {}
+  local start_index = math.max(1, #source - limit + 1)
+  for index = start_index, #source do
+    events[#events + 1] = copy_table(source[index])
+  end
+  return events
+end
+
+local function tree_cut_event_line(event, index)
+  local damaged = tree_cut_trim_line(tree_cut_summary_text(event.damagedActor), 140)
+  local damage_type = tree_cut_trim_line(tree_cut_summary_text(event.damageTypeClass), 140)
+  local causer = tree_cut_trim_line(tree_cut_summary_text(event.damageCauser), 140)
+  local context = tree_cut_trim_line(tree_cut_summary_text(event.context), 140)
+  return "event_" .. tostring(index) ..
+    "=seq=" .. tostring(event.sequence or "") ..
+    "|kind=" .. tostring(event.kind or "") ..
+    "|hit_event=" .. tostring(event.hitEvent == true) ..
+    "|damage_event=" .. tostring(event.damageEvent == true) ..
+    "|handaxe=" .. tostring(event.handaxe == true) ..
+    "|tree_like=" .. tostring(event.treeLike == true) ..
+    "|candidate=" .. tostring(event.candidate == true) ..
+    "|damaged=" .. damaged ..
+    "|damage_type=" .. damage_type ..
+    "|causer=" .. causer ..
+    "|context=" .. context
+end
+
+local function tree_cut_hook_lines()
+  local lines = {}
+  for index, hook in ipairs(state.tools.tree_cut_trace.hooks or {}) do
+    lines[#lines + 1] =
+      "hook_" .. tostring(index) ..
+      "=" .. tostring(hook.kind or "") ..
+      "|path=" .. tostring(hook.path or "") ..
+      "|pre_id=" .. tostring(hook.preId or "") ..
+      "|post_id=" .. tostring(hook.postId or "")
+  end
+  return lines
+end
+
+function BMF.tools.treeCutTrace.enable(options)
+  options = type(options) == "table" and options or {}
+  local trace = state.tools.tree_cut_trace
+  tree_cut_set_limits(options)
+  local requested_apply_damage = options.includeApplyDamage ~= false
+  trace.include_apply_damage = false
+  local requested_melee_hook = options.includeMelee == true
+  trace.include_melee = requested_melee_hook and TREE_CUT_MELEE_LUA_HOOK_SUPPORTED == true
+  trace.last_error = ""
+
+  if requested_apply_damage then
+    trace.last_error = "Lua ApplyDamage trace is disabled after a UE4SS Lua callback crash; use the BMFSocket native tree-cut probe instead"
+    return result(false, "TREE_CUT_TRACE_APPLYDAMAGE_DISABLED", trace.last_error, {
+      lines = {
+        "enabled=false",
+        "registered=" .. tostring(trace.registered == true),
+        "include_apply_damage=false",
+        "native_probe=BMFSocket",
+        "last_error=" .. tostring(trace.last_error or ""),
+      },
+    })
+  end
+
+  if trace.registering then
+    return result(false, "TREE_CUT_TRACE_REGISTERING", "Tree-cut trace hook registration is already in progress")
+  end
+  if type(RegisterHook) ~= "function" then
+    trace.last_error = "RegisterHook is unavailable"
+    return result(false, "REGISTER_HOOK_UNAVAILABLE", trace.last_error)
+  end
+
+  trace.registering = true
+  local errors = {}
+  if requested_melee_hook and TREE_CUT_MELEE_LUA_HOOK_SUPPORTED ~= true then
+    errors[#errors + 1] = "meleeExplosion:" .. TREE_CUT_MELEE_LUA_HOOK_DISABLED_REASON
+  end
+
+  if trace.include_apply_damage == true and not tree_cut_has_hook("applyDamage") then
+    local callback = function(Context, DamagedActor, BaseDamage, EventInstigator, DamageCauser, DamageTypeClass)
+      return tree_cut_handle_apply_damage(Context, DamagedActor, BaseDamage, EventInstigator, DamageCauser, DamageTypeClass)
+    end
+    local hook, hook_errors = tree_cut_register_hook("applyDamage", TREE_CUT_APPLY_DAMAGE_HOOK_CANDIDATES, callback)
+    if hook then
+      trace.hooks[#trace.hooks + 1] = hook
+      log("info", "registered tree-cut ApplyDamage trace hook path=" .. tostring(hook.path or ""))
+    else
+      for _, item in ipairs(hook_errors or {}) do
+        errors[#errors + 1] = "applyDamage:" .. tostring(item)
+      end
+    end
+  end
+
+  if trace.include_melee == true and not tree_cut_has_hook("meleeExplosion") then
+    local callback = function(Context, ParamA, ParamB, ParamC, ParamD)
+      return tree_cut_handle_melee(Context, ParamA, ParamB, ParamC, ParamD)
+    end
+    local hook, hook_errors = tree_cut_register_hook("meleeExplosion", TREE_CUT_MELEE_HOOK_CANDIDATES, callback)
+    if hook then
+      trace.hooks[#trace.hooks + 1] = hook
+      log("info", "registered tree-cut melee trace hook path=" .. tostring(hook.path or ""))
+    else
+      for _, item in ipairs(hook_errors or {}) do
+        errors[#errors + 1] = "meleeExplosion:" .. tostring(item)
+      end
+    end
+  end
+
+  trace.registering = false
+  trace.registered = tree_cut_hook_count() > 0
+  if tree_cut_hook_count() == 0 then
+    trace.enabled = false
+    trace.last_error = table.concat(errors, " | ")
+    return result(false, "TREE_CUT_TRACE_HOOK_FAILED", trace.last_error, {
+      errors = errors,
+      lines = {
+        "enabled=false",
+        "registered=" .. tostring(trace.registered == true),
+        "last_error=" .. tostring(trace.last_error or ""),
+      },
+    })
+  end
+
+  if #errors > 0 then
+    trace.last_error = table.concat(errors, " | ")
+  end
+  trace.enabled = true
+  trace.sample_count = 0
+  trace.last_enabled_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  write_status()
+
+  local lines = {
+    "enabled=true",
+    "registered=" .. tostring(trace.registered == true),
+    "include_apply_damage=" .. tostring(trace.include_apply_damage == true),
+    "include_melee=" .. tostring(trace.include_melee == true),
+    "melee_lua_hook_supported=" .. tostring(TREE_CUT_MELEE_LUA_HOOK_SUPPORTED == true),
+    "hook_count=" .. tostring(tree_cut_hook_count()),
+    "max_events=" .. tostring(trace.max_events or 0),
+    "sample_limit=" .. tostring(trace.sample_limit or 0),
+    "trace_path=" .. tostring(TREE_CUT_TRACE_PATH),
+    "last_error=" .. tostring(trace.last_error or ""),
+  }
+  for _, line in ipairs(tree_cut_hook_lines()) do
+    lines[#lines + 1] = line
+  end
+
+  return result(true, "OK", "Tree-cut trace enabled", {
+    enabled = trace.enabled == true,
+    registered = trace.registered == true,
+    includeApplyDamage = trace.include_apply_damage == true,
+    includeMelee = trace.include_melee == true,
+    meleeLuaHookSupported = TREE_CUT_MELEE_LUA_HOOK_SUPPORTED == true,
+    hookCount = tree_cut_hook_count(),
+    maxEvents = trace.max_events,
+    sampleLimit = trace.sample_limit,
+    tracePath = TREE_CUT_TRACE_PATH,
+    errors = errors,
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutTrace.disable(options)
+  options = type(options) == "table" and options or {}
+  local trace = state.tools.tree_cut_trace
+  trace.enabled = false
+  trace.last_disabled_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+
+  local errors = {}
+  local remaining = {}
+  if type(UnregisterHook) == "function" then
+    for _, hook in ipairs(trace.hooks or {}) do
+      local ok, err = pcall(UnregisterHook, hook.path, hook.preId, hook.postId)
+      if not ok then
+        errors[#errors + 1] = tostring(hook.kind or "") .. ":" .. tostring(err or "unregister failed")
+        remaining[#remaining + 1] = hook
+      end
+    end
+    trace.hooks = remaining
+  elseif tree_cut_hook_count() > 0 then
+    errors[#errors + 1] = "UnregisterHook unavailable; callbacks remain registered but idle"
+  end
+
+  trace.registered = tree_cut_hook_count() > 0
+  trace.registering = false
+  if #errors > 0 then
+    trace.last_error = table.concat(errors, " | ")
+  else
+    trace.last_error = ""
+  end
+  write_status()
+
+  local lines = {
+    "enabled=false",
+    "registered=" .. tostring(trace.registered == true),
+    "hook_count=" .. tostring(tree_cut_hook_count()),
+    "reason=" .. tostring(options.reason or ""),
+    "last_error=" .. tostring(trace.last_error or ""),
+  }
+  for _, line in ipairs(tree_cut_hook_lines()) do
+    lines[#lines + 1] = line
+  end
+
+  return result(#errors == 0, #errors == 0 and "OK" or "TREE_CUT_TRACE_DISABLE_PARTIAL", "Tree-cut trace disabled", {
+    enabled = trace.enabled == true,
+    registered = trace.registered == true,
+    hookCount = tree_cut_hook_count(),
+    errors = errors,
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutTrace.status()
+  local trace = state.tools.tree_cut_trace
+  local last = trace.last_event or {}
+  local lines = {
+    "enabled=" .. tostring(trace.enabled == true),
+    "registered=" .. tostring(trace.registered == true),
+    "registering=" .. tostring(trace.registering == true),
+    "include_apply_damage=" .. tostring(trace.include_apply_damage == true),
+    "include_melee=" .. tostring(trace.include_melee == true),
+    "melee_lua_hook_supported=" .. tostring(TREE_CUT_MELEE_LUA_HOOK_SUPPORTED == true),
+    "hook_count=" .. tostring(tree_cut_hook_count()),
+    "total_events=" .. tostring(trace.total_events or 0),
+    "apply_damage_events=" .. tostring(trace.apply_damage_events or 0),
+    "melee_events=" .. tostring(trace.melee_events or 0),
+    "handaxe_events=" .. tostring(trace.handaxe_events or 0),
+    "tree_like_events=" .. tostring(trace.tree_like_events or 0),
+    "candidate_events=" .. tostring(trace.candidate_events or 0),
+    "recent_count=" .. tostring(#(trace.events or {})),
+    "sample_count=" .. tostring(trace.sample_count or 0),
+    "sample_limit=" .. tostring(trace.sample_limit or 0),
+    "max_events=" .. tostring(trace.max_events or 0),
+    "last_kind=" .. tostring(last.kind or ""),
+    "last_handaxe=" .. tostring(last.handaxe == true),
+    "last_tree_like=" .. tostring(last.treeLike == true),
+    "last_candidate=" .. tostring(last.candidate == true),
+    "last_enabled_at=" .. tostring(trace.last_enabled_at or ""),
+    "last_disabled_at=" .. tostring(trace.last_disabled_at or ""),
+    "trace_path=" .. tostring(TREE_CUT_TRACE_PATH),
+    "last_error=" .. tostring(trace.last_error or ""),
+  }
+  for _, line in ipairs(tree_cut_hook_lines()) do
+    lines[#lines + 1] = line
+  end
+
+  return result(true, "OK", "Tree-cut trace status collected", {
+    enabled = trace.enabled == true,
+    registered = trace.registered == true,
+    registering = trace.registering == true,
+    includeApplyDamage = trace.include_apply_damage == true,
+    includeMelee = trace.include_melee == true,
+    meleeLuaHookSupported = TREE_CUT_MELEE_LUA_HOOK_SUPPORTED == true,
+    hookCount = tree_cut_hook_count(),
+    totalEvents = trace.total_events or 0,
+    applyDamageEvents = trace.apply_damage_events or 0,
+    meleeEvents = trace.melee_events or 0,
+    handaxeEvents = trace.handaxe_events or 0,
+    treeLikeEvents = trace.tree_like_events or 0,
+    candidateEvents = trace.candidate_events or 0,
+    recentCount = #(trace.events or {}),
+    sampleCount = trace.sample_count or 0,
+    sampleLimit = trace.sample_limit or 0,
+    maxEvents = trace.max_events or 0,
+    lastEvent = copy_table(last),
+    hooks = copy_table(trace.hooks or {}),
+    tracePath = TREE_CUT_TRACE_PATH,
+    lastError = trace.last_error or "",
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutTrace.recent(options)
+  options = type(options) == "table" and options or {}
+  local events = tree_cut_recent_events(options.limit or 10)
+  local lines = {
+    "recent_count=" .. tostring(#events),
+    "total_events=" .. tostring(state.tools.tree_cut_trace.total_events or 0),
+    "trace_path=" .. tostring(TREE_CUT_TRACE_PATH),
+  }
+  for index, event in ipairs(events) do
+    lines[#lines + 1] = tree_cut_event_line(event, index)
+  end
+  return result(true, "OK", "Recent tree-cut trace events collected", {
+    events = events,
+    count = #events,
+    totalEvents = state.tools.tree_cut_trace.total_events or 0,
+    tracePath = TREE_CUT_TRACE_PATH,
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutTrace.clear()
+  local trace = state.tools.tree_cut_trace
+  trace.events = {}
+  trace.sample_count = 0
+  trace.total_events = 0
+  trace.apply_damage_events = 0
+  trace.melee_events = 0
+  trace.handaxe_events = 0
+  trace.tree_like_events = 0
+  trace.candidate_events = 0
+  trace.last_event = nil
+  trace.last_error = ""
+  return result(true, "OK", "Tree-cut trace counters cleared", {
+    enabled = trace.enabled == true,
+    registered = trace.registered == true,
+    lines = {
+      "enabled=" .. tostring(trace.enabled == true),
+      "registered=" .. tostring(trace.registered == true),
+      "total_events=0",
+      "recent_count=0",
+    },
+  })
+end
+
+local function tree_cut_native_available()
+  return type(BMFSocketTreeCutStart) == "function"
+    and type(BMFSocketTreeCutStop) == "function"
+    and type(BMFSocketTreeCutStatus) == "function"
+    and type(BMFSocketTreeCutDrain) == "function"
+end
+
+local function tree_cut_handaxe_resolver_available()
+  return type(BMFSocketTreeCutResolveHandaxe) == "function"
+    and type(BMFSocketTreeCutSetHandaxeClass) == "function"
+end
+
+local function tree_cut_target_resolver_available()
+  return type(BMFSocketTreeCutRefreshTargets) == "function"
+end
+
+local function tree_cut_probe_available()
+  return type(BMFSocketTreeCutProbeStart) == "function"
+    and type(BMFSocketTreeCutProbeStop) == "function"
+    and type(BMFSocketTreeCutProbeStatus) == "function"
+end
+
+local TREE_CUT_HANDAXE_ASSET_CANDIDATES = {
+  "/Game/Weapons/Melee/Handaxe/Weapon_Handaxe",
+}
+
+local TREE_CUT_HANDAXE_CLASS_CANDIDATES = {
+  "/Game/Weapons/Melee/Handaxe/Weapon_Handaxe.Weapon_Handaxe_C",
+  "Weapon_Handaxe_C",
+  "Weapon_Handaxe",
+}
+
+local TREE_CUT_HANDAXE_FIND_OBJECT_SPECS = {
+  { class = "BlueprintGeneratedClass", name = "Weapon_Handaxe_C" },
+  { class = "Class", name = "Weapon_Handaxe_C" },
+  { class = nil, name = "Weapon_Handaxe_C" },
+  { class = nil, name = "Weapon_Handaxe" },
+}
+
+local function tree_cut_native_object_valid(object)
+  if object == nil or type(object) ~= "userdata" then
+    return false
+  end
+  if type(object.IsValid) ~= "function" then
+    return true
+  end
+  local ok, valid = pcall(function()
+    return object:IsValid()
+  end)
+  return ok and valid == true
+end
+
+local function tree_cut_native_object_address(object)
+  if not tree_cut_native_object_valid(object) or type(object.GetAddress) ~= "function" then
+    return ""
+  end
+  local ok, address = pcall(function()
+    return object:GetAddress()
+  end)
+  if ok and address ~= nil then
+    return tostring(address)
+  end
+  return ""
+end
+
+local function tree_cut_native_status_lines(status_text)
+  local lines, fields = native_uobject_parse_lines(status_text)
+  return lines, fields
+end
+
+local function tree_cut_native_update_status(status_text)
+  local native = state.tools.tree_cut_native
+  local lines, fields = tree_cut_native_status_lines(status_text)
+  native.available = tree_cut_native_available()
+  native.enabled = tostring(fields.enabled or "") == "true"
+  native.started = tostring(fields.installed or "") == "true"
+  native.last_status = tostring(status_text or "")
+  native.last_error = tostring(fields.last_error or "")
+  native.total_events = tonumber(fields.events) or native.total_events or 0
+  return lines, fields
+end
+
+function BMF.tools.treeCutNative.start(options)
+  options = type(options) == "table" and options or {}
+  local native = state.tools.tree_cut_native
+  native.available = tree_cut_native_available()
+  if not native.available then
+    native.last_error = "BMFSocket tree-cut native helpers are unavailable"
+    return result(false, "TREE_CUT_NATIVE_UNAVAILABLE", native.last_error, {
+      lines = {
+        "available=false",
+        "enabled=false",
+        "started=false",
+        "last_error=" .. native.last_error,
+      },
+    })
+  end
+
+  local ok, started_or_error, status = pcall(BMFSocketTreeCutStart)
+  if not ok or started_or_error == false then
+    native.last_error = tostring(status or started_or_error or "BMFSocketTreeCutStart failed")
+    return result(false, "TREE_CUT_NATIVE_START_FAILED", native.last_error, {
+      lines = {
+        "available=true",
+        "enabled=false",
+        "started=false",
+        "last_error=" .. native.last_error,
+      },
+    })
+  end
+
+  native.last_started_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  local lines, fields = tree_cut_native_update_status(status or "")
+  local auto_refresh = options.refreshTargets ~= false and BMF_env_bool("BMF_TREECUT_TARGET_AUTO_REFRESH", false)
+  if auto_refresh and tree_cut_target_resolver_available() then
+    local delay_ms = BMF_env_number("BMF_TREECUT_TARGET_REFRESH_DELAY_MS", 3000, 0)
+    local scheduled = BMF_schedule_delayed_callback("tree_cut_target_refresh", delay_ms, function()
+      run_on_game_thread(function()
+        local refresh_ok, refresh_result = pcall(BMF.tools.treeCutNative.refreshTargets, {
+          reason = tostring(options.reason or "start") .. "-auto",
+        })
+        if not refresh_ok or not refresh_result or refresh_result.ok ~= true then
+          local detail = refresh_ok and tostring(refresh_result and refresh_result.message or "unknown") or tostring(refresh_result)
+          log("warn", "tree-cut target auto-refresh failed: " .. detail)
+        else
+          log("info", "tree-cut target cache auto-refreshed")
+        end
+      end)
+      return true
+    end)
+    if not scheduled then
+      log("warn", "tree-cut target auto-refresh was not scheduled")
+    end
+  end
+  log("info", "tree-cut native capture started reason=" .. tostring(options.reason or "manual"))
+  write_status()
+  return result(true, "OK", "Tree-cut native capture started", {
+    fields = fields,
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutNative.stop(options)
+  options = type(options) == "table" and options or {}
+  local native = state.tools.tree_cut_native
+  if not tree_cut_native_available() then
+    native.available = false
+    native.enabled = false
+    native.last_error = "BMFSocket tree-cut native helpers are unavailable"
+    return result(false, "TREE_CUT_NATIVE_UNAVAILABLE", native.last_error, {
+      lines = {
+        "available=false",
+        "enabled=false",
+        "started=false",
+      },
+    })
+  end
+
+  local ok, stopped_or_error, status = pcall(BMFSocketTreeCutStop)
+  if not ok or stopped_or_error == false then
+    native.last_error = tostring(status or stopped_or_error or "BMFSocketTreeCutStop failed")
+    return result(false, "TREE_CUT_NATIVE_STOP_FAILED", native.last_error, {
+      lines = {
+        "available=true",
+        "last_error=" .. native.last_error,
+      },
+    })
+  end
+
+  local lines, fields = tree_cut_native_update_status(status or "")
+  log("info", "tree-cut native capture stopped reason=" .. tostring(options.reason or "manual"))
+  write_status()
+  return result(true, "OK", "Tree-cut native capture stopped", {
+    fields = fields,
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutNative.status()
+  local native = state.tools.tree_cut_native
+  native.available = tree_cut_native_available()
+  if not native.available then
+    return result(false, "TREE_CUT_NATIVE_UNAVAILABLE", "BMFSocket tree-cut native helpers are unavailable", {
+      lines = {
+        "available=false",
+        "enabled=false",
+        "started=false",
+      },
+    })
+  end
+
+  local ok, status_or_error = pcall(BMFSocketTreeCutStatus)
+  if not ok then
+    native.last_error = tostring(status_or_error or "BMFSocketTreeCutStatus failed")
+    return result(false, "TREE_CUT_NATIVE_STATUS_FAILED", native.last_error, {
+      lines = {
+        "available=true",
+        "last_error=" .. native.last_error,
+      },
+    })
+  end
+
+  local lines, fields = tree_cut_native_update_status(status_or_error or "")
+  return result(true, "OK", "Tree-cut native status collected", {
+    fields = fields,
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutNative.refreshTargets(options)
+  options = type(options) == "table" and options or {}
+  local native = state.tools.tree_cut_native
+  native.available = tree_cut_native_available()
+  if not native.available or not tree_cut_target_resolver_available() then
+    native.last_error = "BMFSocket tree-cut target resolver helpers are unavailable"
+    return result(false, "TREE_CUT_TARGET_RESOLVER_UNAVAILABLE", native.last_error, {
+      lines = {
+        "available=" .. tostring(native.available == true),
+        "target_resolver_available=" .. tostring(tree_cut_target_resolver_available()),
+        "last_error=" .. native.last_error,
+      },
+    })
+  end
+
+  local ok, refreshed_or_error, status = pcall(BMFSocketTreeCutRefreshTargets)
+  if not ok or refreshed_or_error == false then
+    local lines, fields = tree_cut_native_update_status(status or "")
+    native.last_error = fields.last_error or tostring(status or refreshed_or_error or "BMFSocketTreeCutRefreshTargets failed")
+    if native.last_error == "" then
+      native.last_error = "BMFSocketTreeCutRefreshTargets failed"
+    end
+    return result(false, "TREE_CUT_TARGET_REFRESH_FAILED", native.last_error, {
+      fields = fields,
+      lines = {
+        "available=true",
+        "target_resolver_available=true",
+        "last_error=" .. native.last_error,
+      },
+    })
+  end
+
+  native.last_target_refresh_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  local lines, fields = tree_cut_native_update_status(status or "")
+  write_status()
+  return result(true, "OK", "Tree-cut target cache refreshed", {
+    fields = fields,
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutNative.resolveHandaxe(options)
+  options = type(options) == "table" and options or {}
+  local native = state.tools.tree_cut_native
+  native.available = tree_cut_native_available()
+  if not native.available or not tree_cut_handaxe_resolver_available() then
+    native.last_error = "BMFSocket tree-cut handaxe resolver helpers are unavailable"
+    return result(false, "TREE_CUT_HANDAXE_RESOLVER_UNAVAILABLE", native.last_error, {
+      lines = {
+        "available=" .. tostring(native.available == true),
+        "resolver_available=" .. tostring(tree_cut_handaxe_resolver_available()),
+        "last_error=" .. native.last_error,
+      },
+    })
+  end
+
+  local detail_lines = {
+    "available=true",
+    "resolver_available=true",
+    "reason=" .. tostring(options.reason or "command"),
+  }
+
+  local loaded = 0
+  local load_errors = 0
+  local load_assets = options.loadAsset == true or tostring(options.loadAsset or options.loadasset or ""):lower() == "true" or tostring(options.loadasset or "") == "1"
+  if load_assets and type(LoadAsset) == "function" then
+    for _, asset_path in ipairs(TREE_CUT_HANDAXE_ASSET_CANDIDATES) do
+      local ok, err = pcall(LoadAsset, asset_path)
+      if ok then
+        loaded = loaded + 1
+        detail_lines[#detail_lines + 1] = "load_asset_ok=" .. tostring(asset_path)
+      else
+        load_errors = load_errors + 1
+        detail_lines[#detail_lines + 1] = "load_asset_error=" .. tostring(asset_path) .. "|" .. tostring(err)
+      end
+    end
+  elseif load_assets then
+    detail_lines[#detail_lines + 1] = "load_asset_error=LoadAsset unavailable"
+  else
+    detail_lines[#detail_lines + 1] = "load_asset_skipped=true"
+  end
+
+  local static_hits = 0
+  local set_attempts = 0
+  local set_errors = 0
+  if type(StaticFindObject) == "function" then
+    for _, candidate in ipairs(TREE_CUT_HANDAXE_CLASS_CANDIDATES) do
+      local find_ok, object = pcall(StaticFindObject, candidate)
+      if find_ok and tree_cut_native_object_valid(object) then
+        static_hits = static_hits + 1
+        local address = tree_cut_native_object_address(object)
+        detail_lines[#detail_lines + 1] = "static_find_hit=" .. tostring(candidate) .. "|address=" .. tostring(address)
+        if address ~= "" then
+          set_attempts = set_attempts + 1
+          local set_ok, accepted_or_error, status = pcall(
+            BMFSocketTreeCutSetHandaxeClass,
+            address,
+            "StaticFindObject(" .. tostring(candidate) .. ")"
+          )
+          if set_ok then
+            local status_lines, fields = tree_cut_native_update_status(status or "")
+            for _, line in ipairs(status_lines) do
+              detail_lines[#detail_lines + 1] = line
+            end
+            if accepted_or_error == true then
+              native.last_error = ""
+              native.last_handaxe_resolved_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+              write_status()
+              return result(true, "OK", "Tree-cut handaxe class resolved", {
+                fields = fields,
+                loaded = loaded,
+                loadErrors = load_errors,
+                staticFindHits = static_hits,
+                setAttempts = set_attempts,
+                lines = detail_lines,
+              })
+            end
+          else
+            set_errors = set_errors + 1
+            detail_lines[#detail_lines + 1] = "set_handaxe_class_error=" .. tostring(candidate) .. "|" .. tostring(accepted_or_error)
+          end
+        end
+      elseif not find_ok then
+        detail_lines[#detail_lines + 1] = "static_find_error=" .. tostring(candidate) .. "|" .. tostring(object)
+      end
+    end
+  else
+    detail_lines[#detail_lines + 1] = "static_find_error=StaticFindObject unavailable"
+  end
+
+  local find_objects_hits = 0
+  if type(FindObjects) == "function" and type(EObjectFlags) == "table" then
+    local no_flags = EObjectFlags.RF_NoFlags
+    for _, spec in ipairs(TREE_CUT_HANDAXE_FIND_OBJECT_SPECS) do
+      local find_ok, objects = pcall(FindObjects, 8, spec.class, spec.name, no_flags, no_flags, false)
+      if find_ok and type(objects) == "table" then
+        for index, object in ipairs(objects) do
+          if tree_cut_native_object_valid(object) then
+            find_objects_hits = find_objects_hits + 1
+            local address = tree_cut_native_object_address(object)
+            detail_lines[#detail_lines + 1] = "find_objects_hit=" .. tostring(spec.class or "*") .. "|" .. tostring(spec.name) .. "|" .. tostring(index) .. "|address=" .. tostring(address)
+            if address ~= "" then
+              set_attempts = set_attempts + 1
+              local set_ok, accepted_or_error, status = pcall(
+                BMFSocketTreeCutSetHandaxeClass,
+                address,
+                "FindObjects(" .. tostring(spec.class or "*") .. "," .. tostring(spec.name) .. ")"
+              )
+              if set_ok then
+                local status_lines, fields = tree_cut_native_update_status(status or "")
+                for _, line in ipairs(status_lines) do
+                  detail_lines[#detail_lines + 1] = line
+                end
+                if accepted_or_error == true then
+                  native.last_error = ""
+                  native.last_handaxe_resolved_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+                  write_status()
+                  return result(true, "OK", "Tree-cut handaxe class resolved", {
+                    fields = fields,
+                    loaded = loaded,
+                    loadErrors = load_errors,
+                    staticFindHits = static_hits,
+                    findObjectsHits = find_objects_hits,
+                    setAttempts = set_attempts,
+                    lines = detail_lines,
+                  })
+                end
+              else
+                set_errors = set_errors + 1
+                detail_lines[#detail_lines + 1] = "set_handaxe_class_error=" .. tostring(spec.class or "*") .. "|" .. tostring(spec.name) .. "|" .. tostring(accepted_or_error)
+              end
+            end
+          end
+        end
+      elseif not find_ok then
+        detail_lines[#detail_lines + 1] = "find_objects_error=" .. tostring(spec.class or "*") .. "|" .. tostring(spec.name) .. "|" .. tostring(objects)
+      end
+    end
+  else
+    detail_lines[#detail_lines + 1] = "find_objects_error=FindObjects or EObjectFlags unavailable"
+  end
+
+  local resolve_ok, resolved_or_error, status = pcall(BMFSocketTreeCutResolveHandaxe)
+  if not resolve_ok then
+    native.last_error = tostring(resolved_or_error or "BMFSocketTreeCutResolveHandaxe failed")
+    detail_lines[#detail_lines + 1] = "native_resolve_error=" .. native.last_error
+    return result(false, "TREE_CUT_HANDAXE_RESOLVE_FAILED", native.last_error, {
+      loaded = loaded,
+      loadErrors = load_errors,
+      staticFindHits = static_hits,
+      findObjectsHits = find_objects_hits,
+      setAttempts = set_attempts,
+      setErrors = set_errors,
+      lines = detail_lines,
+    })
+  end
+
+  local status_lines, fields = tree_cut_native_update_status(status or "")
+  for _, line in ipairs(status_lines) do
+    detail_lines[#detail_lines + 1] = line
+  end
+  if resolved_or_error == true then
+    native.last_handaxe_resolved_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  end
+  write_status()
+
+  return result(resolved_or_error == true, resolved_or_error == true and "OK" or "TREE_CUT_HANDAXE_UNRESOLVED", "Tree-cut handaxe class resolve attempted", {
+    fields = fields,
+    loaded = loaded,
+    loadErrors = load_errors,
+    staticFindHits = static_hits,
+    findObjectsHits = find_objects_hits,
+    setAttempts = set_attempts,
+    setErrors = set_errors,
+    lines = detail_lines,
+  })
+end
+
+function BMF.tools.treeCutNative.drain(options)
+  options = type(options) == "table" and options or {}
+  local native = state.tools.tree_cut_native
+  native.available = tree_cut_native_available()
+  if not native.available then
+    native.last_error = "BMFSocket tree-cut native helpers are unavailable"
+    return result(false, "TREE_CUT_NATIVE_UNAVAILABLE", native.last_error, {
+      drained = 0,
+      emitted = 0,
+      lines = {
+        "available=false",
+        "drained=0",
+        "emitted=0",
+      },
+    })
+  end
+
+  local limit = tonumber(options.limit or options.max or 64) or 64
+  if limit < 1 then
+    limit = 1
+  elseif limit > 256 then
+    limit = 256
+  end
+
+  local ok, events_or_error = pcall(BMFSocketTreeCutDrain, limit)
+  if not ok or type(events_or_error) ~= "table" then
+    native.last_error = tostring(events_or_error or "BMFSocketTreeCutDrain failed")
+    return result(false, "TREE_CUT_NATIVE_DRAIN_FAILED", native.last_error, {
+      drained = 0,
+      emitted = 0,
+      lines = {
+        "available=true",
+        "drained=0",
+        "emitted=0",
+        "last_error=" .. native.last_error,
+      },
+    })
+  end
+
+  local drained = 0
+  local emitted = 0
+  local decode_errors = 0
+  for _, raw in ipairs(events_or_error) do
+    if trim_string(raw) ~= "" then
+      drained = drained + 1
+      local decoded, err = json_decode(raw)
+      if type(decoded) == "table" then
+        decoded._bmf = decoded._bmf or {}
+        decoded._bmf.emittedAt = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        decoded._bmf.source = "BMFSocketTreeCutNative"
+        local event_name = tostring(decoded.event or "cityrpg.treecut.hit")
+        BMF.events.emit(event_name, decoded)
+        emitted = emitted + 1
+        native.last_event = copy_table(decoded)
+      else
+        decode_errors = decode_errors + 1
+        native.last_error = tostring(err or "native tree-cut event decode failed")
+      end
+    end
+  end
+
+  native.drained_events = (tonumber(native.drained_events) or 0) + drained
+  native.emitted_events = (tonumber(native.emitted_events) or 0) + emitted
+  native.decode_errors = (tonumber(native.decode_errors) or 0) + decode_errors
+  if drained > 0 and options.silent ~= true then
+    log("info", "tree-cut native drained events=" .. tostring(drained) .. " emitted=" .. tostring(emitted))
+  end
+  return result(decode_errors == 0, decode_errors == 0 and "OK" or "TREE_CUT_NATIVE_DECODE_ERRORS", "Tree-cut native queue drained", {
+    drained = drained,
+    emitted = emitted,
+    decodeErrors = decode_errors,
+    lines = {
+      "available=true",
+      "drained=" .. tostring(drained),
+      "emitted=" .. tostring(emitted),
+      "decode_errors=" .. tostring(decode_errors),
+      "total_drained=" .. tostring(native.drained_events or 0),
+      "total_emitted=" .. tostring(native.emitted_events or 0),
+    },
+  })
+end
+
+function BMF.tools.treeCutProbe.start(options)
+  options = type(options) == "table" and options or {}
+  if not tree_cut_probe_available() then
+    return result(false, "TREE_CUT_PROBE_UNAVAILABLE", "BMFSocket tree-cut probe helpers are unavailable", {
+      lines = {
+        "available=false",
+        "enabled=false",
+        "installed=0",
+      },
+    })
+  end
+
+  local ok, started_or_error, status = pcall(BMFSocketTreeCutProbeStart)
+  if not ok or started_or_error == false then
+    return result(false, "TREE_CUT_PROBE_START_FAILED", tostring(status or started_or_error or "BMFSocketTreeCutProbeStart failed"), {
+      lines = {
+        "available=true",
+        "enabled=false",
+        "last_error=" .. tostring(status or started_or_error or ""),
+      },
+    })
+  end
+
+  local lines, fields = tree_cut_native_status_lines(status or "")
+  log("info", "tree-cut native probe started reason=" .. tostring(options.reason or "manual"))
+  return result(true, "OK", "Tree-cut native probe started", {
+    fields = fields,
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutProbe.stop(options)
+  options = type(options) == "table" and options or {}
+  if not tree_cut_probe_available() then
+    return result(false, "TREE_CUT_PROBE_UNAVAILABLE", "BMFSocket tree-cut probe helpers are unavailable", {
+      lines = {
+        "available=false",
+        "enabled=false",
+      },
+    })
+  end
+
+  local ok, stopped_or_error, status = pcall(BMFSocketTreeCutProbeStop)
+  if not ok or stopped_or_error == false then
+    return result(false, "TREE_CUT_PROBE_STOP_FAILED", tostring(status or stopped_or_error or "BMFSocketTreeCutProbeStop failed"), {
+      lines = {
+        "available=true",
+        "last_error=" .. tostring(status or stopped_or_error or ""),
+      },
+    })
+  end
+
+  local lines, fields = tree_cut_native_status_lines(status or "")
+  log("info", "tree-cut native probe stopped reason=" .. tostring(options.reason or "manual"))
+  return result(true, "OK", "Tree-cut native probe stopped", {
+    fields = fields,
+    lines = lines,
+  })
+end
+
+function BMF.tools.treeCutProbe.status()
+  if not tree_cut_probe_available() then
+    return result(false, "TREE_CUT_PROBE_UNAVAILABLE", "BMFSocket tree-cut probe helpers are unavailable", {
+      lines = {
+        "available=false",
+        "enabled=false",
+      },
+    })
+  end
+
+  local ok, status_or_error = pcall(BMFSocketTreeCutProbeStatus)
+  if not ok then
+    return result(false, "TREE_CUT_PROBE_STATUS_FAILED", tostring(status_or_error or "BMFSocketTreeCutProbeStatus failed"), {
+      lines = {
+        "available=true",
+        "last_error=" .. tostring(status_or_error or ""),
+      },
+    })
+  end
+
+  local lines, fields = tree_cut_native_status_lines(status_or_error or "")
+  return result(true, "OK", "Tree-cut native probe status collected", {
+    fields = fields,
     lines = lines,
   })
 end
@@ -9073,43 +11234,126 @@ function minigame_live_first_player_state_for_assignment(source_hint)
   }
 end
 
+function minigame_assignment_candidate_match_kind(candidates, needle)
+  local query = trim_string(needle or ""):lower()
+  if query == "" then
+    return true, "empty"
+  end
+
+  local partial = false
+  for _, candidate in ipairs(candidates or {}) do
+    local lower = trim_string(candidate):lower()
+    if lower ~= "" then
+      if lower == query then
+        return true, "exact"
+      end
+      if lower:find(query, 1, true) ~= nil then
+        partial = true
+      end
+    end
+  end
+
+  return partial, partial and "partial" or ""
+end
+
+function minigame_assignment_player_state_score(item, candidates, match_kind)
+  local player_state = item and item.object or nil
+  local score = 0
+
+  if match_kind == "exact" then
+    score = score + 1000
+  elseif match_kind == "partial" then
+    score = score + 800
+  elseif match_kind == "empty" then
+    score = score + 100
+  end
+
+  local owner = minigame_try_property(player_state, "Owner")
+  if minigame_object_valid(owner) then
+    score = score + 250
+  end
+
+  for _, property_name in ipairs({ "Pawn", "PawnPrivate", "Character", "AcknowledgedPawn" }) do
+    if minigame_object_valid(minigame_try_property(player_state, property_name)) then
+      score = score + 50
+      break
+    end
+  end
+
+  local ruleset = minigame_live_resolve_ruleset_for_assignment(player_state)
+  if minigame_object_valid(ruleset) then
+    score = score + 50
+  end
+
+  if tostring(item and item.source or ""):find("PlayerArray", 1, true) then
+    score = score + 25
+  end
+
+  if #(candidates or {}) > 0 then
+    score = score + math.min(#candidates, 10)
+  end
+
+  return score
+end
+
+function minigame_assignment_better_candidate(candidate, current)
+  if candidate == nil then
+    return current
+  end
+  if current == nil then
+    return candidate
+  end
+  if tonumber(candidate.score or 0) > tonumber(current.score or 0) then
+    return candidate
+  end
+  return current
+end
+
 function minigame_live_resolve_player_state_for_assignment(query)
   local needle = trim_string(query or ""):lower()
   local single_cached_player, cache_source = minigame_cached_single_player_match(query)
-  if single_cached_player then
+  local player_states, meta = minigame_live_player_states({
+    fallbackFindAll = true,
+  })
+  meta = type(meta) == "table" and meta or {}
+  meta.fastPath = single_cached_player and cache_source or ""
+  local fallback = nil
+  local matched = nil
+
+  for _, item in ipairs(player_states or {}) do
+    local player_state = item.object
+    local candidates = minigame_live_player_assignment_candidates(player_state)
+    local matches, match_kind = minigame_assignment_candidate_match_kind(candidates, needle)
+    local scored = {
+      item = item,
+      candidates = candidates,
+      matchKind = match_kind,
+      score = minigame_assignment_player_state_score(item, candidates, match_kind),
+    }
+    fallback = minigame_assignment_better_candidate(scored, fallback)
+    if matches then
+      matched = minigame_assignment_better_candidate(scored, matched)
+    end
+  end
+
+  if matched ~= nil then
+    meta.fastPath = tostring(meta.fastPath or "") .. ".filtered." .. tostring(matched.matchKind or "")
+    return matched.item, matched.candidates, meta
+  end
+
+  if single_cached_player and fallback ~= nil then
+    meta.fastPath = tostring(meta.fastPath or "") .. ".single_filtered"
+    return fallback.item, fallback.candidates, meta
+  end
+
+  if single_cached_player and #(player_states or {}) == 0 then
     local first_item, first_meta = minigame_live_first_player_state_for_assignment(cache_source)
     if first_item and minigame_object_valid(first_item.object) then
       return first_item, { cache_source }, first_meta
     end
   end
 
-  local player_states, meta = minigame_live_player_states({
-    fallbackFindAll = true,
-  })
-  local first = nil
-  local first_candidates = {}
-
-  for _, item in ipairs(player_states or {}) do
-    local player_state = item.object
-    local candidates = minigame_live_player_assignment_candidates(player_state)
-    if not first then
-      first = item
-      first_candidates = candidates
-    end
-
-    if needle == "" then
-      return item, candidates, meta
-    end
-
-    for _, candidate in ipairs(candidates) do
-      local lower = trim_string(candidate):lower()
-      if lower ~= "" and (lower == needle or lower:find(needle, 1, true) ~= nil) then
-        return item, candidates, meta
-      end
-    end
-  end
-
-  return nil, first_candidates, meta
+  return nil, fallback and fallback.candidates or {}, meta
 end
 
 BMF.minigames.assignTeam = function(player_query, team_index, options)
@@ -12258,7 +14502,7 @@ end
 
 BMF.chat = {}
 
-local LIVE_CHAT_CONTROLLER_CLASSES = { "PlayerController", "BRPlayerController", "BP_PlayerController_C" }
+local LIVE_CHAT_CONTROLLER_CLASSES = { "BP_PlayerController_C", "BRPlayerController", "PlayerController" }
 
 local function live_chat_is_valid_object(object)
   if object == nil then
@@ -12406,6 +14650,8 @@ local function live_chat_target_summary(target)
     displayName = tostring(target.displayName or ""),
     playerId = tostring(target.playerId or ""),
     controllerPath = tostring(target.controllerPath or ""),
+    controllerName = live_chat_object_label(target.controller, ""),
+    controllerFullName = live_chat_object_full_name(target.controller),
     playerStatePath = tostring(target.playerStatePath or ""),
     label = tostring(target.label or ""),
     source = tostring(target.source or ""),
@@ -12797,7 +15043,8 @@ local function player_cache_records(cache)
   return cache
 end
 
-BMF.players.list = function()
+BMF.players.list = function(options)
+  local opts = type(options) == "table" and options or {}
   local native_records, native_detail = native_player_records()
   local cache, cache_err = load_player_cache()
   local raw_records = #native_records > 0 and native_records or player_cache_records(cache)
@@ -12831,7 +15078,21 @@ BMF.players.list = function()
     adapter = "headless-empty"
   end
 
-  local live_count = live_player_controller_count()
+  local include_live_controllers =
+    opts.liveControllers == true or
+    opts.includeLiveControllers == true or
+    option_boolean(opts, "livecontrollers", false) or
+    option_boolean(opts, "includelivecontrollers", false) or
+    os.getenv("BMF_PLAYERS_LIST_LIVE_CONTROLLERS") == "1"
+  local live_count = 0
+  local live_targets = {}
+  local live_controllers = {}
+  if include_live_controllers then
+    live_count, live_targets = live_player_controller_count()
+    for _, target in ipairs(live_targets or {}) do
+      live_controllers[#live_controllers + 1] = live_chat_target_summary(target)
+    end
+  end
   return result(true, "OK", #players > 0 and "Known player records listed" or "No cached player identity records are available", {
     players = players,
     invalid = invalid,
@@ -12839,6 +15100,8 @@ BMF.players.list = function()
     knownPlayerCount = #players,
     invalidCount = #invalid,
     liveControllerCount = live_count,
+    liveControllers = live_controllers,
+    liveControllersIncluded = include_live_controllers,
     adapter = adapter,
     source = source,
     updatedAt = updated_at,
@@ -12846,6 +15109,1091 @@ BMF.players.list = function()
     cacheError = cache_error,
     native = native_detail,
   })
+end
+
+function player_position_axis_from_value(value, names, index)
+  if type(value) == "number" then
+    return finite_number(value, nil)
+  end
+  if type(value) == "table" then
+    local direct = finite_number(value[index], nil)
+    if direct ~= nil then
+      return direct
+    end
+    for _, name in ipairs(names or {}) do
+      local number = finite_number(value[name], nil)
+      if number ~= nil then
+        return number
+      end
+    end
+    return nil
+  end
+  if type(value) ~= "userdata" then
+    return nil
+  end
+
+  for _, name in ipairs(names or {}) do
+    local raw = minigame_try_property(value, name)
+    local number = finite_number(raw, nil)
+    if number ~= nil then
+      return number
+    end
+  end
+  return nil
+end
+
+function player_position_from_text(value)
+  local text = minigame_value_to_string(value)
+  if trim_string(text) == "" then
+    text = tostring(value or "")
+  end
+  local x = text:match("[Xx]%s*=%s*([%-%+]?%d+%.?%d*)")
+  local y = text:match("[Yy]%s*=%s*([%-%+]?%d+%.?%d*)")
+  local z = text:match("[Zz]%s*=%s*([%-%+]?%d+%.?%d*)")
+  if x and y and z then
+    return {
+      x = finite_number(x, 0),
+      y = finite_number(y, 0),
+      z = finite_number(z, 0),
+    }
+  end
+
+  local a, b, c = text:match("^%s*%(%s*([%-%+]?%d+%.?%d*)%s*,%s*([%-%+]?%d+%.?%d*)%s*,%s*([%-%+]?%d+%.?%d*)%s*%)%s*$")
+  if not a then
+    a, b, c = text:match("^%s*([%-%+]?%d+%.?%d*)%s*,%s*([%-%+]?%d+%.?%d*)%s*,%s*([%-%+]?%d+%.?%d*)%s*$")
+  end
+  if a and b and c then
+    return {
+      x = finite_number(a, 0),
+      y = finite_number(b, 0),
+      z = finite_number(c, 0),
+    }
+  end
+  return nil
+end
+
+function player_position_from_vector(value)
+  if value == nil then
+    return nil
+  end
+
+  local x = player_position_axis_from_value(value, { "X", "x" }, 1)
+  local y = player_position_axis_from_value(value, { "Y", "y" }, 2)
+  local z = player_position_axis_from_value(value, { "Z", "z" }, 3)
+  if x ~= nil and y ~= nil and z ~= nil then
+    return { x = x, y = y, z = z }
+  end
+
+  return player_position_from_text(value)
+end
+
+function player_position_call_vector(object, method_name)
+  if not minigame_object_valid(object) then
+    return nil, "invalid object"
+  end
+
+  local method = minigame_userdata_method(object, method_name)
+  if type(method) ~= "function" then
+    return nil, "method unavailable"
+  end
+
+  local ok, value = pcall(function()
+    return method(object)
+  end)
+  if not ok then
+    return nil, tostring(value)
+  end
+
+  local position = player_position_from_vector(value)
+  if position ~= nil then
+    return position, ""
+  end
+  return nil, "method returned non-vector " .. minigame_compact_value(minigame_value_to_string(value))
+end
+
+function player_position_property_vector(object, property_name)
+  if not minigame_object_valid(object) then
+    return nil, "invalid object"
+  end
+  local value = minigame_try_property(object, property_name)
+  if value == nil then
+    return nil, "property unavailable"
+  end
+  local position = player_position_from_vector(value)
+  if position ~= nil then
+    return position, ""
+  end
+  return nil, "property returned non-vector " .. minigame_compact_value(minigame_value_to_string(value))
+end
+
+function player_position_component_vector(object, component_property, vector_property)
+  if not minigame_object_valid(object) then
+    return nil, "invalid object"
+  end
+  local component = minigame_try_property(object, component_property)
+  if not minigame_object_valid(component) then
+    return nil, "component unavailable"
+  end
+  return player_position_property_vector(component, vector_property)
+end
+
+function player_position_add_candidate(candidates, seen, object, source)
+  if not minigame_object_valid(object) then
+    return
+  end
+  local key = minigame_object_address(object)
+  if key == "" then
+    key = minigame_object_full_name(object)
+  end
+  if key == "" then
+    key = tostring(object or "")
+  end
+  if key == "" or seen[key] then
+    return
+  end
+  seen[key] = true
+  candidates[#candidates + 1] = {
+    object = object,
+    source = tostring(source or ""),
+    address = minigame_object_address(object),
+    objectName = minigame_object_name(object),
+    fullName = minigame_object_full_name(object),
+    className = minigame_object_class_name(object),
+  }
+end
+
+function player_position_candidate_pawns(player_state)
+  local candidates = {}
+  local seen = {}
+  local controller = minigame_try_property(player_state, "Owner")
+
+  for _, property_name in ipairs({ "PawnPrivate", "Pawn", "Character", "DefaultPawn" }) do
+    player_position_add_candidate(
+      candidates,
+      seen,
+      minigame_try_property(player_state, property_name),
+      "player_state." .. property_name
+    )
+  end
+
+  if minigame_object_valid(controller) then
+    for _, property_name in ipairs({ "AcknowledgedPawn", "Pawn", "Character", "ControlledPawn" }) do
+      player_position_add_candidate(
+        candidates,
+        seen,
+        minigame_try_property(controller, property_name),
+        "controller." .. property_name
+      )
+    end
+  end
+
+  return candidates, controller
+end
+
+function player_position_read_from_pawn(pawn, options)
+  local attempts = {}
+  local opts = type(options) == "table" and options or {}
+  local allow_method_calls =
+    opts.callMethods == true or
+    option_boolean(opts, "callmethods", false) or
+    option_boolean(opts, "methods", false)
+
+  if allow_method_calls then
+    for _, method_name in ipairs({
+      "K2_GetActorLocation",
+      "GetActorLocation",
+      "GetTransform",
+    }) do
+      local position, err = player_position_call_vector(pawn, method_name)
+      attempts[#attempts + 1] = {
+        source = "pawn." .. method_name,
+        ok = position ~= nil,
+        error = tostring(err or ""),
+      }
+      if position ~= nil then
+        return position, "pawn." .. method_name, attempts
+      end
+    end
+  else
+    for _, method_name in ipairs({
+      "K2_GetActorLocation",
+      "GetActorLocation",
+      "GetTransform",
+    }) do
+      attempts[#attempts + 1] = {
+        source = "pawn." .. method_name,
+        ok = false,
+        error = "skipped-unsafe-struct-return",
+      }
+    end
+  end
+
+  for _, chain in ipairs({
+    { component = "RootComponent", vector = "RelativeLocation" },
+    { component = "CollisionCylinder", vector = "RelativeLocation" },
+    { component = "CapsuleComponent", vector = "RelativeLocation" },
+    { component = "Mesh", vector = "RelativeLocation" },
+  }) do
+    local position, err = player_position_component_vector(pawn, chain.component, chain.vector)
+    attempts[#attempts + 1] = {
+      source = "pawn." .. chain.component .. "." .. chain.vector,
+      ok = position ~= nil,
+      error = tostring(err or ""),
+    }
+    if position ~= nil then
+      return position, "pawn." .. chain.component .. "." .. chain.vector, attempts
+    end
+  end
+
+  for _, property_name in ipairs({
+    "Location",
+    "RelativeLocation",
+    "ReplicatedMovement",
+    "ActorLocation",
+    "K2Node_ComponentBoundEvent_Location",
+  }) do
+    local position, err = player_position_property_vector(pawn, property_name)
+    attempts[#attempts + 1] = {
+      source = "pawn." .. property_name,
+      ok = position ~= nil,
+      error = tostring(err or ""),
+    }
+    if position ~= nil then
+      return position, "pawn." .. property_name, attempts
+    end
+  end
+
+  return nil, "", attempts
+end
+
+function player_position_identity_from_cache(players, player_name, candidates)
+  local lowered_name = trim_string(player_name or ""):lower()
+  local candidate_map = {}
+  for _, candidate in ipairs(candidates or {}) do
+    local lowered = trim_string(candidate):lower()
+    if lowered ~= "" then
+      candidate_map[lowered] = true
+    end
+  end
+
+  for _, player in ipairs(players or {}) do
+    local values = {
+      player.uuid,
+      player.id,
+      player.username,
+      player.playerName,
+      player.displayName,
+      player.originalName,
+      player.playerStatePath,
+      player.controllerPath,
+    }
+    for _, value in ipairs(values) do
+      local lowered = trim_string(value or ""):lower()
+      if lowered ~= "" and (candidate_map[lowered] or lowered == lowered_name) then
+        return player, lowered == lowered_name and "cache.name" or "cache.candidate"
+      end
+    end
+  end
+
+  return nil, ""
+end
+
+function player_position_candidate_pawns_from_controller(controller)
+  local candidates = {}
+  local seen = {}
+  if not minigame_object_valid(controller) then
+    return candidates
+  end
+
+  for _, property_name in ipairs({ "AcknowledgedPawn", "Pawn", "Character", "ControlledPawn" }) do
+    player_position_add_candidate(
+      candidates,
+      seen,
+      minigame_try_property(controller, property_name),
+      "controller." .. property_name
+    )
+  end
+
+  return candidates
+end
+
+function player_position_identity_from_live_target(known_players, target, target_count)
+  target = type(target) == "table" and target or {}
+  known_players = type(known_players) == "table" and known_players or {}
+
+  local candidates = {
+    target.playerId,
+    target.name,
+    target.userName,
+    target.displayName,
+    target.controllerPath,
+    target.playerStatePath,
+    target.label,
+  }
+  local identity, identity_source = player_position_identity_from_cache(known_players, target.name, candidates)
+  if identity ~= nil then
+    return identity, identity_source
+  end
+
+  if tonumber(target_count) == 1 and #known_players == 1 then
+    return known_players[1], "cache.single-live-controller"
+  end
+
+  return nil, ""
+end
+
+function player_position_parse_native_lines(text)
+  local fields = {}
+  for line in tostring(text or ""):gmatch("[^\r\n]+") do
+    local key, value = line:match("^([A-Za-z0-9_]+)=(.*)$")
+    if key ~= nil then
+      fields[key] = value or ""
+    end
+  end
+  return fields
+end
+
+function player_position_parse_pipe_fields(text)
+  local fields = {}
+  for part in tostring(text or ""):gmatch("[^|]+") do
+    local key, value = part:match("^([A-Za-z0-9_]+)=(.*)$")
+    if key ~= nil then
+      fields[key] = value or ""
+    end
+  end
+  return fields
+end
+
+function player_position_native_attempt(fields, source_value, source_label, raw)
+  fields = type(fields) == "table" and fields or {}
+  local detail = tostring(fields.detail or "native helper returned ok=false")
+  return {
+    source = "native.BMFSocketPlayerLocation." .. tostring(source_label or "source"),
+    ok = tostring(fields.ok or "") == "true",
+    address = tostring(source_value or ""),
+    sourceKind = tostring(fields.source_kind or ""),
+    sourceObject = tostring(fields.source_object or ""),
+    sourceFullName = tostring(fields.source_full_name or ""),
+    controller = tostring(fields.controller or ""),
+    controllerFullName = tostring(fields.controller_full_name or ""),
+    pawn = tostring(fields.pawn or ""),
+    pawnFullName = tostring(fields.pawn_full_name or ""),
+    detail = detail,
+    raw = tostring(raw or ""),
+  }
+end
+
+function player_position_native_position_from_attempt(attempt, fields)
+  if not (attempt and attempt.ok == true) then
+    return nil
+  end
+  local position = {
+    x = finite_number(fields.x, nil),
+    y = finite_number(fields.y, nil),
+    z = finite_number(fields.z, nil),
+  }
+  if position.x ~= nil and position.y ~= nil and position.z ~= nil then
+    attempt.detail = "ok"
+    return position
+  end
+  attempt.ok = false
+  attempt.detail = "native helper returned incomplete coordinates"
+  return nil
+end
+
+function player_position_native_from_source(source_value, query, source_label)
+  if type(BMFSocketPlayerLocation) ~= "function" then
+    return nil, "BMFSocketPlayerLocation unavailable", {
+      source = "native.BMFSocketPlayerLocation." .. tostring(source_label or "source"),
+      ok = false,
+      address = tostring(source_value or ""),
+      detail = "native helper unavailable",
+    }
+  end
+
+  local ok, response = pcall(BMFSocketPlayerLocation, tostring(source_value or ""), tostring(query or ""))
+  if not ok then
+    return nil, tostring(response or "native helper failed"), {
+      source = "native.BMFSocketPlayerLocation." .. tostring(source_label or "source"),
+      ok = false,
+      address = tostring(source_value or ""),
+      detail = tostring(response or "native helper failed"),
+    }
+  end
+
+  local fields = player_position_parse_native_lines(response)
+  local attempt = player_position_native_attempt(fields, source_value, source_label, response)
+  local position = player_position_native_position_from_attempt(attempt, fields)
+  if position ~= nil then
+    return position, attempt.source, attempt
+  end
+
+  return nil, attempt.detail, attempt
+end
+
+function player_position_native_from_controller(controller, query)
+  if type(BMFSocketPlayerLocation) ~= "function" then
+    return nil, "BMFSocketPlayerLocation unavailable", {
+      source = "native.BMFSocketPlayerLocation",
+      ok = false,
+      address = "",
+      detail = "native helper unavailable",
+    }
+  end
+  if not minigame_object_valid(controller) then
+    return nil, "controller unavailable", {
+      source = "native.BMFSocketPlayerLocation",
+      ok = false,
+      address = "",
+      detail = "controller unavailable",
+    }
+  end
+
+  local sources = {}
+  local seen = {}
+  local function add_source(object, source)
+    if not minigame_object_valid(object) then
+      return
+    end
+    local address = minigame_object_address(object)
+    if address == "" then
+      address = live_chat_object_key(object, "")
+    end
+    if address == "" or seen[address] then
+      return
+    end
+    seen[address] = true
+    sources[#sources + 1] = {
+      address = address,
+      source = tostring(source or ""),
+      objectName = minigame_object_name(object),
+      fullName = minigame_object_full_name(object),
+    }
+  end
+
+  add_source(controller, "controller")
+  for _, property_name in ipairs({ "Pawn", "AcknowledgedPawn", "Character", "ControlledPawn" }) do
+    add_source(minigame_try_property(controller, property_name), "controller." .. property_name)
+  end
+
+  if #sources == 0 then
+    return nil, "controller address unavailable", {
+      source = "native.BMFSocketPlayerLocation",
+      ok = false,
+      address = "",
+      detail = "controller address unavailable",
+    }
+  end
+
+  local attempts = {}
+  local last_detail = "native helper returned no position"
+  for _, source in ipairs(sources) do
+    local ok, response = pcall(BMFSocketPlayerLocation, source.address, tostring(query or ""))
+    if not ok then
+      last_detail = tostring(response or "native helper failed")
+      attempts[#attempts + 1] = {
+        source = "native.BMFSocketPlayerLocation." .. source.source,
+        ok = false,
+        address = source.address,
+        objectName = source.objectName,
+        fullName = source.fullName,
+        detail = last_detail,
+      }
+    else
+      local fields = player_position_parse_native_lines(response)
+      local detail = tostring(fields.detail or "native helper returned ok=false")
+      local attempt = {
+        source = "native.BMFSocketPlayerLocation." .. source.source,
+        ok = tostring(fields.ok or "") == "true",
+        address = source.address,
+        objectName = source.objectName,
+        fullName = source.fullName,
+        sourceKind = tostring(fields.source_kind or ""),
+        sourceObject = tostring(fields.source_object or ""),
+        sourceFullName = tostring(fields.source_full_name or ""),
+        controller = tostring(fields.controller or ""),
+        controllerFullName = tostring(fields.controller_full_name or ""),
+        pawn = tostring(fields.pawn or ""),
+        pawnFullName = tostring(fields.pawn_full_name or ""),
+        detail = detail,
+        raw = tostring(response or ""),
+      }
+      attempts[#attempts + 1] = attempt
+
+      if attempt.ok then
+        local position = {
+          x = finite_number(fields.x, nil),
+          y = finite_number(fields.y, nil),
+          z = finite_number(fields.z, nil),
+        }
+        if position.x ~= nil and position.y ~= nil and position.z ~= nil then
+          attempt.detail = "ok"
+          attempt.attempts = attempts
+          return position, attempt.source, attempt
+        end
+        last_detail = "native helper returned incomplete coordinates"
+        attempt.ok = false
+        attempt.detail = last_detail
+      else
+        last_detail = detail
+      end
+    end
+  end
+
+  return nil, last_detail, {
+    source = "native.BMFSocketPlayerLocation",
+    ok = false,
+    address = sources[1].address,
+    detail = last_detail,
+    attempts = attempts,
+  }
+end
+
+function player_position_known_records_snapshot(opts, query, limit)
+  opts = type(opts) == "table" and opts or {}
+  query = trim_string(query or "")
+  limit = tonumber(limit) or 32
+
+  local listed = BMF.players.list()
+  local known_players = listed.data and type(listed.data.players) == "table" and listed.data.players or {}
+  local selected = {}
+  local resolve_candidates = {}
+  if query ~= "" then
+    local found = BMF.players.find(known_players, query)
+    if found.ok and found.data and found.data.player then
+      selected[#selected + 1] = found.data.player
+    else
+      resolve_candidates = found.data and found.data.players or {}
+    end
+  else
+    for _, player in ipairs(known_players or {}) do
+      selected[#selected + 1] = player
+    end
+  end
+
+  local players = {}
+  local positioned = 0
+  local max_count = math.min(limit, #(selected or {}))
+  local native_available = type(BMFSocketPlayerLocation) == "function"
+
+  for index = 1, max_count do
+    local player = selected[index]
+    local attempts = {}
+    local position = nil
+    local source = ""
+    local native_detail = nil
+    local source_values = {}
+
+    local controller_path = trim_string(player and player.controllerPath or "")
+    local player_state_path = trim_string(player and player.playerStatePath or "")
+    if controller_path ~= "" then
+      source_values[#source_values + 1] = { value = controller_path, label = "cache.controllerPath" }
+    end
+    if player_state_path ~= "" then
+      source_values[#source_values + 1] = { value = player_state_path, label = "cache.playerStatePath" }
+    end
+
+    for _, source_value in ipairs(source_values) do
+      position, source, native_detail = player_position_native_from_source(
+        source_value.value,
+        query ~= "" and query or player and (player.username or player.playerName or player.displayName or player.uuid) or "",
+        source_value.label
+      )
+      attempts[#attempts + 1] = native_detail
+      if position ~= nil then
+        break
+      end
+    end
+
+    if position ~= nil then
+      positioned = positioned + 1
+    end
+
+    players[#players + 1] = {
+      player = {
+        id = tostring(player and (player.uuid or player.id) or ""),
+        uuid = tostring(player and (player.uuid or player.id) or ""),
+        name = tostring(player and (player.playerName or player.username or player.displayName) or ""),
+        username = tostring(player and (player.username or player.playerName) or ""),
+        displayName = tostring(player and (player.displayName or player.username or player.playerName) or ""),
+        identitySource = "cache",
+      },
+      ok = position ~= nil,
+      position = position,
+      source = source,
+      playerState = tostring(player_state_path or ""),
+      playerStateName = tostring(player_state_path or ""),
+      controller = native_detail and native_detail.address or tostring(controller_path or ""),
+      controllerName = native_detail and native_detail.controller or tostring(controller_path or ""),
+      controllerFullName = native_detail and native_detail.controllerFullName or "",
+      pawn = native_detail and native_detail.pawn or "",
+      pawnName = native_detail and native_detail.pawn or "",
+      pawnFullName = native_detail and native_detail.pawnFullName or "",
+      pawnSource = native_detail and native_detail.sourceKind or "",
+      attempts = opts.includeMissing == true and attempts or nil,
+      native = native_detail,
+    }
+  end
+
+  local lines = {
+    "source=bmf.players.positions",
+    "query=" .. query,
+    "source_mode=native-cache",
+    "player_array_count=0",
+    "live_controllers=0",
+    "players=" .. tostring(#(selected or {})),
+    "returned=" .. tostring(#players),
+    "positioned=" .. tostring(positioned),
+    "known_players=" .. tostring(#known_players),
+    "native_available=" .. tostring(native_available),
+    "adapter=" .. tostring((listed.data and listed.data.adapter) or ""),
+  }
+  if query ~= "" and #players == 0 then
+    lines[#lines + 1] = "code=PLAYER_NOT_FOUND"
+    local candidate_texts = {}
+    for _, candidate in ipairs(resolve_candidates or {}) do
+      if type(candidate) == "table" then
+        candidate_texts[#candidate_texts + 1] = first_string(
+          candidate.uuid,
+          candidate.id,
+          candidate.username,
+          candidate.playerName,
+          candidate.displayName,
+          candidate.controllerPath,
+          candidate.playerStatePath
+        ) or ""
+      else
+        candidate_texts[#candidate_texts + 1] = tostring(candidate or "")
+      end
+    end
+    lines[#lines + 1] = "candidates=" .. table.concat(candidate_texts, "|")
+  end
+  for index, player in ipairs(players) do
+    local pos = player.position or {}
+    lines[#lines + 1] =
+      "position_" .. tostring(index) ..
+      "=" .. tostring(player.player.name or "") ..
+      "|id=" .. tostring(player.player.id or "") ..
+      "|ok=" .. tostring(player.ok == true) ..
+      "|x=" .. tostring(pos.x or "") ..
+      "|y=" .. tostring(pos.y or "") ..
+      "|z=" .. tostring(pos.z or "") ..
+      "|source=" .. tostring(player.source or "") ..
+      "|pawn=" .. tostring(player.pawn or "") ..
+      "|pawn_source=" .. tostring(player.pawnSource or "")
+  end
+
+  local data = {
+    source = "bmf.players.positions",
+    checkedAt = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    query = query,
+    sourceMode = "native-cache",
+    playerArrayCount = 0,
+    liveControllerCount = 0,
+    nativeAvailable = native_available,
+    players = players,
+    counts = {
+      observed = #(selected or {}),
+      returned = #players,
+      positioned = positioned,
+      knownPlayers = #known_players,
+    },
+    lines = lines,
+  }
+  lines[#lines + 1] = "positions_json=" .. json_encode(data)
+  return data
+end
+
+function player_position_live_controller_snapshot(opts, query, limit)
+  opts = type(opts) == "table" and opts or {}
+  query = trim_string(query or "")
+  limit = tonumber(limit) or 32
+
+  local listed = BMF.players.list()
+  local known_players = listed.data and type(listed.data.players) == "table" and listed.data.players or {}
+  local targets = {}
+  local selected = {}
+
+  if query ~= "" then
+    local target, resolved_targets = live_chat_resolve_target(query)
+    targets = resolved_targets or {}
+    if target ~= nil then
+      selected[#selected + 1] = target
+    end
+  else
+    targets = live_chat_collect_targets()
+    for _, target in ipairs(targets or {}) do
+      selected[#selected + 1] = target
+    end
+  end
+
+  local players = {}
+  local positioned = 0
+  local max_count = math.min(limit, #(selected or {}))
+  local native_available = type(BMFSocketPlayerLocation) == "function"
+  local allow_lua_pawn_read =
+    opts.luaPawnRead == true or
+    opts.luaVectors == true or
+    option_boolean(opts, "luapawnread", false) or
+    option_boolean(opts, "luavectors", false)
+
+  for index = 1, max_count do
+    local target = selected[index]
+    local identity, identity_source = player_position_identity_from_live_target(known_players, target, #(targets or {}))
+    local pawn_candidates = {}
+    local position = nil
+    local source = ""
+    local attempts = {}
+    local pawn_record = nil
+    local native_detail = nil
+
+    position, source, native_detail = player_position_native_from_controller(
+      target and target.controller or nil,
+      query ~= "" and query or target and (target.name or target.userName or target.displayName or target.playerId) or ""
+    )
+    attempts[#attempts + 1] = native_detail or {
+      source = "native.BMFSocketPlayerLocation",
+      ok = false,
+      detail = "native detail missing",
+    }
+
+    if position == nil and allow_lua_pawn_read then
+      pawn_candidates = player_position_candidate_pawns_from_controller(target and target.controller or nil)
+      for _, candidate in ipairs(pawn_candidates) do
+        local lua_position, lua_source, lua_attempts = player_position_read_from_pawn(candidate.object, opts)
+        for _, attempt in ipairs(lua_attempts or {}) do
+          attempts[#attempts + 1] = attempt
+        end
+        if lua_position ~= nil then
+          position = lua_position
+          source = lua_source
+          pawn_record = candidate
+          break
+        end
+      end
+    end
+
+    if position ~= nil then
+      positioned = positioned + 1
+    end
+
+    local player_name = first_string(
+      identity and identity.username,
+      identity and identity.playerName,
+      identity and identity.displayName,
+      target and target.name,
+      target and target.userName,
+      target and target.displayName
+    ) or ""
+
+    players[#players + 1] = {
+      player = {
+        id = tostring(identity and (identity.uuid or identity.id) or target and target.playerId or ""),
+        uuid = tostring(identity and (identity.uuid or identity.id) or target and target.playerId or ""),
+        name = tostring(player_name or ""),
+        username = tostring(identity and identity.username or target and target.userName or player_name or ""),
+        displayName = tostring(identity and identity.displayName or target and target.displayName or player_name or ""),
+        identitySource = identity_source,
+      },
+      ok = position ~= nil,
+      position = position,
+      source = source,
+      playerState = tostring(target and target.playerStatePath or ""),
+      playerStateName = tostring(target and target.playerStatePath or ""),
+      controller = native_detail and native_detail.address or live_chat_object_key(target and target.controller or nil, ""),
+      controllerName = native_detail and native_detail.controller or live_chat_object_label(target and target.controller or nil, ""),
+      controllerFullName = native_detail and native_detail.controllerFullName or live_chat_object_full_name(target and target.controller or nil),
+      pawn = native_detail and native_detail.pawn or pawn_record and pawn_record.address or "",
+      pawnName = native_detail and native_detail.pawn or pawn_record and pawn_record.objectName or "",
+      pawnFullName = native_detail and native_detail.pawnFullName or "",
+      pawnSource = pawn_record and pawn_record.source or "",
+      pawnCandidates = pawn_candidates,
+      attempts = opts.includeMissing == true and attempts or nil,
+      native = native_detail,
+    }
+  end
+
+  local lines = {
+    "source=bmf.players.positions",
+    "query=" .. query,
+    "source_mode=native-controller",
+    "player_array_count=0",
+    "live_controllers=" .. tostring(#(targets or {})),
+    "players=" .. tostring(#(selected or {})),
+    "returned=" .. tostring(#players),
+    "positioned=" .. tostring(positioned),
+    "known_players=" .. tostring(#known_players),
+    "native_available=" .. tostring(native_available),
+  }
+  if query ~= "" and #players == 0 then
+    lines[#lines + 1] = "code=PLAYER_NOT_FOUND"
+  end
+  for index, player in ipairs(players) do
+    local pos = player.position or {}
+    lines[#lines + 1] =
+      "position_" .. tostring(index) .. "=" ..
+      tostring(player.player.name or "") ..
+      "|id=" .. tostring(player.player.id or "") ..
+      "|ok=" .. tostring(player.ok == true) ..
+      "|x=" .. tostring(pos.x or "") ..
+      "|y=" .. tostring(pos.y or "") ..
+      "|z=" .. tostring(pos.z or "") ..
+      "|source=" .. tostring(player.source or "") ..
+      "|pawn=" .. tostring(player.pawn or "") ..
+      "|pawn_source=" .. tostring(player.pawnSource or "")
+  end
+
+  local data = {
+    source = "bmf.players.positions",
+    checkedAt = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    query = query,
+    sourceMode = "native-controller",
+    playerArrayCount = 0,
+    liveControllerCount = #(targets or {}),
+    nativeAvailable = native_available,
+    players = players,
+    counts = {
+      observed = #(selected or {}),
+      returned = #players,
+      positioned = positioned,
+      knownPlayers = #known_players,
+    },
+    lines = lines,
+  }
+  lines[#lines + 1] = "positions_json=" .. json_encode(data)
+  return data
+end
+
+BMF.players.positions = function(options)
+  local opts = type(options) == "table" and options or {}
+  local query = trim_string(opts.player or opts.query or opts.name or "")
+  local limit = tonumber(opts.limit) or 32
+  if limit < 1 then
+    limit = 1
+  elseif limit > 128 then
+    limit = 128
+  end
+
+  local allow_live_pawn_read =
+    opts.unsafe == true or
+    opts.allowLivePawnRead == true or
+    option_boolean(opts, "unsafe", false) or
+    option_boolean(opts, "allowlivepawnread", false)
+
+  local allow_native_cache =
+    opts.nativeController ~= false and
+    opts.nativeCache ~= false and
+    os.getenv("BMF_PLAYERS_POSITIONS_NATIVE_CACHE") ~= "0"
+  if allow_native_cache then
+    local native_cache_data = player_position_known_records_snapshot(opts, query, limit)
+    local native_cache_counts = native_cache_data.counts or {}
+    if tonumber(native_cache_counts.positioned) and tonumber(native_cache_counts.positioned) > 0 then
+      return result(true, "OK", "Native cached player positions collected", native_cache_data)
+    end
+
+    if not allow_live_pawn_read and opts.liveController ~= true and os.getenv("BMF_PLAYERS_POSITIONS_LIVE_CONTROLLER") ~= "1" then
+      native_cache_data.lines[#native_cache_data.lines + 1] = "code=POSITION_UNAVAILABLE"
+      native_cache_data.lines[#native_cache_data.lines + 1] =
+        "reason=native cached player position was unavailable; live Lua controller reads require livecontroller=1"
+      return result(false, "POSITION_UNAVAILABLE", "Native cached player position was unavailable", native_cache_data)
+    end
+  end
+
+  local allow_live_controller_read =
+    opts.liveController == true or
+    option_boolean(opts, "livecontroller", false) or
+    os.getenv("BMF_PLAYERS_POSITIONS_LIVE_CONTROLLER") == "1"
+  if allow_live_controller_read then
+    local live_controller_data = player_position_live_controller_snapshot(opts, query, limit)
+    local live_controller_counts = live_controller_data.counts or {}
+    if tonumber(live_controller_counts.positioned) and tonumber(live_controller_counts.positioned) > 0 then
+      return result(true, "OK", "Live controller player positions collected", live_controller_data)
+    end
+
+    if not allow_live_pawn_read then
+      live_controller_data.lines[#live_controller_data.lines + 1] = "code=POSITION_UNAVAILABLE"
+      live_controller_data.lines[#live_controller_data.lines + 1] =
+        "reason=live controller pawn position was unavailable; broad PlayerState reads require unsafe=1"
+      return result(false, "POSITION_UNAVAILABLE", "Live controller pawn position was unavailable", live_controller_data)
+    end
+  end
+
+  if not allow_live_pawn_read then
+    local lines = {
+      "source=bmf.players.positions",
+      "query=" .. query,
+      "source_mode=disabled-safe-default",
+      "player_array_count=0",
+      "players=0",
+      "returned=0",
+      "positioned=0",
+      "known_players=0",
+      "code=POSITION_UNAVAILABLE",
+      "reason=live pawn position reads require native support or unsafe=1",
+    }
+    local data = {
+      source = "bmf.players.positions",
+      checkedAt = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+      query = query,
+      sourceMode = "disabled-safe-default",
+      playerArrayCount = 0,
+      players = {},
+      counts = {
+        observed = 0,
+        returned = 0,
+        positioned = 0,
+        knownPlayers = 0,
+      },
+      lines = lines,
+    }
+    lines[#lines + 1] = "positions_json=" .. json_encode(data)
+    return result(false, "POSITION_UNAVAILABLE", "Live pawn position reads require native support or unsafe=1", data)
+  end
+
+  local player_items = {}
+  local meta = {
+    source = "",
+    playerArrayCount = 0,
+    errors = {},
+  }
+  local resolve_candidates = {}
+  if query ~= "" then
+    local item, candidates, item_meta = minigame_live_resolve_player_state_for_assignment(query)
+    resolve_candidates = candidates or {}
+    meta = item_meta or meta
+    if item and minigame_object_valid(item.object) then
+      player_items[#player_items + 1] = item
+    end
+  else
+    player_items, meta = minigame_live_player_states({
+      fallbackFindAll = opts.fallbackFindAll ~= false,
+    })
+  end
+
+  local listed = BMF.players.list()
+  local known_players = listed.data and listed.data.players or {}
+  local players = {}
+  local positioned = 0
+
+  for _, item in ipairs(player_items or {}) do
+    if #players >= limit then
+      break
+    end
+    local player_state = item.object
+    local property_values = minigame_live_collect_property_values(
+      player_state,
+      {
+        "UserName",
+        "PlayerNamePrivate",
+        "PlayerName",
+        "DisplayName",
+      },
+      0,
+      false
+    )
+    local player_name = minigame_live_first_property_text(property_values, {
+      "UserName",
+      "PlayerNamePrivate",
+      "PlayerName",
+      "DisplayName",
+    })
+    local assignment_candidates = minigame_live_player_assignment_candidates(player_state)
+    local identity, identity_source = player_position_identity_from_cache(known_players, player_name, assignment_candidates)
+    local pawn_candidates, controller = player_position_candidate_pawns(player_state)
+    local position = nil
+    local source = ""
+    local attempts = {}
+    local pawn_record = nil
+
+    for _, candidate in ipairs(pawn_candidates) do
+      position, source, attempts = player_position_read_from_pawn(candidate.object, opts)
+      if position ~= nil then
+        pawn_record = candidate
+        break
+      end
+    end
+
+    if position ~= nil then
+      positioned = positioned + 1
+    end
+
+    local record = {
+      player = {
+        id = tostring(identity and (identity.uuid or identity.id) or ""),
+        uuid = tostring(identity and (identity.uuid or identity.id) or ""),
+        name = tostring(player_name or ""),
+        username = tostring(identity and identity.username or player_name or ""),
+        displayName = tostring(identity and identity.displayName or player_name or ""),
+        identitySource = identity_source,
+      },
+      ok = position ~= nil,
+      position = position,
+      source = source,
+      playerState = minigame_object_address(player_state),
+      playerStateName = minigame_object_name(player_state),
+      controller = minigame_object_address(controller),
+      controllerName = minigame_object_name(controller),
+      pawn = pawn_record and pawn_record.address or "",
+      pawnName = pawn_record and pawn_record.objectName or "",
+      pawnSource = pawn_record and pawn_record.source or "",
+      pawnCandidates = pawn_candidates,
+      attempts = opts.includeMissing == true and attempts or nil,
+    }
+    players[#players + 1] = record
+  end
+
+  local lines = {
+    "source=bmf.players.positions",
+    "query=" .. query,
+    "source_mode=" .. tostring(meta and meta.source or ""),
+    "player_array_count=" .. tostring(meta and meta.playerArrayCount or 0),
+    "players=" .. tostring(#(player_items or {})),
+    "returned=" .. tostring(#players),
+    "positioned=" .. tostring(positioned),
+    "known_players=" .. tostring(#known_players),
+  }
+
+  if query ~= "" and #players == 0 then
+    lines[#lines + 1] = "code=PLAYER_NOT_FOUND"
+    lines[#lines + 1] = "candidates=" .. table.concat(resolve_candidates or {}, "|")
+  end
+  for index, error_text in ipairs((meta and meta.errors) or {}) do
+    lines[#lines + 1] = "error_" .. tostring(index) .. "=" .. tostring(error_text)
+  end
+  for index, player in ipairs(players) do
+    local pos = player.position or {}
+    lines[#lines + 1] =
+      "position_" .. tostring(index) .. "=" ..
+      tostring(player.player.name or "") ..
+      "|id=" .. tostring(player.player.id or "") ..
+      "|ok=" .. tostring(player.ok == true) ..
+      "|x=" .. tostring(pos.x or "") ..
+      "|y=" .. tostring(pos.y or "") ..
+      "|z=" .. tostring(pos.z or "") ..
+      "|source=" .. tostring(player.source or "") ..
+      "|pawn=" .. tostring(player.pawn or "") ..
+      "|pawn_source=" .. tostring(player.pawnSource or "")
+  end
+
+  local data = {
+    source = "bmf.players.positions",
+    checkedAt = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+    query = query,
+    sourceMode = tostring(meta and meta.source or ""),
+    playerArrayCount = meta and meta.playerArrayCount or 0,
+    players = players,
+    counts = {
+      observed = #(player_items or {}),
+      returned = #players,
+      positioned = positioned,
+      knownPlayers = #known_players,
+    },
+    lines = lines,
+  }
+  lines[#lines + 1] = "positions_json=" .. json_encode(data)
+
+  local ok = #players > 0 and (query == "" or positioned > 0)
+  return result(ok, ok and "OK" or "POSITION_UNAVAILABLE", ok and "Live player positions collected" or "Live player positions were unavailable", data)
 end
 
 BMF.players.normalize = function(record)
@@ -13439,11 +16787,7 @@ BMF.timers.after = function(ms, callback)
     state.timers[id] = nil
   end
 
-  if type(ExecuteWithDelay) == "function" then
-    ExecuteWithDelay(tonumber(ms) or 0, wrapped)
-  elseif type(ExecuteInGameThreadWithDelay) == "function" then
-    ExecuteInGameThreadWithDelay(tonumber(ms) or 0, wrapped)
-  else
+  if not BMF_schedule_delayed_callback("timer_after", tonumber(ms) or 0, wrapped) then
     state.timers[id] = nil
     return nil
   end
@@ -13461,53 +16805,26 @@ BMF.timers.every = function(ms, callback)
   state.timers[id] = { cancelled = false, interval = interval, count = 0 }
 
   local function schedule()
-    if type(ExecuteWithDelay) == "function" then
-      ExecuteWithDelay(interval, function()
-        local timer = state.timers[id]
-        if not timer or timer.cancelled then
-          state.timers[id] = nil
-          return
-        end
-        timer.count = timer.count + 1
-        local ok, err = pcall(callback, id, timer.count)
-        if not ok then
-          log("error", "timer callback failed: " .. tostring(err))
-          state.timers[id] = nil
-          return
-        end
-        timer = state.timers[id]
-        if timer and not timer.cancelled then
-          schedule()
-        else
-          state.timers[id] = nil
-        end
-      end)
-      return true
-    end
-    if type(ExecuteInGameThreadWithDelay) == "function" then
-      ExecuteInGameThreadWithDelay(interval, function()
-        local timer = state.timers[id]
-        if not timer or timer.cancelled then
-          state.timers[id] = nil
-          return
-        end
-        timer.count = timer.count + 1
-        local ok, err = pcall(callback, id, timer.count)
-        if not ok then
-          log("error", "timer callback failed: " .. tostring(err))
-          state.timers[id] = nil
-          return
-        end
-        timer = state.timers[id]
-        if timer and not timer.cancelled then
-          schedule()
-        else
-          state.timers[id] = nil
-        end
-      end)
-      return true
-    end
-    return false
+    return BMF_schedule_delayed_callback("timer_every", interval, function()
+      local timer = state.timers[id]
+      if not timer or timer.cancelled then
+        state.timers[id] = nil
+        return
+      end
+      timer.count = timer.count + 1
+      local ok, err = pcall(callback, id, timer.count)
+      if not ok then
+        log("error", "timer callback failed: " .. tostring(err))
+        state.timers[id] = nil
+        return
+      end
+      timer = state.timers[id]
+      if timer and not timer.cancelled then
+        schedule()
+      else
+        state.timers[id] = nil
+      end
+    end)
   end
 
   if not schedule() then
@@ -13536,7 +16853,10 @@ end
 
 local function list_command_request_files()
   local command_dir = COMMAND_DIR:gsub("/", "\\")
-  os.execute('if not exist "' .. command_dir .. '" mkdir "' .. command_dir .. '"')
+  if not state.command_dir_ensured then
+    os.execute('if not exist "' .. command_dir .. '" mkdir "' .. command_dir .. '"')
+    state.command_dir_ensured = true
+  end
 
   local handle = io.popen('dir /b /a-d "' .. command_dir .. '\\*.request.txt" 2>nul')
   if not handle then
@@ -13588,6 +16908,10 @@ function BMF_dispatch_bmf_command_text(request_id, command_text, transport)
   local request_created_ms = tonumber(tostring(request_id):match("_(%d%d%d%d%d%d%d%d%d%d%d%d%d)_"))
   local processed_at_ms = tonumber(process_started_epoch) and (tonumber(process_started_epoch) * 1000) or nil
   local request_age_ms = request_created_ms and processed_at_ms and (processed_at_ms - request_created_ms) or nil
+  if request_age_ms and request_age_ms < 0 then
+    request_age_ms = 0
+  end
+  BMF_telemetry_record_command(command_name or "unknown", transport or "file", ok, detail, total_duration_ms, dispatch_duration_ms, request_age_ms)
 
   local response = {
     "ok=" .. tostring(ok),
@@ -13609,7 +16933,7 @@ end
 local function process_command_request(file_name)
   local request_id = tostring(file_name or ""):match("^(.*)%.request%.txt$")
   if not request_id or request_id == "" then
-    return
+    return false
   end
 
   local request_path = COMMAND_DIR .. "/" .. file_name
@@ -13620,7 +16944,7 @@ local function process_command_request(file_name)
     local empty_reads = tonumber(state.command_empty_reads[request_id] or 0) + 1
     state.command_empty_reads[request_id] = empty_reads
     if empty_reads < COMMAND_EMPTY_READ_RETRY_LIMIT then
-      return
+      return false
     end
   else
     state.command_empty_reads[request_id] = nil
@@ -13631,47 +16955,124 @@ local function process_command_request(file_name)
 
   local response = BMF_dispatch_bmf_command_text(request_id, command_text, "file")
   write_file(response_path, response)
+  return true
 end
 
 local poll_command_requests
 
-local function schedule_command_worker_poll(delay_ms)
-  local delay = tonumber(delay_ms) or 250
-  if type(ExecuteWithDelay) == "function" then
-    ExecuteWithDelay(delay, function()
-      run_on_game_thread(function()
-        if poll_command_requests then
-          poll_command_requests()
-        end
-      end)
-    end)
-    return true
+function BMF_command_worker_poll_interval_ms()
+  return BMF_env_number(
+    "BMF_COMMAND_WORKER_POLL_MS",
+    BMF_COMMAND_WORKER_DEFAULT_POLL_MS,
+    25
+  )
+end
+
+function BMF_command_worker_fallback_poll_interval_ms()
+  local fallback = BMF_env_string("BMF_COMMAND_WORKER_FALLBACK_POLL_MS")
+  if fallback ~= "" then
+    return BMF_env_number("BMF_COMMAND_WORKER_FALLBACK_POLL_MS", BMF_COMMAND_WORKER_FALLBACK_POLL_MS, 250)
   end
-  if type(ExecuteInGameThreadWithDelay) == "function" then
-    ExecuteInGameThreadWithDelay(delay, function()
+  return BMF_env_number("BMF_COMMAND_WORKER_POLL_MS", BMF_COMMAND_WORKER_FALLBACK_POLL_MS, 250)
+end
+
+function BMF_command_worker_max_files_per_poll()
+  return BMF_env_number(
+    "BMF_COMMAND_WORKER_MAX_FILES_PER_POLL",
+    BMF_COMMAND_WORKER_DEFAULT_MAX_FILES_PER_POLL,
+    1
+  )
+end
+
+local function schedule_command_worker_poll(delay_ms)
+  local delay = tonumber(delay_ms) or state.command_worker_fallback_poll_interval_ms or BMF_COMMAND_WORKER_FALLBACK_POLL_MS
+  return BMF_schedule_delayed_callback("command_worker", delay, function()
+    run_on_game_thread(function()
       if poll_command_requests then
         poll_command_requests()
       end
     end)
-    return true
+  end)
+end
+
+function BMF_poll_command_requests_once()
+  local poll_started_clock = os.clock()
+  local processed_files = 0
+  local poll_ok = true
+  local max_files = state.command_worker_max_files_per_poll or BMF_COMMAND_WORKER_DEFAULT_MAX_FILES_PER_POLL
+  for _, file_name in ipairs(list_command_request_files()) do
+    local ok, processed_or_error = pcall(process_command_request, file_name)
+    if not ok then
+      poll_ok = false
+      log("error", "command worker failed for " .. tostring(file_name) .. ": " .. tostring(processed_or_error))
+    elseif processed_or_error == true then
+      processed_files = processed_files + 1
+    end
+    if processed_files >= max_files then
+      break
+    end
   end
-  return false
+
+  if state.socket.started and type(BMF_drain_socket_messages) == "function" then
+    local ok, err = pcall(BMF_drain_socket_messages, 128)
+    if not ok then
+      poll_ok = false
+      state.socket.last_error = "socket command-worker watchdog failed: " .. tostring(err)
+    end
+  end
+  if processed_files > 0 or not poll_ok then
+    BMF_telemetry_record_worker("command_polls", BMF_telemetry_duration_ms(poll_started_clock), poll_ok, "files_processed", processed_files)
+  end
 end
 
 poll_command_requests = function()
-  for _, file_name in ipairs(list_command_request_files()) do
-    local ok, err = pcall(process_command_request, file_name)
-    if not ok then
-      log("error", "command worker failed for " .. tostring(file_name) .. ": " .. tostring(err))
-    end
-  end
+  BMF_poll_command_requests_once()
 
   if state.command_worker_started then
-    if not schedule_command_worker_poll(250) then
+    if not schedule_command_worker_poll(state.command_worker_fallback_poll_interval_ms) then
       state.command_worker_started = false
+      state.command_worker_mode = "stopped"
       log("error", "command worker stopped: no game-thread scheduler available")
     end
   end
+end
+
+function BMF_poll_command_requests_async()
+  if not state.command_worker_started then
+    return true
+  end
+
+  local request_files = list_command_request_files()
+  if #request_files == 0 then
+    return false
+  end
+
+  local scheduled_files = 0
+  local max_files = state.command_worker_max_files_per_poll or BMF_COMMAND_WORKER_DEFAULT_MAX_FILES_PER_POLL
+  for _, file_name in ipairs(request_files) do
+    local claimed_file = file_name
+    if not state.command_inflight_files[claimed_file] then
+      state.command_inflight_files[claimed_file] = true
+    else
+      claimed_file = nil
+    end
+
+    if claimed_file ~= nil then
+      run_on_game_thread(function()
+        local ok, err = pcall(process_command_request, claimed_file)
+        state.command_inflight_files[claimed_file] = nil
+        if not ok then
+          log("error", "command worker failed for " .. tostring(claimed_file) .. ": " .. tostring(err))
+        end
+      end)
+      scheduled_files = scheduled_files + 1
+      if scheduled_files >= max_files then
+        break
+      end
+    end
+  end
+
+  return false
 end
 
 local function start_command_worker()
@@ -13679,9 +17080,55 @@ local function start_command_worker()
     return
   end
   state.command_worker_started = true
+  state.command_worker_poll_interval_ms = BMF_command_worker_poll_interval_ms()
+  state.command_worker_fallback_poll_interval_ms = BMF_command_worker_fallback_poll_interval_ms()
+  state.command_worker_max_files_per_poll = BMF_command_worker_max_files_per_poll()
+  state.command_worker_mode = "starting"
   log("info", "command worker started path=" .. COMMAND_DIR)
-  if not schedule_command_worker_poll(250) then
+  if BMF_start_async_loop(
+    "command_worker",
+    state.command_worker_poll_interval_ms,
+    BMF_poll_command_requests_async,
+    BMF_env_bool("BMF_COMMAND_WORKER_ASYNC", true)
+  ) then
+    state.command_worker_mode = "LoopAsync"
+    log(
+      "info",
+      "command worker polling via LoopAsync interval_ms="
+        .. tostring(state.command_worker_poll_interval_ms)
+        .. " max_files_per_poll="
+        .. tostring(state.command_worker_max_files_per_poll)
+    )
+    return
+  end
+  if BMF_start_game_thread_loop("command_worker", state.command_worker_fallback_poll_interval_ms, function()
+    if not state.command_worker_started then
+      return true
+    end
+    BMF_poll_command_requests_once()
+    return false
+  end) then
+    state.command_worker_mode = "LoopInGameThread"
+    log(
+      "info",
+      "command worker polling via LoopInGameThread interval_ms="
+        .. tostring(state.command_worker_fallback_poll_interval_ms)
+        .. " max_files_per_poll="
+        .. tostring(state.command_worker_max_files_per_poll)
+    )
+    return
+  end
+  state.command_worker_mode = "ExecuteInGameThreadWithDelay"
+  log(
+    "warn",
+    "command worker using game-thread delayed fallback interval_ms="
+      .. tostring(state.command_worker_fallback_poll_interval_ms)
+      .. " max_files_per_poll="
+      .. tostring(state.command_worker_max_files_per_poll)
+  )
+  if not schedule_command_worker_poll(state.command_worker_fallback_poll_interval_ms) then
     state.command_worker_started = false
+    state.command_worker_mode = "stopped"
     log("error", "command worker unavailable: no game-thread scheduler available")
   end
 end
@@ -13737,27 +17184,70 @@ function BMF_process_socket_message(line)
   end
 end
 
+function BMF_drain_socket_messages(max_count)
+  if not state.socket.started or type(BMFSocketReceive) ~= "function" then
+    state.socket_worker_started = false
+    return 0
+  end
+
+  local drain_started_clock = os.clock()
+  local drain_ok = true
+  local requested_count = math.max(1, tonumber(max_count) or 64)
+  state.socket.poll_count = (tonumber(state.socket.poll_count) or 0) + 1
+  state.socket.last_poll_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+
+  local ok, messages_or_error = pcall(BMFSocketReceive, requested_count)
+  if ok and type(messages_or_error) == "table" then
+    local drained = 0
+    for _, line in ipairs(messages_or_error) do
+      if trim_string(line) ~= "" then
+        drained = drained + 1
+        local processed, err = pcall(BMF_process_socket_message, line)
+        if not processed then
+          drain_ok = false
+          state.socket.last_error = "socket message failed: " .. tostring(err)
+        end
+      end
+    end
+    state.socket.last_drain_count = drained
+    local native_drained = 0
+    if state.tools.tree_cut_native and state.tools.tree_cut_native.enabled == true then
+      local native_ok, native_result = pcall(BMF.tools.treeCutNative.drain, {
+        limit = 64,
+        silent = true,
+      })
+      if native_ok and native_result and native_result.data then
+        native_drained = tonumber(native_result.data.drained) or 0
+      elseif not native_ok then
+        drain_ok = false
+        state.tools.tree_cut_native.last_error = "native tree-cut drain failed: " .. tostring(native_result)
+      end
+    end
+    if drained > 0 or native_drained > 0 or not drain_ok then
+      BMF_telemetry_record_worker("socket_drains", BMF_telemetry_duration_ms(drain_started_clock), drain_ok, "messages", drained + native_drained)
+    end
+    return drained + native_drained
+  elseif not ok then
+    drain_ok = false
+    state.socket.last_error = "BMFSocketReceive failed: " .. tostring(messages_or_error)
+  end
+
+  state.socket.last_drain_count = 0
+  if not drain_ok then
+    BMF_telemetry_record_worker("socket_drains", BMF_telemetry_duration_ms(drain_started_clock), drain_ok, "messages", 0)
+  end
+  return 0
+end
+
 function BMF_schedule_socket_worker_poll(delay_ms)
   local delay = tonumber(delay_ms) or state.socket.poll_interval_ms or SOCKET_DEFAULT_POLL_MS
-  if type(ExecuteWithDelay) == "function" then
-    ExecuteWithDelay(delay, function()
-      run_on_game_thread(function()
-        if BMF_poll_socket_messages then
-          BMF_poll_socket_messages()
-        end
-      end)
-    end)
-    return true
-  end
-  if type(ExecuteInGameThreadWithDelay) == "function" then
-    ExecuteInGameThreadWithDelay(delay, function()
+  return BMF_schedule_delayed_callback("socket_worker", delay, function()
+    run_on_game_thread(function()
       if BMF_poll_socket_messages then
         BMF_poll_socket_messages()
       end
     end)
-    return true
-  end
-  return false
+  end)
 end
 
 function BMF_poll_socket_messages()
@@ -13766,17 +17256,7 @@ function BMF_poll_socket_messages()
     return
   end
 
-  local ok, messages_or_error = pcall(BMFSocketReceive, 64)
-  if ok and type(messages_or_error) == "table" then
-    for _, line in ipairs(messages_or_error) do
-      local processed, err = pcall(BMF_process_socket_message, line)
-      if not processed then
-        state.socket.last_error = "socket message failed: " .. tostring(err)
-      end
-    end
-  elseif not ok then
-    state.socket.last_error = "BMFSocketReceive failed: " .. tostring(messages_or_error)
-  end
+  BMF_drain_socket_messages(64)
 
   if state.socket_worker_started then
     if not BMF_schedule_socket_worker_poll(state.socket.poll_interval_ms) then
@@ -13784,6 +17264,44 @@ function BMF_poll_socket_messages()
       log("error", "socket worker stopped: no game-thread scheduler available")
     end
   end
+end
+
+function BMF_poll_socket_messages_async()
+  if not state.socket_worker_started then
+    return true
+  end
+
+  if not state.socket.started or type(BMFSocketReceive) ~= "function" then
+    state.socket_worker_started = false
+    return true
+  end
+
+  local ok, messages_or_error = pcall(BMFSocketReceive, 64)
+  if ok and type(messages_or_error) == "table" then
+    for _, line in ipairs(messages_or_error) do
+      if trim_string(line) ~= "" then
+        run_on_game_thread(function()
+          local processed, err = pcall(BMF_process_socket_message, line)
+          if not processed then
+            state.socket.last_error = "socket message failed: " .. tostring(err)
+          end
+        end)
+      end
+    end
+  elseif not ok then
+    state.socket.last_error = "BMFSocketReceive failed: " .. tostring(messages_or_error)
+  end
+
+  if state.tools.tree_cut_native and state.tools.tree_cut_native.enabled == true then
+    run_on_game_thread(function()
+      pcall(BMF.tools.treeCutNative.drain, {
+        limit = 64,
+        silent = true,
+      })
+    end)
+  end
+
+  return false
 end
 
 function BMF_start_socket_transport()
@@ -13818,6 +17336,33 @@ function BMF_start_socket_transport()
   state.socket.last_started_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
   state.socket_worker_started = true
   log("info", "socket transport started host=" .. tostring(state.socket.host) .. " port=" .. tostring(state.socket.port) .. " poll_ms=" .. tostring(state.socket.poll_interval_ms))
+  if BMF_env_bool("BMF_TREECUT_NATIVE_ENABLED", true) then
+    local treecut_ok, treecut_result = pcall(BMF.tools.treeCutNative.start, {
+      reason = "socket-start",
+    })
+    if not treecut_ok or not treecut_result or treecut_result.ok ~= true then
+      local detail = treecut_ok and tostring(treecut_result and treecut_result.message or "unknown") or tostring(treecut_result)
+      log("warn", "tree-cut native capture did not start: " .. detail)
+    end
+  end
+  if BMF_start_async_loop("socket_worker", state.socket.poll_interval_ms, BMF_poll_socket_messages_async) then
+    log("info", "socket worker polling via LoopAsync")
+    return
+  end
+  if BMF_start_game_thread_loop("socket_worker", state.socket.poll_interval_ms, function()
+    if not state.socket_worker_started then
+      return true
+    end
+    if not state.socket.started or type(BMFSocketReceive) ~= "function" then
+      state.socket_worker_started = false
+      return true
+    end
+    BMF_drain_socket_messages(64)
+    return false
+  end) then
+    log("info", "socket worker polling via LoopInGameThread")
+    return
+  end
   if not BMF_schedule_socket_worker_poll(state.socket.poll_interval_ms) then
     state.socket_worker_started = false
     log("error", "socket worker unavailable: no game-thread scheduler available")
@@ -14210,9 +17755,25 @@ local function create_plugin_api(plugin_name, manifest)
   for key, value in pairs(BMF.tools) do
     api.tools[key] = value
   end
+  api.tools.uobject = {}
+  for key, value in pairs(BMF.tools.uobject) do
+    api.tools.uobject[key] = value
+  end
   api.tools.applicator = {}
   for key, value in pairs(BMF.tools.applicator) do
     api.tools.applicator[key] = value
+  end
+  api.tools.treeCutNative = {}
+  for key, value in pairs(BMF.tools.treeCutNative) do
+    api.tools.treeCutNative[key] = value
+  end
+  api.tools.treeCutTrace = {}
+  for key, value in pairs(BMF.tools.treeCutTrace) do
+    api.tools.treeCutTrace[key] = value
+  end
+  api.tools.treeCutProbe = {}
+  for key, value in pairs(BMF.tools.treeCutProbe) do
+    api.tools.treeCutProbe[key] = value
   end
   api.tools.onApplicatorComponentApply = function(handler, options)
     return require_capability(plugin_name, manifest, "tools.applicator", function()
@@ -14657,3 +18218,4 @@ mark_server_ready({
   pluginsLoaded = plugin_count(),
   commandsRegistered = #command_names(),
 })
+BMF_telemetry_write(true)

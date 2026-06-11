@@ -11,10 +11,31 @@ import path from 'path';
 import LogWrangler from './logWrangler';
 import type Omegga from './server';
 
+export type OmeggaConsoleCommandMetric = {
+  command: string;
+  count: number;
+  lastAtMs: number;
+};
+
+export const normalizeConsoleCommandFamily = (command: string) => {
+  const tokens =
+    String(command || '')
+      .trim()
+      .match(/"[^"]*"|\S+/g)
+      ?.map(token => token.replace(/^"|"$/g, '')) ?? [];
+  const primary = tokens[0] || 'empty';
+  if (primary === 'GetAll' && tokens[1]) return `${primary} ${tokens[1]}`;
+  if (primary === 'Chat.Command' && tokens[1]) {
+    return `${primary} ${tokens[1]}`;
+  }
+  return primary.slice(0, 80);
+};
+
 class OmeggaWrapper extends EventEmitter {
   #server: BrickadiaServer;
   dataPath: string;
   path: string;
+  consoleCommandMetrics: Record<string, OmeggaConsoleCommandMetric> = {};
 
   logWrangler: LogWrangler;
   addMatcher: LogWrangler['addMatcher'];
@@ -67,12 +88,15 @@ class OmeggaWrapper extends EventEmitter {
     this.#server.write(str);
   }
   writelnAsync(str: string) {
+    this.recordConsoleCommand(str);
     return this.#server.writelnAsync(str);
   }
   writeln(str: string) {
+    this.recordConsoleCommand(str);
     this.#server.writeln(str);
   }
   execControlCommandWithOutput(command: string, timeoutMs?: number) {
+    this.recordConsoleCommand(command);
     return this.#server.execControlCommandWithOutput(command, timeoutMs);
   }
   start() {
@@ -89,6 +113,18 @@ class OmeggaWrapper extends EventEmitter {
   }
   getWindowsControlBackend() {
     return this.#server.getWindowsControlBackend();
+  }
+
+  private recordConsoleCommand(command: string) {
+    const family = normalizeConsoleCommandFamily(command);
+    const existing = this.consoleCommandMetrics[family] ?? {
+      command: family,
+      count: 0,
+      lastAtMs: 0,
+    };
+    existing.count += 1;
+    existing.lastAtMs = Date.now();
+    this.consoleCommandMetrics[family] = existing;
   }
 
   // event emitter to catch everything
