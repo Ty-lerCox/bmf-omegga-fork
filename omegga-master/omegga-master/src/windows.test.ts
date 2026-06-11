@@ -454,6 +454,78 @@ windowsDescribe('Windows platform support', () => {
     });
   });
 
+  it('replaces stale managed BMF runtime-only alias directories', () => {
+    const sourceRoot = makeTempDir();
+    const installRoot = makeTempDir();
+    const targetRoot = path.join(
+      installRoot,
+      'steam_installs',
+      'main',
+      'Brickadia',
+      'Binaries',
+      'Win64',
+    );
+    const bmfSource = makeTempDir();
+    const compatibilityWorkspace = createTempCompatibilityWorkspace();
+
+    fs.mkdirSync(path.join(sourceRoot, 'ue4ss', 'Mods'), { recursive: true });
+    fs.writeFileSync(path.join(sourceRoot, 'dwmapi.dll'), 'proxy');
+    fs.writeFileSync(path.join(sourceRoot, 'ue4ss', 'UE4SS.dll'), 'dll');
+    fs.writeFileSync(
+      path.join(sourceRoot, 'ue4ss', 'UE4SS-settings.ini'),
+      '[General]\n',
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, 'ue4ss', 'Mods', 'mods.txt'),
+      'Keybinds : 1\n',
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, 'ue4ss', 'Mods', 'mods.json'),
+      '[]\n',
+    );
+
+    fs.mkdirSync(path.join(bmfSource, 'Scripts'), { recursive: true });
+    fs.writeFileSync(path.join(bmfSource, 'bmf.json'), '{"name":"BMF"}\n');
+    fs.writeFileSync(
+      path.join(bmfSource, 'Scripts', 'main.lua'),
+      'return nil\n',
+    );
+
+    const staleAliasBmf = path.join(
+      targetRoot,
+      'ue4ss',
+      'main',
+      'Mods',
+      'BMF',
+    );
+    fs.mkdirSync(path.join(staleAliasBmf, 'runtime', 'commands'), {
+      recursive: true,
+    });
+    fs.writeFileSync(path.join(staleAliasBmf, 'stale-marker.txt'), 'stale\n');
+
+    process.env.OMEGGA_UE4SS_SOURCE = sourceRoot;
+    process.env.OMEGGA_UE4SS_RE_ROOT = compatibilityWorkspace.workspaceRoot;
+    process.env.OMEGGA_BMF_SOURCE_DIR = bmfSource;
+
+    installManagedUe4ss(targetRoot);
+
+    expect(
+      fs.readFileSync(
+        path.join(staleAliasBmf, 'Scripts', 'main.lua'),
+        'utf8',
+      ),
+    ).toBe('return nil\n');
+    expect(fs.existsSync(path.join(staleAliasBmf, 'stale-marker.txt'))).toBe(
+      false,
+    );
+    expect(
+      fs.readFileSync(
+        path.join(targetRoot, 'ue4ss', 'main', 'Mods', 'mods.txt'),
+        'utf8',
+      ),
+    ).toContain('BMF : 1');
+  });
+
   it('parses UE4SS compatibility diagnostics', () => {
     const targetRoot = makeTempDir();
     const ue4ssDir = path.join(targetRoot, 'ue4ss', 'main');

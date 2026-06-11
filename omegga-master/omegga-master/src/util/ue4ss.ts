@@ -645,7 +645,9 @@ function syncManagedMods(destinationModsDir: string) {
   for (const mod of getManagedMods()) {
     if (!fs.existsSync(mod.sourceDir)) continue;
     fs.mkdirSync(destinationModsDir, { recursive: true });
-    fs.cpSync(mod.sourceDir, path.join(destinationModsDir, mod.name), {
+    const targetModDir = path.join(destinationModsDir, mod.name);
+    fs.rmSync(targetModDir, { ...RM_SYNC_RETRY_OPTIONS, recursive: true });
+    fs.cpSync(mod.sourceDir, targetModDir, {
       recursive: true,
       force: true,
       filter: shouldCopyManagedModPath,

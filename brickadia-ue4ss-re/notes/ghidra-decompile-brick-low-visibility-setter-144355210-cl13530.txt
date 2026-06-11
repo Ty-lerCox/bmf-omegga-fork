@@ -1,0 +1,295 @@
+INFO  Using log config file: jar:file:/C:/Users/tycox/Tools/reverse-engineering/ghidra_12.0.4_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: C:\Users\tycox\AppData\Roaming\ghidra\ghidra_12.0.4_PUBLIC\application.log (LoggingInitialization)  
+INFO  Loading user preferences: C:\Users\tycox\AppData\Roaming\ghidra\ghidra_12.0.4_PUBLIC\preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (641 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (1811 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 58 extension points (18 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Jython\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\brickadia-ue4ss-re\scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: C:\Users\tycox\Tools\reverse-engineering\ghidra-projects\BrickadiaCL13530 (HeadlessAnalyzer)  
+INFO  Opening project: C:\Users\tycox\Tools\reverse-engineering\ghidra-projects\BrickadiaCL13530 (HeadlessProject)  
+INFO  REPORT: Processing project file: /BrickadiaServer-Win64-Shipping.exe (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: GhidraDecompileFunction.java '144355210'  (HeadlessAnalyzer)  
+INFO  SCRIPT: C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\brickadia-ue4ss-re\scripts\GhidraDecompileFunction.java (HeadlessAnalyzer)  
+INFO  Function: FUN_144355210 @ 144355210
+ (GhidraScript)  
+INFO  
+void FUN_144355210(uint *param_1,longlong param_2,char param_3)
+
+{
+  uint uVar1;
+  byte bVar2;
+  uint uVar3;
+  int iVar4;
+  longlong lVar5;
+  uint uVar6;
+  uint uVar7;
+  longlong lVar8;
+  ulonglong uVar9;
+  uint *puVar11;
+  longlong lVar12;
+  undefined8 *puVar13;
+  undefined8 *puVar14;
+  ulonglong uVar15;
+  undefined1 auVar16 [16];
+  uint *puVar10;
+  
+  if ((*(char *)((longlong)param_1 + 0x76) == '\b') ||
+     (*(char *)((longlong)param_1 + 0x4b) == param_3)) {
+    return;
+  }
+  lVar8 = *(longlong *)(param_1 + 2);
+  if (lVar8 == 0) {
+    *(char *)((longlong)param_1 + 0x4b) = param_3;
+    return;
+  }
+  if ((*(byte *)((longlong)param_1 + 0x76) & 0xe) == 0) {
+    *(char *)((longlong)param_1 + 0x4b) = param_3;
+    bVar2 = *(byte *)((longlong)param_1 + 0x76);
+  }
+  else {
+    FUN_144356690(param_1,param_2);
+    auVar16._0_12_ = ZEXT812(0);
+    auVar16._12_4_ = 0;
+    *(undefined1 (*) [16])(param_1 + 0x17) = auVar16;
+    param_1[0x1b] = 0;
+    param_1[0x1c] = 0;
+    *(undefined2 *)(param_1 + 0x1d) = 0x7f00;
+    lVar8 = *(longlong *)(param_1 + 2);
+    *(char *)((longlong)param_1 + 0x4b) = param_3;
+    if (lVar8 == 0) {
+      return;
+    }
+    bVar2 = *(byte *)((longlong)param_1 + 0x76);
+  }
+  if (((bVar2 & 3) != 0) && (*(int *)(lVar8 + 0x1c8) != 0)) {
+    FUN_144389bc0(lVar8 + 0x140,param_1[0xc],
+                  (int)((ulonglong)((longlong)param_1 - DAT_14788afe0) >> 3) * -0x11111111,0x200);
+    *(undefined1 *)(lVar8 + 0x138) = 1;
+    if ((*(char *)(lVar8 + 0x34) == '\0') && (*(char *)(lVar8 + 0x35) == '\0')) {
+      FUN_144312080(*(undefined8 *)(lVar8 + 0x10),lVar8);
+    }
+    *(undefined1 *)(lVar8 + 0x34) = 1;
+    bVar2 = *(byte *)((longlong)param_1 + 0x76);
+  }
+  if ((bVar2 & 7) != 0) {
+    uVar3 = (int)((longlong)param_1 - DAT_14788afe0 >> 3) * -0x11111111;
+    uVar6 = (uVar3 >> 10) - DAT_14788b068;
+    if (uVar6 < DAT_14788b060) {
+      if (((int)uVar6 < 0) || ((int)DAT_14788b060 <= (int)uVar6)) goto LAB_144355743;
+      if (*(short *)(DAT_14788b058 + (ulonglong)uVar6 * 2) != 0) {
+        uVar6 = *(uint *)(DAT_14788b050 + (ulonglong)uVar3 * 4);
+        if ((uVar6 & 1) == 0) {
+                    /* WARNING: Subroutine does not return */
+          FUN_145b3799a();
+        }
+        FUN_1445fcd00(param_2,CONCAT44(uVar6,uVar3),0x200);
+        goto LAB_144355399;
+      }
+    }
+    FUN_145b37964();
+LAB_144355743:
+                    /* WARNING: Subroutine does not return */
+    FUN_145a24cde();
+  }
+LAB_144355399:
+  *(undefined1 *)(*(longlong *)(param_1 + 2) + 0x36) = 1;
+  if ((*(byte *)((longlong)param_1 + 0x76) & 0xe) != 0) {
+    FUN_144314cc0(param_1,param_2);
+    FUN_144314fd0(param_1,0);
+    FUN_144318230(*(undefined8 *)(param_1 + 2),param_1,0);
+  }
+  uVar15 = (longlong)param_1 - DAT_14788afe0;
+  lVar8 = *(longlong *)(param_1 + 2);
+  iVar4 = FUN_1443177f0(lVar8,param_2,param_1);
+  uVar9 = (ulonglong)param_1[0x16];
+  if (199999999 < uVar9) {
+    FUN_145b37e74();
+    goto LAB_144355725;
+  }
+  lVar12 = *(longlong *)(lVar8 + 0x10);
+  if (*(int *)(DAT_14788b7c8 + uVar9 * 4) == iVar4) {
+    if (*(char *)(lVar12 + 0x838) == '\0') goto LAB_144355450;
+LAB_144355412:
+    uVar3 = *param_1;
+  }
+  else {
+    lVar12 = *(longlong *)(lVar12 + 0x820);
+    *(int *)(DAT_14788b7c8 + uVar9 * 4) = iVar4;
+    FUN_144666ad0(lVar12 + 0x14,*(undefined4 *)(DAT_14788b800 + uVar9 * 4),uVar9,DAT_14788b7c8);
+    lVar12 = *(longlong *)(lVar8 + 0x10);
+    if (*(char *)(lVar12 + 0x838) != '\0') goto LAB_144355412;
+LAB_144355450:
+    *(undefined1 *)(lVar12 + 0x838) = 1;
+    FUN_14432e650();
+    uVar3 = *param_1;
+  }
+  if ((-1 < (int)uVar3) && ((int)uVar3 < *(int *)(param_2 + 0x2c0))) {
+    if ((int)uVar3 < *(int *)(param_2 + 0x2e0)) {
+      lVar8 = param_2 + 0x2c8;
+      if (*(longlong *)(param_2 + 0x2d8) != 0) {
+        lVar8 = *(longlong *)(param_2 + 0x2d8);
+      }
+      if ((*(uint *)(lVar8 + (ulonglong)(uVar3 >> 5) * 4) >> (uVar3 & 0x1f) & 1) != 0) {
+        uVar6 = *(uint *)(*(longlong *)(param_2 + 0x2b8) + (ulonglong)uVar3 * 0x28);
+        if (((int)uVar6 < 0) || (*(int *)(param_2 + 0x218) <= (int)uVar6)) {
+                    /* WARNING: Subroutine does not return */
+          FUN_145a268ec();
+        }
+        if ((int)uVar6 < *(int *)(param_2 + 0x238)) {
+          lVar8 = param_2 + 0x220;
+          if (*(longlong *)(param_2 + 0x230) != 0) {
+            lVar8 = *(longlong *)(param_2 + 0x230);
+          }
+          if ((*(uint *)(lVar8 + (ulonglong)(uVar6 >> 5) * 4) >> (uVar6 & 0x1f) & 1) != 0) {
+            uVar1 = param_1[1];
+            if (((int)uVar1 < 0) ||
+               (lVar8 = *(longlong *)(param_2 + 0x2b8) + (ulonglong)uVar3 * 0x28,
+               *(int *)(lVar8 + 0x20) <= (int)uVar1)) {
+                    /* WARNING: Subroutine does not return */
+              FUN_145a24cde();
+            }
+            lVar12 = *(longlong *)(param_2 + 0x210);
+            lVar5 = (ulonglong)uVar6 * 0x370;
+            puVar13 = *(undefined8 **)(lVar12 + 400 + lVar5);
+            puVar14 = (undefined8 *)(lVar12 + lVar5 + 0x180);
+            if (puVar13 != (undefined8 *)0x0) {
+              puVar14 = puVar13;
+            }
+            lVar12 = (longlong)*(int *)(lVar12 + 0x198 + lVar5);
+            if (lVar12 != 0) {
+              uVar3 = *(uint *)(*(longlong *)(lVar8 + 0x18) + (ulonglong)uVar1 * 4);
+              puVar13 = puVar14 + lVar12 * 2;
+              do {
+                lVar8 = puVar14[1];
+                uVar6 = *(uint *)(lVar8 + 0x168);
+                uVar1 = *(uint *)(lVar8 + 0x178);
+                if (0 < (int)uVar1) {
+                  iVar4 = 1;
+                  if (3 < uVar1) {
+                    uVar7 = (uVar1 | 1) + 0xe;
+                    iVar4 = 0x1f;
+                    if (uVar7 != 0) {
+                      for (; uVar7 >> iVar4 == 0; iVar4 = iVar4 + -1) {
+                      }
+                    }
+                    iVar4 = 1 << ((byte)iVar4 & 0x1f);
+                  }
+                  if (iVar4 <= (int)uVar6) goto LAB_1443555dc;
+                  goto LAB_144355706;
+                }
+LAB_1443555dc:
+                if (uVar6 == 0) {
+LAB_144355716:
+                    /* WARNING: Subroutine does not return */
+                  FUN_145b37aa8();
+                }
+                if ((uVar6 & uVar6 - 1) != 0) goto LAB_14435570b;
+                if (((int)uVar6 < 0) || (*(int *)(lVar8 + 0x16c) < (int)uVar6)) {
+LAB_144355701:
+                  FUN_145b1e0ce();
+LAB_144355706:
+                  FUN_145b360b6();
+LAB_14435570b:
+                    /* WARNING: Subroutine does not return */
+                  FUN_145b36122();
+                }
+                puVar11 = (uint *)((ulonglong)(uVar6 - 1 & uVar3) * 4 + *(longlong *)(lVar8 + 0x160)
+                                  );
+                puVar10 = puVar11;
+                if ((int)uVar1 < 0) {
+                  if (*puVar11 != 0xffffffff) {
+LAB_14435571b:
+                    /* WARNING: Subroutine does not return */
+                    FUN_145b3618e();
+                  }
+                  goto LAB_144355716;
+                }
+                do {
+                  uVar7 = *puVar10;
+                  uVar9 = (ulonglong)uVar7;
+                  if (uVar9 == 0xffffffff) goto LAB_144355716;
+                  if (*(int *)(lVar8 + 0x17c) < (int)uVar1) goto LAB_14435571b;
+                  if (((int)uVar7 < 0) || (uVar1 <= uVar7)) goto LAB_1443556d1;
+                  lVar12 = *(longlong *)(lVar8 + 0x170);
+                  puVar10 = (uint *)(lVar12 + uVar9 * 0xc + 8);
+                } while (*(uint *)(lVar12 + uVar9 * 0xc) != uVar3);
+                iVar4 = 1;
+                if (3 < uVar1) {
+                  uVar7 = (uVar1 | 1) + 0xe;
+                  iVar4 = 0x1f;
+                  if (uVar7 != 0) {
+                    for (; uVar7 >> iVar4 == 0; iVar4 = iVar4 + -1) {
+                    }
+                  }
+                  iVar4 = 1 << ((byte)iVar4 & 0x1f);
+                }
+                if ((int)uVar6 < iVar4) goto LAB_144355706;
+                uVar6 = *puVar11;
+                while( true ) {
+                  uVar9 = (ulonglong)uVar6;
+                  if (uVar9 == 0xffffffff) {
+                    FUN_145b37ade();
+                    goto LAB_144355701;
+                  }
+                  if (((int)uVar6 < 0) || (uVar1 <= uVar6)) goto LAB_1443556d1;
+                  if (*(uint *)(lVar12 + uVar9 * 0xc) == uVar3) break;
+                  uVar6 = *(uint *)(lVar12 + 8 + uVar9 * 0xc);
+                }
+                (*(code *)PTR__guard_dispatch_icall_145b51ac8)
+                          (*puVar14,param_2,lVar8,uVar3,*(undefined4 *)(lVar12 + 4 + uVar9 * 0xc),
+                           param_3);
+                puVar14 = puVar14 + 2;
+              } while (puVar14 != puVar13);
+            }
+LAB_1443556d6:
+            FUN_1445fea30(param_2,param_1,(int)(uVar15 >> 3) * -0x11111111);
+            return;
+          }
+        }
+                    /* WARNING: Subroutine does not return */
+        FUN_145a26922();
+      }
+    }
+                    /* WARNING: Subroutine does not return */
+    FUN_145a26922();
+  }
+LAB_144355725:
+                    /* WARNING: Subroutine does not return */
+  FUN_145a268ec();
+LAB_1443556d1:
+  FUN_145b36158();
+  goto LAB_1443556d6;
+}
+
+ (GhidraScript)  
+INFO  REPORT: Save succeeded for processed file: /BrickadiaServer-Win64-Shipping.exe (HeadlessAnalyzer)  

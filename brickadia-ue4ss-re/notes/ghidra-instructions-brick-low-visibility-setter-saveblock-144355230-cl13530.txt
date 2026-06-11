@@ -1,0 +1,81 @@
+INFO  Using log config file: jar:file:/C:/Users/tycox/Tools/reverse-engineering/ghidra_12.0.4_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: C:\Users\tycox\AppData\Roaming\ghidra\ghidra_12.0.4_PUBLIC\application.log (LoggingInitialization)  
+INFO  Loading user preferences: C:\Users\tycox\AppData\Roaming\ghidra\ghidra_12.0.4_PUBLIC\preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (617 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (1784 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 58 extension points (18 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Jython\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\brickadia-ue4ss-re\scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    C:\Users\tycox\Tools\reverse-engineering\ghidra_12.0.4_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Opening existing project: C:\Users\tycox\Tools\reverse-engineering\ghidra-projects\BrickadiaCL13530 (HeadlessAnalyzer)  
+INFO  Opening project: C:\Users\tycox\Tools\reverse-engineering\ghidra-projects\BrickadiaCL13530 (HeadlessProject)  
+INFO  REPORT: Processing project file: /BrickadiaServer-Win64-Shipping.exe (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: GhidraDumpInstructionWindow.java '144355230' '18'  (HeadlessAnalyzer)  
+INFO  SCRIPT: C:\Users\tycox\OneDrive\Documents\GitHub\Brickadia\brickadia-ue4ss-re\scripts\GhidraDumpInstructionWindow.java (HeadlessAnalyzer)  
+INFO  GhidraDumpInstructionWindow.java> Function: FUN_144355230 @ 144355230 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551e0: MOVZX EAX,byte ptr [RCX + 0x4a] (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551e4: MOV R10D,EAX (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551e7: OR R10B,R8B (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551ea: NOT R8B (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551ed: AND R8B,AL (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551f0: MOVZX R10D,R10B (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551f4: MOVZX R8D,R8B (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551f8: TEST R9B,R9B (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551fb: CMOVNZ R8D,R10D (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    1443551ff: CMP AL,R8B (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355202: JNZ 0x144355205 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355204: RET (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355205: JMP 0x144354e60 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355210: CMP byte ptr [RCX + 0x76],0x8 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355214: JZ 0x144355220 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355216: CMP byte ptr [RCX + 0x4b],R8B (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    14435521a: JNZ 0x144355230 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355220: RET (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java> >> 144355230: PUSH R15 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355232: PUSH R14 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355234: PUSH R13 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355236: PUSH R12 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355238: PUSH RSI (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355239: PUSH RDI (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    14435523a: PUSH RBP (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    14435523b: PUSH RBX (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    14435523c: SUB RSP,0x38 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355240: MOV EBX,R8D (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355243: MOV RSI,RCX (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355246: MOV R14,qword ptr [RCX + 0x8] (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    14435524a: TEST R14,R14 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    14435524d: JZ 0x144355290 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    14435524f: MOV RDI,RDX (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355252: TEST byte ptr [RSI + 0x76],0xe (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355256: JZ 0x1443552a4 (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    144355258: MOV RCX,RSI (GhidraScript)  
+INFO  GhidraDumpInstructionWindow.java>    14435525b: MOV RDX,RDI (GhidraScript)  
+INFO  REPORT: Save succeeded for processed file: /BrickadiaServer-Win64-Shipping.exe (HeadlessAnalyzer)  
