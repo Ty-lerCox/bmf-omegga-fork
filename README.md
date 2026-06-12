@@ -63,6 +63,52 @@ Observability setup lives in
 covers the local `/metrics` endpoint, Grafana Alloy remote-write setup,
 dashboard import, BMF command-worker metrics, and native frame-time telemetry.
 
+## Local BMF/CityRPG Runtime Profile
+
+`run-omegga.cmd` carries the local validation defaults for BMF-backed CityRPG
+tree work. Keep this profile conservative unless the matching BMF and CityRPG
+changes are updated and revalidated together.
+
+Current tree/runtime defaults:
+
+```text
+BMF_TREECUT_NATIVE_ENABLED=1
+BMF_TREECUT_TARGET_AUTO_REFRESH=0
+BMF_TREECUT_TARGET_REFRESH_ENABLED=0
+BMF_BRICK_RUNTIME_SET_ENABLED=1
+BMF_BRICK_CONTEXT_BACKGROUND_SCAN_ENABLED=1
+BMF_BRICK_VISIBILITY_SET_ENABLED=1
+BMF_BRICK_VISIBILITY_DIRECT_WRITE_ENABLED=0
+BMF_BRICK_COLLISION_SET_ENABLED=1
+BMF_BRICK_COLLISION_DIRECT_WRITE_ENABLED=0
+BMF_BRICK_RUNTIME_CONTEXT_HOOK_ENABLED=0
+BMF_BRICK_RUNTIME_PLACE_CONTEXT_HOOK_ENABLED=0
+BMF_BRICK_RUNTIME_LOW_SETTER_HOOK_ENABLED=0
+BMF_BRICK_RUNTIME_CONTEXT_OVERRIDE_ENABLED=0
+BMF_BRICK_OWNER_CONTEXT_SCAN_ENABLED=0
+BMF_TREE_PHYSICAL_SET_ENABLED=0
+CITYRPG_TREE_PHYSICAL_STATE=1
+CITYRPG_TREE_PHYSICAL_COLLISION=0
+CITYRPG_TREE_PHYSICAL_SAVED_BRICK_INDEX=0
+CITYRPG_NATIVE_TREE_HIT_COOLDOWN_MS=2500
+CITYRPG_NATIVE_TREE_REQUIRE_TAG=1
+CITYRPG_NATIVE_TREE_IMPACT_ANCHORS=0
+CITYRPG_TREE_RUNTIME_WORLD_EDIT=0
+CITYRPG_TREE_TAG_INDEX_ON_HIT=0
+CITYRPG_TREE_TAG_INDEX_STARTUP=1
+CITYRPG_TREE_TAG_INDEX_FILE=%SCRIPT_DIR%artifacts\tree-tag-index.json
+```
+
+The practical behavior is: CityRPG can hide/restore tagged runtime trees by
+calling `bmf.bricks.runtime.set` with both a candidate `brickid` and the
+`treeid:` tag, but collision is left unchanged while the collision mutation
+path is still under crash validation. BMF may use the off-game-thread
+background sparse-grid resolver on cold start. The launcher leaves the native
+context hooks, low-level setter hook, explicit context override, and owner scan
+disabled so normal tree chopping does not rely on broad or risky live scans.
+Impact anchors and on-hit tag indexing are disabled; tree identity should come
+from the startup tag-index file or an explicit admin refresh.
+
 ## Runtime Contract
 
 When updating this fork, keep these BMF-facing surfaces intact unless the BMF
