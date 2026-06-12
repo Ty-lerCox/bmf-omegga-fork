@@ -522,7 +522,13 @@ export default class RpcPlugin extends Plugin {
     rpc.addMethod('readSaveData', name =>
       this.omegga.readSaveData(name as unknown as string),
     );
-    rpc.addMethod('getSaveData', () => this.omegga.getSaveData());
+    rpc.addMethod(
+      'getSaveData',
+      (region?: {
+        center: [number, number, number];
+        extent: [number, number, number];
+      }) => this.omegga.getSaveData(region),
+    );
     rpc.addMethod(
       'loadSaveData',
       ({
