@@ -77,37 +77,45 @@ BMF_TREECUT_TARGET_AUTO_REFRESH=0
 BMF_TREECUT_TARGET_REFRESH_ENABLED=0
 BMF_BRICK_RUNTIME_SET_ENABLED=1
 BMF_BRICK_CONTEXT_BACKGROUND_SCAN_ENABLED=1
+BMF_BRICK_RUNTIME_SCAN_BEFORE_DIRECT_WRITE_ENABLED=1
+BMF_BRICK_CONTEXT_SCAN_MAX_MS=3000
+BMF_BRICK_CONTEXT_HINT_FULL_FALLBACK_ENABLED=0
 BMF_BRICK_VISIBILITY_SET_ENABLED=1
-BMF_BRICK_VISIBILITY_DIRECT_WRITE_ENABLED=0
+BMF_BRICK_VISIBILITY_DIRECT_WRITE_ENABLED=1
 BMF_BRICK_COLLISION_SET_ENABLED=1
-BMF_BRICK_COLLISION_DIRECT_WRITE_ENABLED=0
+BMF_BRICK_COLLISION_DIRECT_WRITE_ENABLED=1
 BMF_BRICK_RUNTIME_CONTEXT_HOOK_ENABLED=0
 BMF_BRICK_RUNTIME_PLACE_CONTEXT_HOOK_ENABLED=0
 BMF_BRICK_RUNTIME_LOW_SETTER_HOOK_ENABLED=0
 BMF_BRICK_RUNTIME_CONTEXT_OVERRIDE_ENABLED=0
-BMF_BRICK_OWNER_CONTEXT_SCAN_ENABLED=0
+BMF_BRICK_OWNER_CONTEXT_SCAN_ENABLED=1
+BMF_BRICK_OWNER_CONTEXT_SCAN_FOR_SET_ENABLED=1
 BMF_TREE_PHYSICAL_SET_ENABLED=0
 CITYRPG_TREE_PHYSICAL_STATE=1
-CITYRPG_TREE_PHYSICAL_COLLISION=0
+CITYRPG_TREE_PHYSICAL_COLLISION=1
 CITYRPG_TREE_PHYSICAL_SAVED_BRICK_INDEX=0
-CITYRPG_NATIVE_TREE_HIT_COOLDOWN_MS=2500
+CITYRPG_TREE_PHYSICAL_PREWARM_LIMIT=64
+CITYRPG_TREE_PHYSICAL_MAX_ANCHORS=64
+CITYRPG_NATIVE_TREE_HIT_COOLDOWN_MS=1250
 CITYRPG_NATIVE_TREE_REQUIRE_TAG=1
 CITYRPG_NATIVE_TREE_IMPACT_ANCHORS=0
 CITYRPG_TREE_RUNTIME_WORLD_EDIT=0
-CITYRPG_TREE_TAG_INDEX_ON_HIT=0
+CITYRPG_TREE_TAG_INDEX_ON_HIT=1
 CITYRPG_TREE_TAG_INDEX_STARTUP=1
-CITYRPG_TREE_TAG_INDEX_FILE=%SCRIPT_DIR%artifacts\tree-tag-index.json
+CITYRPG_TREE_TAG_INDEX_FILE=
 ```
 
 The practical behavior is: CityRPG can hide/restore tagged runtime trees by
 calling `bmf.bricks.runtime.set` with both a candidate `brickid` and the
-`treeid:` tag, but collision is left unchanged while the collision mutation
-path is still under crash validation. BMF may use the off-game-thread
-background sparse-grid resolver on cold start. The launcher leaves the native
-context hooks, low-level setter hook, explicit context override, and owner scan
-disabled so normal tree chopping does not rely on broad or risky live scans.
-Impact anchors and on-hit tag indexing are disabled; tree identity should come
-from the startup tag-index file or an explicit admin refresh.
+`treeid:` tag. Hide sets `visible=false` and `collision=0`; respawn restores
+visibility and the captured collision channels. BMF prefers Brickadia's native
+setter when a fresh sparse-grid context is available, and otherwise uses the
+explicit direct-byte fallback gates for this local validation profile. When a
+setter is enabled but no context is cached yet, BMF starts the bounded
+background context scan before falling back to direct bytes. Context scans stay
+bounded to the owner object or owner-hint window, and the launcher leaves native
+context hooks, low-level setter hook, explicit context override, impact anchors,
+and stale tag-index files disabled for live edit testing.
 
 ## Runtime Contract
 
